@@ -1,1 +1,38 @@
-# v2: project-intel is tracked (it was gitignored in CareerFlow and is required at runtime) 
+node_modules/
+dist/
+release/
+logs/
+logs
+*.log
+test-results/
+Temp/
+artifacts/
+core/target/
+.DS_Store
+
+# Safety guard: CareerFlow has ZERO dependency on Donut. The integration
+# experiment lives as a physically separate sibling project
+# (../DonutBrowser-Integration) and must never re-enter this tree.
+DonutBrowser-Integration/
+core/careerflow_core.*.node
+target/
+build/
+
+# Local databases and runtime snapshots
+*.sqlite
+*.db
+shots/
+versions/
+.ua/
+*.exe
+.agents/LOCKS.md
+.agents/SKILLS-IN-USE.md
+.agents/STANDING-RULES.md
+.agents/sub-agent-registry.md
+.unlazy/phase19/GATES.md
+.unlazy/phase19/PLAN.md
+.unlazy/production/GATES.md
+.unlazy/production/PLAN.md
+.unlazy/production/audit-summary.md
+
+# v2: project-intel is tracked (it was gitignored in CareerFlow and is required at runtime)
