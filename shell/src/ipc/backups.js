@@ -1,5 +1,5 @@
 import { safeHandle } from "../security/safe-handle.js";
-import { ipcMain, dialog } from "electron";
+import { ipcMain, dialog, app } from "electron";
 import { mkdir, stat, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { shell } from "electron";
@@ -11,6 +11,12 @@ import { isInsideDir, listBackupFiles, pruneLocalBackups, stampForFile } from ".
 import { resolveSafeBackupFile } from "../services/backup-path-security.js";
 import { inspectBundleConflicts } from "../services/inspect.js";
 import { Audit } from "../services/audit/index.js";
+
+// Snapshot vault dir, computed at call time (after main sets the
+// userData path): research snapshots live under vault/sources there.
+function snapshotVaultDir() {
+  return join(app.getPath("userData"), "vault", "sources");
+}
 
 export function register({ core, win }) {
   safeHandle("backups:get", async () => {
@@ -70,7 +76,7 @@ export function register({ core, win }) {
     const safeSlug = String(slug || "profile").replace(/[^a-z0-9_-]+/gi, "-");
     const outPath = join(settings.backupDir, `${safeSlug}-${stampForFile()}.cfprofile`);
     try {
-      const path = await core.exportProfile(profileId, outPath);
+      const path = await core.exportProfile(profileId, outPath, snapshotVaultDir());
       const info = await stat(path);
       settings.lastBackups[String(profileId)] = {
         path,
@@ -142,8 +148,8 @@ export function register({ core, win }) {
       throw new Error("Selected backup is outside the configured backup folder.");
     }
     try {
-      const profile = await core.importProfile(safe.path);
-      const restoredProfileId = profile && (typeof profile.id === "number" ? profile.id : (typeof profile.profile_id === "number" ? profile.profile_id : null));
+      const profile = await core.importProfile(safe.path, snapshotVaultDir());
+      const restoredProfileId = profile && (typeof profile.profileId === "number" ? profile.profileId : (typeof profile.id === "number" ? profile.id : (typeof profile.profile_id === "number" ? profile.profile_id : null)));
       Audit.log({
         event: "backup.restore",
         profileId: restoredProfileId,

@@ -209,9 +209,10 @@
               {...viewDeps}
               view={active.view}
               entity={active.entity ?? null}
+              browserTabId={active.browserTabId ?? null}
               paneMode={pane.mode}
               researchPageId={activeResearchPageId}
-              onEntityChange={(entity) => onSetTabEntity(pane.id, active.id, entity)}
+              onEntityChange={(entity, browserTabId) => onSetTabEntity(pane.id, active.id, entity, browserTabId)}
             />
           {:else}
             <div class="pane-empty">

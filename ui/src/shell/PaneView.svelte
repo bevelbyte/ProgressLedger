@@ -45,6 +45,8 @@
     /** The record the ACTIVE TAB of this pane is showing (null = a plain
      *  surface). Passed down, not shared: each pane holds its own. */
     entity = null,
+    /** The browser_tabs row id this page tab restores from (null = none). */
+    browserTabId = null,
     onEntityChange = () => {},
     pendingAgentId = null,
     pendingProjectId = null,
@@ -145,9 +147,10 @@
     {:else}
       <BrowserSurface
         pageId={entity ?? null}
+        browserTabId={browserTabId ?? null}
         {profileId}
         {occluded}
-        onPageChange={(id) => onEntityChange(id)}
+        onPageChange={(id, tabId) => onEntityChange(id, tabId)}
       />
     {/if}
   </div>

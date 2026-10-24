@@ -985,6 +985,57 @@ export declare function listResearchSources(profileId: number): Array<ResearchSo
 export declare function listResearchCaptures(profileId: number): Array<ResearchCapture>
 export declare function countKeptResearchPassages(profileId: number, url: string): number
 export declare function captureResearchPassage(profileId: number, url: string, title: string, pageId: string | undefined | null, kind: string, text: string): ResearchCapture
+export interface ResearchSearchHit {
+  kind: string
+  sourceId: number
+  captureId?: number
+  title: string
+  snippet: string
+}
+export interface BrowserTab {
+  id: number
+  profileId: number
+  browserProfileId: number
+  position: number
+  url: string
+  title: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+/**
+ * Save a captured page's full text plus its snapshot metadata. The shell
+ * writes the snapshot file first and passes only the file NAME (never a
+ * path) and the SHA-256 it computed; this function stores the metadata
+ * and the FTS row atomically with the text. Text over the cap is
+ * refused, not silently cut — the shell truncates first and sets the
+ * truncated flag, so an over-cap value here means the caps were bypassed.
+ */
+export declare function saveResearchSourceContent(profileId: number, sourceId: number, text: string, contentFile: string | undefined | null, contentSha256: string | undefined | null, textTruncated: boolean): ResearchSource
+/**
+ * Delete a source and everything under it (passages, full text, FTS
+ * rows). Returns the snapshot file NAME so the shell can unlink the
+ * file after this commit; None means there was no snapshot.
+ */
+export declare function deleteResearchSource(profileId: number, sourceId: number): string | null
+/** Delete one kept passage and its FTS row. */
+export declare function deleteResearchPassage(profileId: number, captureId: number): void
+/**
+ * Full-text search over sources and passages (one index, best match
+ * first). Each term is quoted so operators in the user's words are
+ * literal, and the query is a bound parameter, never interpolated.
+ * Snippets are computed here in Rust, not by SQLite's snippet():
+ * snippet() fails to parse in this build's bundled SQLite — observed
+ * twice (syntax error at the ellipsis argument, first with a Unicode
+ * ellipsis, then with plain ASCII dots) — while a plain SELECT with
+ * MATCH parses fine. Computing the snippet here is also what lets the
+ * UI keep its <b> marker contract unchanged.
+ */
+export declare function searchResearch(profileId: number, query: string, limit?: number | undefined | null): Array<ResearchSearchHit>
+export declare function saveBrowserTab(profileId: number, browserProfileId: number, position: number, url: string, title: string, isActive: boolean): BrowserTab
+export declare function updateBrowserTab(tabId: number, url: string, title: string): BrowserTab
+export declare function deleteBrowserTab(tabId: number): void
+export declare function listBrowserTabs(profileId: number): Array<BrowserTab>
 export interface SemesterAcademic {
   sgpa: number
   gradedCredits: number
@@ -1144,6 +1195,7 @@ export interface ImportResult {
   name: string
   slug: string
   resourceCount: number
+  skippedSnapshots: number
 }
 export interface BundleInfo {
   name: string
@@ -1153,10 +1205,10 @@ export interface BundleInfo {
 }
 export declare function inspectProfileBundle(bundlePath: string): BundleInfo
 /** Export a profile and everything under it to a portable `.cfprofile` bundle. */
-export declare function exportProfile(profileId: number, outPath: string): Promise<unknown>
+export declare function exportProfile(profileId: number, outPath: string, vaultDir?: string | undefined | null): Promise<unknown>
 /**
  * Import a `.cfprofile` bundle, recreating the profile + all data. Slug
  * collisions are auto-resolved by suffixing.
  */
-export declare function importProfile(bundlePath: string): Promise<unknown>
+export declare function importProfile(bundlePath: string, vaultDir?: string | undefined | null): Promise<unknown>
 export declare function ping(): string

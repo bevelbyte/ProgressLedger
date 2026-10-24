@@ -35,6 +35,7 @@ use napi::Task;
 use napi_derive::napi;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
@@ -170,11 +171,32 @@ fn manifest_version(manifest: &Value) -> Result<i64> {
     }
 }
 
+/// Lowercase hex SHA-256 of bytes, matching the shell's node:crypto digest
+/// stored on research_sources.content_sha256.
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
+}
+
+/// A research snapshot file is a plain `<source id>.html` name. Anything
+/// else (a path separator, `..`) is a corrupt or tampered row and must
+/// never be joined onto the vault directory.
+fn is_plain_snapshot_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        && !name.contains("..")
+        && name.ends_with(".html")
+}
+
 // ============================ EXPORT ============================
 
 pub struct ExportTask {
     pub profile_id: i32,
     pub out_path: String,
+    pub vault_dir: Option<String>,
 }
 
 impl Task for ExportTask {
@@ -183,8 +205,15 @@ impl Task for ExportTask {
 
     fn compute(&mut self) -> Result<String> {
         let root = attach_root().ok();
+        let vault = self.vault_dir.as_deref().map(Path::new);
         with_db(|conn| {
-            export_profile_conn(conn, self.profile_id, &self.out_path, root.as_deref())?;
+            export_profile_conn(
+                conn,
+                self.profile_id,
+                &self.out_path,
+                root.as_deref(),
+                vault,
+            )?;
             Ok(self.out_path.clone())
         })
     }
@@ -201,6 +230,7 @@ pub fn export_profile_conn(
     profile_id: i32,
     out_path: &str,
     root: Option<&Path>,
+    vault: Option<&Path>,
 ) -> Result<Value> {
     let (name, slug): (String, String) = conn
         .query_row(
@@ -640,6 +670,123 @@ pub fn export_profile_conn(
             }));
         }
     }
+    // ---- research ledger ----
+    // A backup that silently dropped the ledger would violate data
+    // integrity, so research is part of the bundle: sources, texts and
+    // captures in the manifest, snapshot files as sources/<id>.html
+    // entries. Snapshot handling is fail-closed, like attachments: a
+    // missing file, an invalid name, or a SHA mismatch aborts the
+    // export rather than producing a bundle that claims files it lacks.
+    // With no vault (direct Rust callers only; the shell always passes
+    // one), rows export without file references so the bundle stays
+    // self-consistent.
+    let mut research_json = Vec::new();
+    let mut snapshot_files: Vec<(String, Vec<u8>)> = Vec::new();
+    {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, canonical_url, url, title, domain, content_file,
+                        content_sha256, text_length, text_truncated
+                 FROM research_sources WHERE profile_id = ?1 ORDER BY id",
+            )
+            .map_err(toe)?;
+        let rows = stmt
+            .query_map(params![profile_id], |r| {
+                Ok((
+                    r.get::<_, i32>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, Option<String>>(5)?,
+                    r.get::<_, Option<String>>(6)?,
+                    r.get::<_, i64>(7)?,
+                    r.get::<_, i64>(8)?,
+                ))
+            })
+            .map_err(toe)?;
+        for row in rows {
+            let (sid, canonical, url, title, domain, content_file, content_sha256, text_length, text_truncated) =
+                row.map_err(toe)?;
+            let text: String = conn
+                .query_row(
+                    "SELECT text FROM research_source_texts WHERE source_id = ?1",
+                    params![sid],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(toe)?
+                .unwrap_or_default();
+            let mut cap_stmt = conn
+                .prepare(
+                    "SELECT kind, text, page_id, source_url, source_title
+                     FROM research_captures WHERE source_id = ?1 ORDER BY id",
+                )
+                .map_err(toe)?;
+            let caps = cap_stmt
+                .query_map(params![sid], |r| {
+                    Ok(json!({
+                        "kind": r.get::<_, String>(0)?,
+                        "text": r.get::<_, String>(1)?,
+                        // page_id is nullable: a manual passage carries no
+                        // page. A null here must not fail the export.
+                        "pageId": r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                        "sourceUrl": r.get::<_, String>(3)?,
+                        "sourceTitle": r.get::<_, String>(4)?,
+                    }))
+                })
+                .map_err(toe)?;
+            let mut cap_json = Vec::new();
+            for c in caps {
+                cap_json.push(c.map_err(toe)?);
+            }
+            let (out_file, out_sha) = match (&content_file, &content_sha256) {
+                (Some(f), Some(sha)) => match vault {
+                    None => (None, None),
+                    Some(vdir) => {
+                        if !is_plain_snapshot_name(f) {
+                            return Err(coded(
+                                codes::IO_ERROR,
+                                "Backup snapshot name is invalid",
+                            ));
+                        }
+                        let bytes = std::fs::read(vdir.join(f)).map_err(|e| {
+                            let msg = match e.kind() {
+                                std::io::ErrorKind::NotFound => "Backup snapshot is missing",
+                                std::io::ErrorKind::PermissionDenied => {
+                                    "Permission denied while reading snapshot"
+                                }
+                                _ => "I/O error while reading snapshot",
+                            };
+                            coded(codes::IO_ERROR, msg)
+                        })?;
+                        if sha256_hex(&bytes) != *sha {
+                            return Err(coded(
+                                codes::IO_ERROR,
+                                "Backup snapshot does not match its recorded hash",
+                            ));
+                        }
+                        snapshot_files.push((f.clone(), bytes));
+                        (Some(f.clone()), Some(sha.clone()))
+                    }
+                },
+                _ => (None, None),
+            };
+            research_json.push(json!({
+                "canonicalUrl": canonical,
+                "url": url,
+                "title": title,
+                "domain": domain,
+                "contentFile": out_file,
+                "contentSha256": out_sha,
+                "textLength": text_length,
+                "textTruncated": text_truncated != 0,
+                "text": text,
+                "captures": cap_json,
+            }));
+        }
+    }
+
     let manifest = json!({
         "format": FORMAT_NAME,
         "version": FORMAT_VERSION_V2,
@@ -650,6 +797,7 @@ pub fn export_profile_conn(
         "tracks": tracks_json,
         "projects": proj_json,
         "career": { "goals": goals_json },
+        "research": research_json,
     });
 
     // Stage the complete archive beside the destination. The existing backup
@@ -697,6 +845,14 @@ pub fn export_profile_conn(
             coded(codes::IO_ERROR, msg)
         })?;
     }
+    for (name, bytes) in &snapshot_files {
+        let entry_name = format!("sources/{name}");
+        zip.start_file(entry_name.as_str(), opts)
+            .map_err(|_| coded(codes::IO_ERROR, "Backup file is corrupted"))?;
+        zip.write_all(bytes).map_err(|_| {
+            coded(codes::IO_ERROR, "I/O error while writing snapshot")
+        })?;
+    }
     let file = zip
         .finish()
         .map_err(|_| coded(codes::IO_ERROR, "Backup file is corrupted"))?;
@@ -713,6 +869,7 @@ pub struct ImportResult {
     pub name: String,
     pub slug: String,
     pub resource_count: i32,
+    pub skipped_snapshots: i32,
 }
 
 #[napi(object)]
@@ -740,7 +897,9 @@ fn count_resources_in_manifest(manifest: &Value) -> i32 {
     count
 }
 
-fn read_bundle(bundle_path: &str) -> Result<(Value, HashMap<String, Vec<u8>>)> {
+fn read_bundle(
+    bundle_path: &str,
+) -> Result<(Value, HashMap<String, Vec<u8>>, HashMap<String, Vec<u8>>)> {
     let file = std::fs::File::open(bundle_path).map_err(|e| {
         let msg = match e.kind() {
             std::io::ErrorKind::NotFound => "Bundle file not found",
@@ -757,6 +916,7 @@ fn read_bundle(bundle_path: &str) -> Result<(Value, HashMap<String, Vec<u8>>)> {
     })?;
     let mut manifest_str = String::new();
     let mut attachments: HashMap<String, Vec<u8>> = HashMap::new();
+    let mut snapshots: HashMap<String, Vec<u8>> = HashMap::new();
     for i in 0..archive.len() {
         let mut entry = archive
             .by_index(i)
@@ -772,6 +932,12 @@ fn read_bundle(bundle_path: &str) -> Result<(Value, HashMap<String, Vec<u8>>)> {
                 .read_to_end(&mut buf)
                 .map_err(|_| coded(codes::INTERNAL, "Backup file is corrupted"))?;
             attachments.insert(name, buf);
+        } else if name.starts_with("sources/") {
+            let mut buf = Vec::new();
+            entry
+                .read_to_end(&mut buf)
+                .map_err(|_| coded(codes::INTERNAL, "Backup file is corrupted"))?;
+            snapshots.insert(name, buf);
         }
     }
     if manifest_str.is_empty() {
@@ -781,12 +947,12 @@ fn read_bundle(bundle_path: &str) -> Result<(Value, HashMap<String, Vec<u8>>)> {
         .map_err(|_| coded(codes::INTERNAL, "Invalid manifest JSON"))?;
     // Version gate BEFORE touching the database.
     manifest_version(&manifest)?;
-    Ok((manifest, attachments))
+    Ok((manifest, attachments, snapshots))
 }
 
 #[napi]
 pub fn inspect_profile_bundle(bundle_path: String) -> Result<BundleInfo> {
-    let (manifest, _) = read_bundle(&bundle_path)?;
+    let (manifest, _, _) = read_bundle(&bundle_path)?;
     Ok(BundleInfo {
         name: manifest["profile"]["name"]
             .as_str()
@@ -830,8 +996,19 @@ struct PendingAttachment {
     bytes: Vec<u8>,
 }
 
+/// A research snapshot to write into the vault at import time. The row is
+/// created with no file reference first; the reference is set only after
+/// the bytes verify against the manifest SHA and the file is written.
+struct PendingSnapshot {
+    source_id: i32,
+    file_name: String,
+    bytes: Vec<u8>,
+    sha256: String,
+}
+
 pub struct ImportTask {
     pub bundle_path: String,
+    pub vault_dir: Option<String>,
 }
 
 impl Task for ImportTask {
@@ -840,7 +1017,10 @@ impl Task for ImportTask {
 
     fn compute(&mut self) -> Result<ImportResult> {
         let root = attach_root()?;
-        with_db(|conn| import_bundle_conn(conn, &self.bundle_path, Some(root.as_path())))
+        let vault = self.vault_dir.as_deref().map(Path::new);
+        with_db(|conn| {
+            import_bundle_conn(conn, &self.bundle_path, Some(root.as_path()), vault)
+        })
     }
 
     fn resolve(&mut self, _env: napi::Env, output: ImportResult) -> Result<ImportResult> {
@@ -854,20 +1034,21 @@ pub fn import_bundle_conn(
     conn: &Connection,
     bundle_path: &str,
     root: Option<&Path>,
+    vault: Option<&Path>,
 ) -> Result<ImportResult> {
-    let (manifest, attachments) = read_bundle(bundle_path)?;
+    let (manifest, attachments, snapshots) = read_bundle(bundle_path)?;
     let version = manifest_version(&manifest)?;
 
     let tx = conn.unchecked_transaction().map_err(toe)?;
     let outcome = match version {
         VERSION_V1 => import_v1(&tx, &manifest, &attachments, root),
-        FORMAT_VERSION_V2 => import_v2(&tx, &manifest, &attachments, root),
+        FORMAT_VERSION_V2 => import_v2(&tx, &manifest, &attachments, &snapshots, root),
         other => Err(coded(
             codes::INTERNAL,
             format!("Unsupported bundle format version: {other}"),
         )),
     };
-    let result = outcome?; // early-return on Err drops `tx` => ROLLBACK
+    let mut result = outcome?; // early-return on Err drops `tx` => ROLLBACK
 
     // Materialize attachment files BEFORE committing the DB transaction. This
     // makes filesystem failure transactional from the caller's perspective:
@@ -905,8 +1086,60 @@ pub fn import_bundle_conn(
         }
     }
 
+    // Materialize research snapshots, if a vault was supplied. Unlike
+    // attachments, a snapshot problem is graceful: a SHA mismatch leaves
+    // the row without a file (its text is already imported) and counts
+    // as skipped. A filesystem write error is systemic and fails the
+    // import, like an attachment failure, with everything written so
+    // far removed and the transaction rolled back.
+    let mut materialized_snapshots = Vec::new();
+    let mut skipped_snapshots = 0i32;
+    if let Some(vault) = vault {
+        if std::fs::create_dir_all(vault).is_err() {
+            for path in materialized.drain(..) { let _ = std::fs::remove_file(path); }
+            return Err(coded(
+                codes::IO_ERROR,
+                "I/O error while creating snapshot vault",
+            ));
+        }
+        for p in &result.pending_snapshots {
+            if sha256_hex(&p.bytes) != p.sha256 {
+                skipped_snapshots += 1;
+                continue;
+            }
+            let full = vault.join(&p.file_name);
+            if std::fs::write(&full, &p.bytes).is_err() {
+                for path in materialized.drain(..) { let _ = std::fs::remove_file(path); }
+                for path in materialized_snapshots.drain(..) { let _ = std::fs::remove_file(path); }
+                return Err(coded(
+                    codes::IO_ERROR,
+                    "I/O error while writing snapshot",
+                ));
+            }
+            materialized_snapshots.push(full);
+            if let Err(e) = tx.execute(
+                "UPDATE research_sources SET content_file = ?2, content_sha256 = ?3
+                 WHERE id = ?1 AND profile_id = ?4",
+                rusqlite::params![
+                    p.source_id,
+                    p.file_name,
+                    p.sha256,
+                    result.result.profile_id
+                ],
+            ) {
+                for path in materialized.drain(..) { let _ = std::fs::remove_file(path); }
+                for path in materialized_snapshots.drain(..) { let _ = std::fs::remove_file(path); }
+                return Err(toe(e));
+            }
+        }
+    } else {
+        skipped_snapshots = result.pending_snapshots.len() as i32;
+    }
+    result.result.skipped_snapshots = skipped_snapshots;
+
     if let Err(e) = tx.commit() {
         for path in materialized { let _ = std::fs::remove_file(path); }
+        for path in materialized_snapshots { let _ = std::fs::remove_file(path); }
         return Err(toe(e));
     }
     Ok(result.result)
@@ -957,6 +1190,7 @@ mod atomic_output_tests {
 struct ImportOutcome {
     result: ImportResult,
     pending: Vec<PendingAttachment>,
+    pending_snapshots: Vec<PendingSnapshot>,
 }
 
 fn base_profile_fields(manifest: &Value) -> (String, String) {
@@ -1076,8 +1310,10 @@ fn import_v1(
             name: display_name,
             slug: final_slug,
             resource_count,
+            skipped_snapshots: 0,
         },
         pending,
+        pending_snapshots: Vec::new(),
     })
 }
 
@@ -1124,6 +1360,7 @@ fn import_v2(
     conn: &Connection,
     manifest: &Value,
     attachments: &HashMap<String, Vec<u8>>,
+    snapshots: &HashMap<String, Vec<u8>>,
     _root: Option<&Path>,
 ) -> Result<ImportOutcome> {
     let (base_name, base_slug) = base_profile_fields(manifest);
@@ -1530,6 +1767,90 @@ fn import_v2(
         }
     }
 
+    // ---- research ledger (v2 bundles only; v1 has no research key) ----
+    // Rows, texts and FTS entries are written in the transaction; snapshot
+    // files are queued for materialization after the rows are in. A source
+    // whose bundle entry is missing imports without a file (its text
+    // survives); the SHA is verified at materialization, never trusted.
+    let mut pending_snapshots: Vec<PendingSnapshot> = Vec::new();
+    for src in manifest["research"].as_array().into_iter().flatten() {
+        conn.execute(
+            "INSERT INTO research_sources
+             (profile_id, canonical_url, url, title, domain, content_file,
+              content_sha256, text_length, text_truncated)
+             VALUES (?1, ?2, ?3, ?4, ?5, NULL, NULL, ?6, ?7)",
+            params![
+                new_pid,
+                str_or(src, "canonicalUrl", ""),
+                str_or(src, "url", ""),
+                str_or(src, "title", ""),
+                str_or(src, "domain", ""),
+                src["textLength"].as_i64().unwrap_or(0),
+                if truthy(&src["textTruncated"]) { 1 } else { 0 },
+            ],
+        )
+        .map_err(toe)?;
+        let new_sid = conn.last_insert_rowid() as i32;
+        let text = str_or(src, "text", "");
+        if !text.is_empty() {
+            conn.execute(
+                "INSERT INTO research_source_texts (source_id, text) VALUES (?1, ?2)",
+                params![new_sid, text],
+            )
+            .map_err(toe)?;
+        }
+        conn.execute(
+            "INSERT INTO search_index (kind, profile_id, source_id, capture_id, title, body)
+             VALUES ('source', ?1, ?2, NULL, ?3, ?4)",
+            params![new_pid, new_sid, str_or(src, "title", ""), text],
+        )
+        .map_err(toe)?;
+        for cap in src["captures"].as_array().into_iter().flatten() {
+            conn.execute(
+                "INSERT INTO research_captures
+                 (profile_id, source_id, source_url, source_title, page_id, kind, text)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    new_pid,
+                    new_sid,
+                    str_or(cap, "sourceUrl", ""),
+                    str_or(cap, "sourceTitle", ""),
+                    str_or(cap, "pageId", ""),
+                    str_or(cap, "kind", "passage"),
+                    str_or(cap, "text", ""),
+                ],
+            )
+            .map_err(toe)?;
+            let new_cid = conn.last_insert_rowid() as i32;
+            conn.execute(
+                "INSERT INTO search_index (kind, profile_id, source_id, capture_id, title, body)
+                 VALUES ('passage', ?1, ?2, ?3, ?4, ?5)",
+                params![
+                    new_pid,
+                    new_sid,
+                    new_cid,
+                    str_or(src, "title", ""),
+                    str_or(cap, "text", ""),
+                ],
+            )
+            .map_err(toe)?;
+        }
+        if let (Some(f), Some(sha)) = (
+            src["contentFile"].as_str(),
+            src["contentSha256"].as_str(),
+        ) {
+            let entry = format!("sources/{f}");
+            if let Some(bytes) = snapshots.get(&entry) {
+                pending_snapshots.push(PendingSnapshot {
+                    source_id: new_sid,
+                    file_name: format!("{new_sid}.html"),
+                    bytes: bytes.clone(),
+                    sha256: sha.to_string(),
+                });
+            }
+        }
+    }
+
     // ---- relationship validation (still inside the transaction) ----
     // Any dangling reference means the remap was wrong: abort the whole import.
     let pid = new_pid;
@@ -1564,8 +1885,10 @@ fn import_v2(
             name: display_name,
             slug: final_slug,
             resource_count,
+            skipped_snapshots: 0,
         },
         pending,
+        pending_snapshots,
     })
 }
 
@@ -1579,16 +1902,27 @@ fn now_iso(conn: &rusqlite::Connection) -> String {
 
 /// Export a profile and everything under it to a portable `.cfprofile` bundle.
 #[napi]
-pub fn export_profile(profile_id: i32, out_path: String) -> AsyncTask<ExportTask> {
+pub fn export_profile(
+    profile_id: i32,
+    out_path: String,
+    vault_dir: Option<String>,
+) -> AsyncTask<ExportTask> {
     AsyncTask::new(ExportTask {
         profile_id,
         out_path,
+        vault_dir,
     })
 }
 
 /// Import a `.cfprofile` bundle, recreating the profile + all data. Slug
 /// collisions are auto-resolved by suffixing.
 #[napi]
-pub fn import_profile(bundle_path: String) -> AsyncTask<ImportTask> {
-    AsyncTask::new(ImportTask { bundle_path })
+pub fn import_profile(
+    bundle_path: String,
+    vault_dir: Option<String>,
+) -> AsyncTask<ImportTask> {
+    AsyncTask::new(ImportTask {
+        bundle_path,
+        vault_dir,
+    })
 }

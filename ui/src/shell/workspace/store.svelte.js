@@ -365,8 +365,12 @@ export function moveTab(paneId, tabId, toPaneId) {
 
 
 /** Re-point (or clear) which record a tab shows — see `model.setTabEntity`. */
-export function setTabEntity(paneId, tabId, entity) {
-  mutateActive((c) => M.setTabEntity(c, paneId, tabId, entity));
+export function setTabEntity(paneId, tabId, entity, browserTabId) {
+  mutateActive((c) => {
+    let next = M.setTabEntity(c, paneId, tabId, entity);
+    if (typeof browserTabId === "number") next = M.setTabBrowserTabId(next, paneId, tabId, browserTabId);
+    return next;
+  });
 }
 export function closeTab(paneId, tabId) {
   const ctx = activeContext();

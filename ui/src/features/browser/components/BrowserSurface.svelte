@@ -20,12 +20,16 @@
    * compact chrome exposes the current page and honest state while the native
    * WebContentsView remains owned and positioned by main.
    */
-  import { Globe, Loader2, RotateCw, AlertTriangle, ShieldOff, Square, Bookmark, BookmarkCheck, Telescope, Plus, Trash2 } from "lucide-svelte";
+  import { Globe, Loader2, RotateCw, AlertTriangle, ShieldOff, Square, Bookmark, BookmarkCheck, Telescope, Plus, Trash2, ChevronLeft, ChevronRight, Camera, Highlighter } from "lucide-svelte";
   import {
     pageFor,
     openPage,
+    listTabs,
     navigate as navigatePage,
     reload as reloadPage,
+    goBack as goBackPage,
+    goForward as goForwardPage,
+    navigation as navigationState,
     setBounds,
     setVisible,
   } from "../../../shared/stores/browser.svelte.js";
@@ -42,6 +46,8 @@
   let {
     /** The opaque browser page id this tab carries (`bp-N`), or null. */
     pageId = null,
+    /** The browser_tabs row id this tab restores from (null = none). */
+    browserTabId = null,
     profileId = null,
     /** True while the shell has an overlay open (a native view cannot be
      *  z-covered, so it must be hidden instead). */
@@ -59,6 +65,12 @@
   let busy = $state(false);
   let notice = $state(null);
   let lastSent = null;
+  // The row this dead tab restores from, looked up once per dead tab.
+  // The key reruns the lookup when a different dead tab is selected;
+  // a live page clears the need, never the row (it cannot go stale
+  // while the tab is dead, because a dead tab cannot navigate).
+  let restoreKey = $state(null);
+  let restoreRow = $state(null);
   let sources = $state([]);
   let captures = $state([]);
   let passageText = $state("");
@@ -155,6 +167,56 @@
     }
   }
 
+  async function captureCurrentPage() {
+    const api = researchApi();
+    if (!api || !pageId || researchBusy) return;
+    researchBusy = true;
+    researchNotice = "";
+    researchNoticeKind = "";
+    try {
+      const saved = await api.capturePage(Number(profileId), pageId);
+      if (saved?.ok === false) throw new Error(saved.reason ?? "capture-page-failed");
+      const refreshed = await loadResearch();
+      if (!refreshed) throw new Error("research-refresh-failed-after-capture");
+      toast.success("Page saved to Research", "Research");
+      ledgerOpen = true;
+    } catch (error) {
+      ledgerOpen = true;
+      researchNotice = error?.message?.includes(" ")
+        ? error.message
+        : "Page was not saved. Check the page and try again.";
+      researchNoticeKind = "error";
+      reportError(error, "Could not capture browser page");
+    } finally {
+      researchBusy = false;
+    }
+  }
+
+  async function captureCurrentSelection() {
+    const api = researchApi();
+    if (!api || !pageId || researchBusy) return;
+    researchBusy = true;
+    researchNotice = "";
+    researchNoticeKind = "";
+    try {
+      const saved = await api.captureSelection(Number(profileId), pageId);
+      if (saved?.ok === false) throw new Error(saved.reason ?? "capture-selection-failed");
+      const refreshed = await loadResearch();
+      if (!refreshed) throw new Error("research-refresh-failed-after-capture");
+      toast.success("Selection kept", "Research");
+      ledgerOpen = true;
+    } catch (error) {
+      ledgerOpen = true;
+      researchNotice = error?.message?.includes(" ")
+        ? error.message
+        : "Selection was not saved. Select text on the page and try again.";
+      researchNoticeKind = "error";
+      reportError(error, "Could not capture browser selection");
+    } finally {
+      researchBusy = false;
+    }
+  }
+
   async function keepPassage(kind = "clip") {
     const api = researchApi();
     if (!api || !pageId || !passageText.trim() || researchBusy) return;
@@ -181,6 +243,20 @@
     }
   }
 
+  $effect(() => {
+    const key = pageId && !page && browserTabId ? `${pageId}:${browserTabId}` : null;
+    if (!key || key === restoreKey) return;
+    restoreKey = key;
+    restoreRow = null;
+    void (async () => {
+      try {
+        const rows = await listTabs(Number(profileId));
+        const row = (Array.isArray(rows) ? rows : []).find((r) => r && r.id === browserTabId);
+        if (row && typeof row.url === "string" && row.url) restoreRow = { url: row.url, title: row.title ?? "" };
+      } catch { /* no restore row: the tab falls back to a blank re-open */ }
+    })();
+  });
+
   onMount(() => { void loadResearch(profileId, pageId, canonicalPageUrl); });
 
   // A pane can keep this component instance mounted while its active workspace
@@ -197,6 +273,27 @@
   let lastSyncedPageId = $state(null);
   let lastSyncedUrl = $state(null);
 
+  /** Back/forward availability, refreshed whenever the page changes. */
+  let canGoBack = $state(false);
+  let canGoForward = $state(false);
+
+  async function refreshNav() {
+    if (!pageId) {
+      canGoBack = false;
+      canGoForward = false;
+      return;
+    }
+    try {
+      const res = await navigationState(pageId);
+      if (res?.ok) {
+        canGoBack = res.canGoBack === true;
+        canGoForward = res.canGoForward === true;
+      }
+    } catch {
+      /* a nav query that fails leaves the buttons disabled, which is safe */
+    }
+  }
+
   /** Synchronize address bar when switching tabs or when the underlying page navigates. */
   $effect(() => {
     const currentId = pageId;
@@ -209,6 +306,7 @@
       lastSyncedUrl = url;
       address = url;
     }
+    void refreshNav();
   });
 
   /* ---- the layout declaration: measure, then tell main ---- */
@@ -311,11 +409,20 @@
 
   /* ---- actions ---- */
   /** Re-create a page for a tab whose page was destroyed (tab close elsewhere). */
+  // Report a new page id to the workspace tab, plus its restore row
+  // id when main returned one. A create without a row id reports exactly
+  // the page id, as before.
+  function reportPage(id, tabId) {
+    if (typeof tabId === "number") onPageChange(id, tabId);
+    else onPageChange(id);
+  }
+
   async function reopenPage() {
     notice = null;
-    const res = await openPage({ profileId, url: "about:blank" });
+    const target = restoreRow?.url ?? "about:blank";
+    const res = await openPage({ profileId, url: target, restoreBrowserTabId: restoreRow ? browserTabId : undefined });
     if (res?.ok && res.page?.id) {
-      onPageChange(res.page.id);
+      reportPage(res.page.id, res.browserTabId);
       lastSent = null;
       address = "";
       toast.info("Page re-opened in this tab", "Browser");
@@ -337,7 +444,7 @@
       } else {
         const res = await openPage({ profileId, url: target });
         if (res?.ok) {
-          onPageChange(res.page?.id ?? null);
+          reportPage(res.page?.id ?? null, res.browserTabId);
           lastSent = null;
         } else {
           notice = res?.detail ?? res?.reason ?? "open-failed";
@@ -351,6 +458,7 @@
   const stateLabel = $derived.by(() => {
     if (!page) return null;
     if (page.crashed || page.state === "crashed") return "This page crashed";
+    if (page.hibernated) return "Sleeping";
     if (page.lastError?.reason === "navigation-timeout") return "Navigation timed out";
     if (page.state === "failed") return "This page could not be loaded";
     if (page.loading) return "Loading";
@@ -409,6 +517,34 @@
     {#if pageId}
       <button
         type="button"
+        class="browser-back"
+        data-testid="browser-back"
+        title="Back"
+        aria-label="Back"
+        disabled={!canGoBack}
+        onclick={async () => {
+          await goBackPage(pageId);
+          await refreshNav();
+        }}
+      >
+        <ChevronLeft size={12} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        class="browser-forward"
+        data-testid="browser-forward"
+        title="Forward"
+        aria-label="Forward"
+        disabled={!canGoForward}
+        onclick={async () => {
+          await goForwardPage(pageId);
+          await refreshNav();
+        }}
+      >
+        <ChevronRight size={12} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
         class="browser-reload"
         data-testid="browser-reload"
         title="Reload"
@@ -419,6 +555,12 @@
       </button>
       <button type="button" class="research-action" data-testid="research-save-source" aria-label="Save as a source" title={savedSource ? "Already in the Research ledger" : "Save as a source"} disabled={researchBusy || !!savedSource || !page || !/^https?:\/\//i.test(page.url)} onclick={saveCurrentSource}>
         {#if savedSource}<BookmarkCheck size={12} aria-hidden="true" />{:else}<Bookmark size={12} aria-hidden="true" />{/if}
+      </button>
+      <button type="button" class="research-action" data-testid="browser-capture-page" aria-label="Capture page" title="Capture page" disabled={researchBusy || !page || !/^https?:\/\//i.test(page.url)} onclick={captureCurrentPage}>
+        <Camera size={12} aria-hidden="true" />
+      </button>
+      <button type="button" class="research-action" data-testid="browser-capture-selection" aria-label="Capture selection" title="Capture selection" disabled={researchBusy || !page || !/^https?:\/\//i.test(page.url)} onclick={captureCurrentSelection}>
+        <Highlighter size={12} aria-hidden="true" />
       </button>
       <button type="button" class="research-action" data-testid="research-return" aria-label="Open in Research browser strip" title="Open in Research browser strip" onclick={() => setTimeout(() => window.dispatchEvent(new CustomEvent("cf:navigate", { detail: { view: "research-ledger" } })), 0)}>
         <Telescope size={12} aria-hidden="true" />
@@ -473,6 +615,9 @@
           The page this tab pointed at was closed. Re-open it here — the tab follows the page it
           lands on.
         </p>
+        {#if restoreRow}
+          <p class="browser-empty-help">Last open: {restoreRow.title ? `${restoreRow.title} — ` : ""}{restoreRow.url}</p>
+        {/if}
         <button
           type="button"
           class="cf-btn ghost sm"
@@ -488,7 +633,7 @@
     <section class="research-ledger" data-testid="research-ledger" aria-label="Research ledger">
       <div class="ledger-head"><strong>Research ledger</strong><span>{sources.length} sources · {captures.length} passages</span><button type="button" class="research-action" aria-label="Refresh Research ledger" onclick={() => loadResearch()}><RotateCw size={12} /></button></div>
       <form class="passage-form" onsubmit={(event) => { event.preventDefault(); void keepPassage("clip"); }}>
-        <textarea aria-label="Passage to keep" data-testid="research-passage-text" bind:value={passageText} maxlength="8000" rows="2" placeholder="Paste a passage you selected on the page…"></textarea>
+        <textarea aria-label="Passage to keep" data-testid="research-passage-text" bind:value={passageText} maxlength="20000" rows="2" placeholder="Paste a passage you selected on the page…"></textarea>
         <button type="submit" class="cf-btn ghost sm" data-testid="research-keep-passage" disabled={researchBusy || !passageText.trim()}>Keep passage</button>
         <button type="button" class="cf-btn ghost sm" data-testid="research-extract-passage" disabled={researchBusy || !passageText.trim()} onclick={() => keepPassage("extraction")}>Send to operator</button>
       </form>

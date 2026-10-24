@@ -157,10 +157,12 @@ export async function refresh() {
 }
 
 /** Create a page in the browser partition of `profileId`. */
-export async function openPage({ profileId, url }) {
+export async function openPage({ profileId, url, restoreBrowserTabId }) {
   const b = bridge();
   if (!b?.createPage) return bridgeUnavailable();
-  const res = await b.createPage(profileId, url);
+  const args = [profileId, url];
+  if (restoreBrowserTabId !== undefined) args.push(restoreBrowserTabId);
+  const res = await b.createPage(...args);
   if (res?.ok) {
     put(res.page);
     browser.lastError = null;
@@ -168,6 +170,13 @@ export async function openPage({ profileId, url }) {
     browser.lastError = res?.reason ?? "create-failed";
   }
   return res ?? bridgeUnavailable();
+}
+
+/** Tab rows for a profile, in restore order (see the surface's restore lookup). */
+export async function listTabs(profileId) {
+  const b = bridge();
+  if (!b?.listTabs) return bridgeUnavailable();
+  return (await b.listTabs(profileId)) ?? bridgeUnavailable();
 }
 
 export async function navigate(pageId, url) {
@@ -182,6 +191,24 @@ export async function reload(pageId) {
   const b = bridge();
   if (!b?.reload) return bridgeUnavailable();
   return (await b.reload(pageId)) ?? bridgeUnavailable();
+}
+
+export async function goBack(pageId) {
+  const b = bridge();
+  if (!b?.goBack) return bridgeUnavailable();
+  return (await b.goBack(pageId)) ?? bridgeUnavailable();
+}
+
+export async function goForward(pageId) {
+  const b = bridge();
+  if (!b?.goForward) return bridgeUnavailable();
+  return (await b.goForward(pageId)) ?? bridgeUnavailable();
+}
+
+export async function navigation(pageId) {
+  const b = bridge();
+  if (!b?.navigation) return bridgeUnavailable();
+  return (await b.navigation(pageId)) ?? bridgeUnavailable();
 }
 
 export async function closePage(pageId) {

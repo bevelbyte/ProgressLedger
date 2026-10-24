@@ -66,3 +66,31 @@ once bundled in Phase 2.
 - No new npm or cargo package was added in Phase 2. Font files are
   bundled into ui/dist by Vite (hashed assets); nothing is fetched from
   the internet at runtime.
+
+## typescript 5.9.3 (devDependency, added Phase 3)
+- Needed: the ported browser logic is TypeScript (V2-22); a TS compiler
+  cannot reasonably be hand-written, and the shell is plain ESM with no
+  TS step today.
+- Widely used and maintained: the standard TypeScript compiler, the
+  same tool the UI's Vite toolchain already depends on.
+- License: Apache-2.0 (allows use).
+- Install scripts: none that run on install (package.json carries
+  no preinstall, install or postinstall entries — verified on the
+  installed copy; its only script is a custom `setup-hooks` helper
+  that npm never runs automatically, and it is not in `allowScripts`
+  because it needs no approval to stay unrunnable).
+- Network calls: none at runtime; tsc runs locally on the repo.
+- Bundled for offline use: dev-only tool; its output is plain JS
+  committed nowhere (gitignored dist dir) and rebuilt locally by npm
+  pre-hooks. No runtime network fetch.
+
+## sha2 0.10 (cargo, added 2026-10-25 for the backup snapshot check)
+- Needed: backup export must verify each snapshot file's SHA-256
+  against its research_sources row, and import must verify bundle
+  snapshot bytes against the manifest SHA, before trusting them.
+- Widely used and maintained: the RustCrypto SHA-2 implementation,
+  the standard Rust SHA-256 crate, millions of downloads.
+- License: MIT OR Apache-2.0.
+- No install scripts: cargo builds it from source; no postinstall.
+- No network calls: pure computation, compiled into the core.
+- Bundled offline: part of the core binary, nothing fetched at runtime.

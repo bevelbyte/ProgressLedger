@@ -307,3 +307,21 @@ No new design. CareerFlow's design.
   defect in that shot but stay open for Phase 5 reproduction.
 - Temporary driver scripts (e2e/p2-iso-before.mjs, e2e/p2-shots.mjs)
   are deleted before the Phase 2 commit and are never committed.
+
+## Phase 3 completion record (2026-10-25)
+Phase 3 is DONE as a MERGE (V2-21), not the wholesale replacement the
+original plan described: CareerFlow's host, policy, permissions,
+downloads, navigation and IPC were kept, and the Progress Ledger
+capabilities were ported into them. Built, in order: TS island +
+extraction, back/forward, engine guard, migration 025 + Rust research
+extension, research IPC, LRU hibernation (cap 5), UI (capture, search,
+delete), tab restore, and the backup research inclusion (V2-32).
+Verified: step-4 browser proof (capture pixel-exact, desktop NOT
+VERIFIED per condition 4h), migration upgrade test (v24 -> v25),
+backup round-trip 17/17 (rows, text, capture, FTS, snapshot file +
+SHA, fail-closed corrupt export), full suites green (shell 1175/0,
+UI 858/858, cargo incl. round-trip). Decisions V2-29 (LRU test
+updates), V2-30 (snippet() dropped), V2-31 (no invented undefined
+arguments), V2-32 (backup research inclusion). Remaining Phase 3
+debt, carried to Phase 5: E2E proof of capture in the running app,
+and the is_active per-tab tracking (deferred to 3B).

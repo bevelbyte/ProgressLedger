@@ -47,6 +47,7 @@ import {
 } from "./navigation.js";
 import { attachPermissionHandlers } from "./permissions.js";
 import { createDownloadManager } from "./downloads.js";
+import { EXTRACT_SCRIPT, applyExtractionCaps } from "../../browser-ts/dist/extraction.js";
 
 /** A browser navigation must not remain in a false loading state forever. */
 export const DEFAULT_NAVIGATION_TIMEOUT_MS = 30_000;
@@ -358,7 +359,7 @@ export function createBrowserHost(deps = {}) {
       // navigation rather than on load keeps a page that follows a link chain
       // from being permanently popup-mute.
       popupsThisLoad = 0;
-      registry.update(pageId, { url: typeof url === "string" ? url : "" });
+      registry.update(pageId, { url: typeof url === "string" ? url : "", lastUsed: Date.now() });
       push({ kind: "url", pageId, page: registry.get(pageId) });
     });
 
@@ -586,6 +587,61 @@ export function createBrowserHost(deps = {}) {
     },
 
     /**
+     * Move one step in the page's own history (Chromium's navigation
+     * history for this webContents). Added for the Phase 3 proof: the
+     * browser had no back/forward path at all, so the proof's back and
+     * forward checks could not pass. History is per-page, never shared
+     * across pages or profiles, and a page with no history is refused
+     * with a stated reason rather than silently doing nothing.
+     */
+    goBack(pageId) {
+      const record = registry.record(pageId);
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      const history = record.view?.webContents?.navigationHistory;
+      if (typeof history?.canGoBack !== "function" || !history.canGoBack()) {
+        return { ok: false, reason: "no-history" };
+      }
+      try {
+        history.goBack();
+      } catch {
+        return { ok: false, reason: "history-failed" };
+      }
+      return { ok: true };
+    },
+
+    goForward(pageId) {
+      const record = registry.record(pageId);
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      const history = record.view?.webContents?.navigationHistory;
+      if (typeof history?.canGoForward !== "function" || !history.canGoForward()) {
+        return { ok: false, reason: "no-history" };
+      }
+      try {
+        history.goForward();
+      } catch {
+        return { ok: false, reason: "history-failed" };
+      }
+      return { ok: true };
+    },
+
+    /** The history state the surface uses to enable its back/forward buttons. */
+    navigationState(pageId) {
+      const record = registry.record(pageId);
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      const history = record.view?.webContents?.navigationHistory;
+      let canGoBack = false;
+      let canGoForward = false;
+      try {
+        canGoBack = history?.canGoBack?.() === true;
+        canGoForward = history?.canGoForward?.() === true;
+      } catch {
+        canGoBack = false;
+        canGoForward = false;
+      }
+      return { ok: true, canGoBack, canGoForward };
+    },
+
+    /**
      * Place the page on screen. `rect` is the renderer's layout declaration in
      * CSS pixels; it is clamped here and never trusted.
      */
@@ -612,6 +668,26 @@ export function createBrowserHost(deps = {}) {
     },
 
     /**
+     * Wake a sleeping page: rebuild its view and reload its stored URL
+     * through the same policy navigate uses. A stored blank page wakes
+     * without a load; a stored URL that no longer passes policy fails
+     * closed with a visible failure state, never a stuck loading spinner.
+     */
+    wakePage(pageId) {
+      const record = registry.record(pageId);
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      if (record.hibernated !== true) return { ok: true, page: registry.get(pageId) };
+      const woken = registry.wake(pageId);
+      if (!woken.ok) return woken;
+      const stored = typeof record.url === "string" ? record.url : "";
+      if (stored === "" || stored === "about:blank") {
+        registry.update(pageId, { state: PAGE_STATES.READY });
+        return { ok: true, page: registry.get(pageId) };
+      }
+      return host.navigate(pageId, stored);
+    },
+
+    /**
      * Ask for the page to be shown (true) or taken off screen (false). The
      * request is recorded even while an overlay hides everything, so closing the
      * overlay restores the page without the renderer having to re-ask.
@@ -620,7 +696,12 @@ export function createBrowserHost(deps = {}) {
       const record = registry.record(pageId);
       if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
       record.requestVisible = visible === true;
+      if (visible === true && record.hibernated === true) {
+        const woken = host.wakePage(pageId);
+        if (!woken.ok) return woken;
+      }
       applyVisibility(record);
+      if (visible === true) registry.update(pageId, { lastUsed: Date.now() });
       return { ok: true, visible: record.visible === true };
     },
 
@@ -671,6 +752,51 @@ export function createBrowserHost(deps = {}) {
       if (record.profileId !== Number(profileId)) return { ok: false, reason: "profile-mismatch" };
       if (!/^https?:\/\//i.test(record.url ?? "")) return { ok: false, reason: "invalid-url" };
       return { ok: true, page: { id: record.id, profileId: record.profileId, url: record.url, title: record.title || record.url } };
+    },
+
+    /**
+     * Extract the live page for research capture (ported from the Progress
+     * Ledger browser, Decision D-009 there). The frame — URL and title —
+     * comes from this host's own registry record (main-process truth, the
+     * same source `researchPage` attests); the page contributes only the
+     * quotation via the compiled extraction script. Only http(s) pages
+     * can be captured; a blank, crashed or destroyed page is refused
+     * with a stated reason, never an empty capture.
+     */
+    async extractPage(pageId, wantSelection = false) {
+      const record = registry.record(pageId);
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      if (!/^https?:\/\//i.test(record.url ?? "")) {
+        return { ok: false, reason: REASONS.INVALID_URL };
+      }
+      const wc = record.view?.webContents;
+      if (!wc || wc.isDestroyed?.() === true) {
+        return { ok: false, reason: "page-not-loaded" };
+      }
+      let raw;
+      try {
+        raw = await wc.executeJavaScript(EXTRACT_SCRIPT);
+      } catch {
+        return { ok: false, reason: "extraction-failed" };
+      }
+      const capped = applyExtractionCaps(raw ?? {});
+      return {
+        ok: true,
+        page: {
+          id: record.id,
+          profileId: record.profileId,
+          url: record.url,
+          title: record.title || record.url,
+        },
+        extraction: {
+          url: record.url,
+          title: record.title || record.url,
+          html: capped.html,
+          text: capped.text,
+          textTruncated: capped.textTruncated,
+          selection: wantSelection === true ? capped.selection : "",
+        },
+      };
     },
 
     /**

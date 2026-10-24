@@ -12,15 +12,15 @@
 // the lifecycle (mint / look up / cap / destroy / sanitize) is unit-testable in
 // plain Node — the same split as `workspace/model.js` (pure) vs its store.
 //
-// SCOPE. Phase 1 deliberately does NOT implement hibernation, LRU eviction,
-// per-pane multi-page tabs, session restore or persistence. What it does
+// SCOPE. Phase 3 ADDS hibernation and LRU eviction (below); per-pane
+// multi-page tabs, session restore and persistence remain later work. What it does
 // implement is a bounded set of live pages so a bug cannot fork processes
 // without limit; the cap is raised in later phases of the plan.
 
 import { partitionFor, sanitizeDisplayUrl, validateProfileId, isAllowedUrl } from "./policy.js";
 
-/** How many live pages this build allows. Raised by a later phase's plan. */
-export const MAX_LIVE_PAGES = 4;
+/** How many live pages this build allows. Phase 3 raises it to 5 and adds LRU hibernation, so background pages sleep instead of refusing new ones. */
+export const MAX_LIVE_PAGES = 5;
 
 export const PAGE_STATES = Object.freeze({
   LOADING: "loading",
@@ -73,6 +73,7 @@ export function createBrowserRegistry(deps = {}) {
       loading: record.state === PAGE_STATES.LOADING,
       insecure: typeof record.url === "string" && record.url.startsWith("http://"),
       visible: record.visible === true,
+      hibernated: record.hibernated === true,
       attached: record.attached === true,
       crashed: record.state === PAGE_STATES.CRASHED,
       lastError: record.lastError ?? null,
@@ -80,7 +81,7 @@ export function createBrowserRegistry(deps = {}) {
     };
   }
 
-  return {
+  const api = {
     maxLive,
     reasons: REASONS,
 
@@ -113,7 +114,13 @@ export function createBrowserRegistry(deps = {}) {
       if (!validateProfileId(profileId)) return { ok: false, reason: REASONS.NO_PROFILE };
       const target = isAllowedUrl(url);
       if (!target.ok) return { ok: false, reason: REASONS.INVALID_URL, detail: target.reason };
-      if (pages.size >= maxLive) return { ok: false, reason: REASONS.LIVE_CAP };
+      if ([...pages.values()].filter((r) => r.view).length >= maxLive) {
+        const victim = [...pages.values()]
+          .filter((r) => r.view && r.visible !== true)
+          .sort((a, b) => (a.lastUsed ?? a.createdAt) - (b.lastUsed ?? b.createdAt))[0];
+        if (!victim) return { ok: false, reason: REASONS.LIVE_CAP };
+        api.hibernate(victim.id);
+      }
 
       const id = mintId();
       const partition = partitionFor(profileId);
@@ -133,6 +140,8 @@ export function createBrowserRegistry(deps = {}) {
         bounds: null,
         lastError: null,
         createdAt: now(),
+        lastUsed: now(),
+        hibernated: false,
       };
       pages.set(id, record);
       return { ok: true, page: toPublic(record) };
@@ -152,6 +161,7 @@ export function createBrowserRegistry(deps = {}) {
       const record = pages.get(id);
       if (!record) return false;
       pages.delete(id);
+      if (!record.view) return true;
       try {
         destroyView(id, record.view);
       } catch {
@@ -162,9 +172,51 @@ export function createBrowserRegistry(deps = {}) {
       return true;
     },
 
+    /**
+     * Sleep a background page: tear its view down but keep the record, so
+     * the tab survives and can wake at the same URL. Visible pages are
+     * never slept (that would blank the screen); already-sleeping and
+     * unknown pages report false. Returns true only when a view was torn down.
+     */
+    hibernate(pageId) {
+      const record = pages.get(String(pageId));
+      if (!record || !record.view || record.visible === true) return false;
+      try {
+        destroyView(record.id, record.view);
+      } catch {
+        // Teardown must never block the sleep: the record still leaves the
+        // live set either way.
+      }
+      record.view = null;
+      record.attached = false;
+      record.visible = false;
+      record.hibernated = true;
+      record.hibernatedAt = now();
+      return true;
+    },
+
+    /**
+     * Wake a sleeping page: build a fresh view for the SAME id and
+     * partition (the UI tab keeps pointing at it) and mark it loading.
+     * The caller loads the stored URL; this only rebuilds the view.
+     * A live page is a no-op returning its public shape.
+     */
+    wake(pageId) {
+      const record = pages.get(String(pageId));
+      if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+      if (!record.hibernated) return { ok: true, page: toPublic(record) };
+      record.view = createView({ id: record.id, partition: record.partition });
+      record.hibernated = false;
+      record.hibernatedAt = null;
+      record.state = PAGE_STATES.LOADING;
+      record.lastUsed = now();
+      return { ok: true, page: toPublic(record) };
+    },
+
     /** Tear every page down (window close, app quit, test reset). */
     destroyAll() {
       for (const id of [...pages.keys()]) this.destroy(id);
     },
   };
+  return api;
 }

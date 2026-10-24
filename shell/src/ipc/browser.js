@@ -78,6 +78,15 @@ function readString(payload, key) {
 export function register(ctx) {
   const host = getBrowserHost(ctx);
 
+  // Tab rows: pageId -> { rowId, profileId, title }. The shell keeps one
+  // browser_tabs row per live page so a tab can be restored after a
+  // restart (its workspace tab carries the row id, not the dead bp-N).
+  // Rows are written on create, updated on navigate, deleted on close.
+  // Phase 3: browser_profile_id is the workspace profile id; Phase 3B
+  // repoints it at the browser profile. is_active is not tracked yet:
+  // restore activates the first restored tab (see the surface).
+  const tabRows = new Map();
+
   // Ownership gate: a browser partition belongs to a real Progress Ledger profile.
   // The partition is derived from the id (services/browser/policy.js) AFTER this
   // check, so an unknown id can never mint a partition.
@@ -98,14 +107,51 @@ export function register(ctx) {
       return { ok: false, reason: "unknown-profile" };
     }
     const url = readString(payload, "url") ?? "about:blank";
-    return host.createPage({ profileId, url });
+    const restoreId = Number.isInteger(payload?.restoreBrowserTabId)
+      ? payload.restoreBrowserTabId
+      : null;
+    const created = host.createPage({ profileId, url });
+    if (!created?.ok || !created.page?.id) return created;
+    const pageId = created.page.id;
+    // A restore reuses its previous row instead of duplicating it: the
+    // tab keeps one row for its whole lifetime, across restarts. A stale
+    // id (row deleted since) falls through to a fresh row, never an error.
+    if (restoreId !== null) {
+      try {
+        const rows = ctx.core.listBrowserTabs(profileId);
+        const row = (Array.isArray(rows) ? rows : []).find((r) => r && r.id === restoreId);
+        if (row) {
+          tabRows.set(pageId, { rowId: row.id, profileId, title: created.page.title ?? row.title ?? "" });
+          try { ctx.core.updateBrowserTab(row.id, created.page.url ?? url, created.page.title ?? row.title ?? ""); } catch { /* row keeps its stored values; restore still works */ }
+          return { ...created, browserTabId: row.id };
+        }
+      } catch { /* fall through to a fresh row */ }
+    }
+    try {
+      const row = ctx.core.saveBrowserTab(profileId, profileId, tabRows.size, created.page.url ?? url, created.page.title ?? "");
+      tabRows.set(pageId, { rowId: row.id, profileId, title: created.page.title ?? "" });
+      return { ...created, browserTabId: row.id };
+    } catch {
+      // Fail closed: a page without its row would silently lose its
+      // restore data, so the create fails and the page is torn down.
+      try { host.closePage(pageId); } catch { /* already closing */ }
+      return { ok: false, reason: "tab-state-failed" };
+    }
   });
 
   safeHandle("browser:navigate", (_e, payload) => {
     const pageId = readString(payload, "pageId");
     if (pageId === null) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
     const url = readString(payload, "url") ?? "";
-    return host.navigate(pageId, url);
+    const res = host.navigate(pageId, url);
+    if (res?.ok) {
+      const row = tabRows.get(pageId);
+      if (row) {
+        try { ctx.core.updateBrowserTab(row.rowId, url, row.title); }
+        catch { console.error("browser tab row update failed for", pageId); }
+      }
+    }
+    return res;
   });
 
   safeHandle("browser:reload", (_e, payload) => {
@@ -114,13 +160,51 @@ export function register(ctx) {
     return host.reload(pageId);
   });
 
+  safeHandle("browser:go-back", (_e, payload) => {
+    const pageId = readString(payload, "pageId");
+    if (pageId === null) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+    return host.goBack(pageId);
+  });
+
+  safeHandle("browser:go-forward", (_e, payload) => {
+    const pageId = readString(payload, "pageId");
+    if (pageId === null) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+    return host.goForward(pageId);
+  });
+
+  safeHandle("browser:navigation", (_e, payload) => {
+    const pageId = readString(payload, "pageId");
+    if (pageId === null) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
+    return host.navigationState(pageId);
+  });
+
   safeHandle("browser:close-page", (_e, payload) => {
     const pageId = readString(payload, "pageId");
     if (pageId === null) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
-    return host.closePage(pageId);
+    const res = host.closePage(pageId);
+    if (res?.ok) {
+      const row = tabRows.get(pageId);
+      if (row) {
+        try { ctx.core.deleteBrowserTab(row.rowId); }
+        catch { console.error("browser tab row delete failed for", pageId); }
+        tabRows.delete(pageId);
+      }
+    }
+    return res;
   });
 
   safeHandle("browser:state", () => host.state());
+
+  // Tab rows for a profile, in restore order (position, id). The
+  // renderer matches its own tab's row id against this list; it never
+  // sees another profile's rows because the profile gate runs first.
+  safeHandle("browser:list-tabs", (_e, payload) => {
+    const profileId = Number(readString(payload, "profileId") ?? NaN);
+    if (!Number.isInteger(profileId) || !profileExists(profileId)) {
+      return { ok: false, reason: "unknown-profile" };
+    }
+    return ctx.core.listBrowserTabs(profileId);
+  });
 
   // Managed downloads (approved decision D). The renderer gets opaque ids and
   // safe base names only; there is no channel that accepts or returns a path,

@@ -12,7 +12,7 @@
     "ui"
   ],
   "scripts": {
-    "build": "npm run build:core && npm run build:ui",
+    "build": "npm run build:browser-ts && npm run build:core && npm run build:ui",
     "build:core": "npm run build -w @progress-ledger/core",
     "build:ui": "npm run build -w @progress-ledger/ui",
     "dev:ui": "npm run dev -w @progress-ledger/ui",
@@ -31,13 +31,19 @@
     "test:nightly": "PROGRESSLEDGER_V2_LIVE_TEST=1 node --test shell/tests/provider-live.test.js",
     "test": "npm run check:ipc && npm run check:napi && npm run check:esm && npm run test:shell && npm run test:ui && npm run test:core",
     "rebuild:native:electron": "node scripts/rebuild-native.mjs electron",
-    "check:native-loader": "node scripts/test-native-loader.mjs"
+    "check:native-loader": "node scripts/test-native-loader.mjs",
+    "build:browser-ts": "tsc -p shell/tsconfig.browser.json",
+    "predev": "npm run build:browser-ts",
+    "predev:shell": "npm run build:browser-ts",
+    "pretest": "npm run build:browser-ts",
+    "pretest:shell": "npm run build:browser-ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "concurrently": "^10.0.3",
     "electron": "^44.3.0",
     "electron-builder": "^24.0.0",
+    "typescript": "^5.9.3",
     "wait-on": "^9.0.10"
   },
   "dependencies": {

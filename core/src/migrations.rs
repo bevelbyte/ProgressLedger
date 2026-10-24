@@ -60,6 +60,10 @@ const MIGRATIONS: &[(i32, &str)] = &[
     (22, include_str!("../migrations/022_pm_run_state.sql")),
     (23, include_str!("../migrations/023_focus_signal_recency.sql")),
     (24, include_str!("../migrations/024_research_sources_captures.sql")),
+    (
+        25,
+        include_str!("../migrations/025_research_text_search_tabs.sql"),
+    ),
 ];
 
 /// Read the DB's current schema version.

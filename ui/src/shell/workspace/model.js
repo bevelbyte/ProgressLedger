@@ -418,6 +418,21 @@ export function setTabEntity(ctx, paneId, tabId, entity) {
   return withPane(ctx, paneId, { ...pane, tabs: pane.tabs.map((t) => (t.id === tabId ? next : t)) });
 }
 
+/**
+ * Record which browser_tabs row a page tab restores from. The row id is
+ * the tab's restore identity across restarts (the bp-N entity dies with
+ * the session); it is set when the page is created and never cleared by
+ * an entity change that does not carry one.
+ */
+export function setTabBrowserTabId(ctx, paneId, tabId, browserTabId) {
+  const pane = ctx.panes[paneId];
+  if (!pane) return ctx;
+  const tab = pane.tabs.find((t) => t.id === tabId);
+  if (!tab || tab.browserTabId === browserTabId) return ctx;
+  const next = { ...tab, browserTabId };
+  return withPane(ctx, paneId, { ...pane, tabs: pane.tabs.map((t) => (t.id === tabId ? next : t)) });
+}
+
 export function activateTab(ctx, paneId, tabId) {
   const pane = ctx.panes[paneId];
   if (!pane) return ctx;

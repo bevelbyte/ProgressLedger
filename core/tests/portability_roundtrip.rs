@@ -266,7 +266,7 @@ fn full_roundtrip_preserves_every_domain_and_relationship() -> Result<()> {
         pid,
         out_path.to_str().unwrap(),
         None,
-    ))?;
+        None,))?;
 
     // Completeness contract: every profile-owned domain appears in the bundle.
     assert_eq!(manifest["version"], 2);
@@ -306,7 +306,7 @@ fn full_roundtrip_preserves_every_domain_and_relationship() -> Result<()> {
     assert_eq!(left, 0);
 
     // IMPORT.
-    let restored = to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None))?;
+    let restored = to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None))?;
     let new_pid = restored.profile_id;
     assert_eq!(restored.slug, "rich-ada"); // slug freed by the wipe
 
@@ -566,7 +566,7 @@ fn format_v1_bundle_imports_academic_tree_and_resources_only() -> Result<()> {
     zip.write_all(b"%PDF-fake").unwrap();
     zip.finish().unwrap();
 
-    let res = to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None))?;
+    let res = to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None))?;
     assert_eq!(res.slug, "old-export");
     assert_eq!(res.resource_count, 2);
 
@@ -627,7 +627,7 @@ fn unknown_version_is_rejected_without_touching_db() -> Result<()> {
         .unwrap();
     zip.finish().unwrap();
 
-    assert!(import_bundle_conn(&conn, out_path.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None).is_err());
     assert_eq!(
         before,
         conn.query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get::<_, i64>(0))?
@@ -645,7 +645,7 @@ fn corrupt_and_truncated_archives_leave_db_unchanged() -> Result<()> {
     // Corrupt (not a zip at all).
     let bad = temp_bundle_path();
     fs::write(&bad, b"this is not a zip file").unwrap();
-    assert!(import_bundle_conn(&conn, bad.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, bad.to_str().unwrap(), None, None).is_err());
 
     // Truncated valid zip.
     let good = temp_bundle_path();
@@ -663,7 +663,7 @@ fn corrupt_and_truncated_archives_leave_db_unchanged() -> Result<()> {
     let bytes = fs::read(&good).unwrap();
     let truncated = temp_bundle_path();
     fs::write(&truncated, &bytes[..bytes.len() / 2]).unwrap();
-    assert!(import_bundle_conn(&conn, truncated.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, truncated.to_str().unwrap(), None, None).is_err());
 
     // Invalid manifest JSON inside a valid zip.
     let invalid = temp_bundle_path();
@@ -673,7 +673,7 @@ fn corrupt_and_truncated_archives_leave_db_unchanged() -> Result<()> {
         .unwrap();
     zip.write_all(b"{ not json ").unwrap();
     zip.finish().unwrap();
-    assert!(import_bundle_conn(&conn, invalid.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, invalid.to_str().unwrap(), None, None).is_err());
 
     assert_eq!(
         before,
@@ -719,7 +719,7 @@ fn malformed_relationship_rolls_back_entire_import() -> Result<()> {
         .unwrap();
     zip.finish().unwrap();
 
-    assert!(import_bundle_conn(&conn, out_path.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None).is_err());
     // ROLLBACK: no profile, no subjects, no courses survived the failed import.
     assert_eq!(
         before,
@@ -796,7 +796,7 @@ fn attachment_materialization_failure_rolls_back_database_and_files() -> std::re
     zip.finish()?;
 
     let before_profiles: i64 = conn.query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get(0))?;
-    let result = import_bundle_conn(&conn, bundle.to_str().unwrap(), Some(&root));
+    let result = import_bundle_conn(&conn, bundle.to_str().unwrap(), Some(&root), None);
     assert!(result.is_err(), "attachment collision must fail the import");
     assert_eq!(
         before_profiles,
@@ -847,7 +847,7 @@ fn missing_referenced_attachment_rolls_back_database() -> Result<()> {
     zip.write_all(serde_json::to_string(&manifest).unwrap().as_bytes()).unwrap();
     zip.finish().unwrap();
 
-    assert!(import_bundle_conn(&conn, bundle.to_str().unwrap(), None).is_err());
+    assert!(import_bundle_conn(&conn, bundle.to_str().unwrap(), None, None).is_err());
     assert_eq!(conn.query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get::<_, i64>(0))?, 0);
     assert_eq!(conn.query_row("SELECT COUNT(*) FROM resources", [], |r| r.get::<_, i64>(0))?, 0);
     let _ = fs::remove_file(&bundle);
@@ -885,9 +885,9 @@ fn repeated_import_suffixes_slug_and_preserves_every_copy() -> Result<()> {
     zip.finish().unwrap();
 
     let slugs: Vec<String> = vec![
-        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None))?.slug,
-        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None))?.slug,
-        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None))?.slug,
+        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None))?.slug,
+        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None))?.slug,
+        to_sql(import_bundle_conn(&conn, out_path.to_str().unwrap(), None, None))?.slug,
     ];
     assert_eq!(slugs, vec!["twin", "twin-2", "twin-3"]);
 

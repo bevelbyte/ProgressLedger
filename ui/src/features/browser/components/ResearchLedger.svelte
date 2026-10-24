@@ -1,6 +1,6 @@
 <script>
   import { onMount } from "svelte";
-  import { Bookmark, Globe, RotateCw, ExternalLink, Quote } from "lucide-svelte";
+  import { Bookmark, Globe, RotateCw, ExternalLink, Quote, Trash2 } from "lucide-svelte";
   import { reportError } from "../../../shared/utils/errors.js";
   import { formatCitation } from "../../../shared/utils/citations.js";
 
@@ -13,6 +13,10 @@
   let passageText = $state("");
   let savingPassage = $state(false);
   let refreshRequest = 0;
+  let searchQuery = $state("");
+  let searchHits = $state(null);
+  let searching = $state(false);
+  let confirming = $state(null);
 
   async function refresh(requestedProfileId = profileId) {
     if (!Number.isInteger(Number(requestedProfileId))) return;
@@ -35,6 +39,78 @@
       return false;
     } finally {
       if (requestId === refreshRequest) loading = false;
+    }
+  }
+
+  // Split a search snippet on its <b> markers without injecting HTML:
+  // the snippet text comes from captured pages, so it is rendered as
+  // text and only the markers become <strong>. A literal "<b>" inside
+  // page text would just bold a stretch, never run code.
+  function snippetSegments(snippet) {
+    const parts = [];
+    const text = snippet ?? "";
+    const re = /<b>(.*?)<\/b>/g;
+    let last = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) parts.push({ text: text.slice(last, m.index), mark: false });
+      parts.push({ text: m[1], mark: true });
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) parts.push({ text: text.slice(last), mark: false });
+    return parts;
+  }
+
+  function sourceUrlFor(hit) {
+    return sources.find((source) => source.id === hit.source_id)?.url ?? "";
+  }
+
+  async function runSearch() {
+    if (!Number.isInteger(Number(profileId)) || !searchQuery.trim() || searching) return;
+    searching = true;
+    notice = "";
+    try {
+      const hits = await window.progressLedger.research.search(Number(profileId), searchQuery.trim());
+      searchHits = Array.isArray(hits) ? hits : [];
+    } catch (error) {
+      searchHits = null;
+      notice = "Search could not be run. Retry.";
+      reportError(error, "Could not search Research ledger");
+    } finally {
+      searching = false;
+    }
+  }
+
+  function clearSearch() {
+    searchQuery = "";
+    searchHits = null;
+  }
+
+  async function deleteSourceRow(id) {
+    confirming = null;
+    notice = "";
+    try {
+      const result = await window.progressLedger.research.deleteSource(Number(profileId), id);
+      if (result?.ok === false) throw new Error(result.reason ?? "delete-source-failed");
+      await refresh();
+      notice = "Source deleted.";
+    } catch (error) {
+      notice = "Source was not deleted. Retry.";
+      reportError(error, "Could not delete Research source");
+    }
+  }
+
+  async function deletePassageRow(id) {
+    confirming = null;
+    notice = "";
+    try {
+      const result = await window.progressLedger.research.deletePassage(Number(profileId), id);
+      if (result?.ok === false) throw new Error(result.reason ?? "delete-passage-failed");
+      await refresh();
+      notice = "Passage deleted.";
+    } catch (error) {
+      notice = "Passage was not deleted. Retry.";
+      reportError(error, "Could not delete Research passage");
     }
   }
 
@@ -94,20 +170,45 @@
     {/each}
     <span class="count">{rows.length} items</span>
   </nav>
+  <form class="search-form" role="search" aria-label="Search Research ledger" onsubmit={(event) => { event.preventDefault(); void runSearch(); }}>
+    <input type="search" data-testid="research-search-input" bind:value={searchQuery} placeholder="Search sources and passages…" aria-label="Search sources and passages" />
+    <button type="submit" data-testid="research-search-button" disabled={searching || !searchQuery.trim()}>Search</button>
+    {#if searchHits !== null}<button type="button" data-testid="research-search-clear" onclick={clearSearch}>Clear</button>{/if}
+  </form>
   {#if researchPageId}
     <form class="capture-form" onsubmit={(event) => { event.preventDefault(); void keepCurrentPassage(); }}>
       <label for="research-current-passage">Keep a passage from the active browser page</label>
-      <div><textarea id="research-current-passage" data-testid="research-passage-text" bind:value={passageText} maxlength="8000" rows="2" placeholder="Paste selected page text here…"></textarea><button type="submit" data-testid="research-keep-passage" disabled={savingPassage || !passageText.trim()}>Keep passage</button></div>
+      <div><textarea id="research-current-passage" data-testid="research-passage-text" bind:value={passageText} maxlength="20000" rows="2" placeholder="Paste selected page text here…"></textarea><button type="submit" data-testid="research-keep-passage" disabled={savingPassage || !passageText.trim()}>Keep passage</button></div>
     </form>
   {/if}
   {#if notice}<p class="notice" role="status">{notice}</p>{/if}
+  {#if searchHits !== null}
+  <section class="rows" aria-label="Search results">
+    {#each searchHits as hit (`${hit.kind}-${hit.source_id}-${hit.capture_id ?? "source"}`)}
+      <article class="row" data-search-hit={hit.source_id}>
+        <Globe size={14} />
+        <div class="copy"><strong>{hit.title}</strong><span>{hit.kind === "source" ? "Source" : "Passage"}</span><p>{#each snippetSegments(hit.snippet) as part}{#if part.mark}<strong>{part.text}</strong>{:else}{part.text}{/if}{/each}</p></div>
+        {#if sourceUrlFor(hit)}<button type="button" aria-label={`Open ${hit.title}`} title="Return to this page" onclick={() => { void onOpenResearchSource(sourceUrlFor(hit)); }}><ExternalLink size={13} /></button>{/if}
+      </article>
+    {/each}
+    {#if searchHits.length === 0}<div class="empty">No results for “{searchQuery}”.</div>{/if}
+  </section>
+  {:else}
   <section class="rows" aria-label="Saved sources and captured passages">
     {#each rows as row (row.type === "source" ? `s-${row.source.id}` : `c-${row.capture.id}`)}
       {#if row.type === "source"}
         <article class="row" data-source-id={row.source.id}>
           <Globe size={14} />
           <div class="copy"><strong>{row.source.title}</strong><span>{row.source.domain} · {row.source.keptCount} kept</span><small>{row.source.url}</small></div>
-          <button type="button" aria-label={`Open ${row.source.title}`} title="Return to this page" onclick={() => { void onOpenResearchSource(row.source.url); }}><ExternalLink size={13} /></button>
+          <div class="row-actions">
+            <button type="button" aria-label={`Open ${row.source.title}`} title="Return to this page" onclick={() => { void onOpenResearchSource(row.source.url); }}><ExternalLink size={13} /></button>
+            {#if confirming?.type === "source" && confirming?.id === row.source.id}
+              <button type="button" data-testid={`research-confirm-delete-source-${row.source.id}`} onclick={() => deleteSourceRow(row.source.id)}>Delete?</button>
+              <button type="button" data-testid={`research-cancel-delete-source-${row.source.id}`} onclick={() => (confirming = null)}>Cancel</button>
+            {:else}
+              <button type="button" data-testid={`research-delete-source-${row.source.id}`} aria-label={`Delete ${row.source.title}`} title="Delete source and its passages" onclick={() => (confirming = { type: "source", id: row.source.id })}><Trash2 size={13} /></button>
+            {/if}
+          </div>
         </article>
       {:else}
         <article class="row" data-capture-id={row.capture.id}>
@@ -116,12 +217,19 @@
           <div class="row-actions">
             <button type="button" aria-label={`Copy citation for ${row.capture.sourceTitle || row.capture.source_title || "Research Source"}`} title="Copy citation" onclick={() => copyCitation(row.capture)}><Quote size={13} /></button>
             <button type="button" aria-label={`Open source ${row.capture.sourceTitle || row.capture.source_title || "Research Source"}`} title="Return to originating page" onclick={() => { void onOpenResearchSource(row.capture.sourceUrl || row.capture.source_url); }}><ExternalLink size={13} /></button>
+            {#if confirming?.type === "passage" && confirming?.id === row.capture.id}
+              <button type="button" data-testid={`research-confirm-delete-passage-${row.capture.id}`} onclick={() => deletePassageRow(row.capture.id)}>Delete?</button>
+              <button type="button" data-testid={`research-cancel-delete-passage-${row.capture.id}`} onclick={() => (confirming = null)}>Cancel</button>
+            {:else}
+              <button type="button" data-testid={`research-delete-passage-${row.capture.id}`} aria-label="Delete passage" title="Delete passage" onclick={() => (confirming = { type: "passage", id: row.capture.id })}><Trash2 size={13} /></button>
+            {/if}
           </div>
         </article>
       {/if}
     {/each}
     {#if rows.length === 0}<div class="empty">{filter === "sources" ? "No sources saved yet." : filter === "kept" ? "No passages kept yet." : filter === "operator" ? "No operator extractions yet." : "Save a browser page or keep a passage to begin."}</div>{/if}
   </section>
+  {/if}
 </main>
 
 <style>
@@ -132,6 +240,7 @@
   .refresh,.filters button,.row button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:5px 8px;color:var(--atlas-ink-3);background:var(--atlas-panel);font-size:11px}
   .refresh:hover,.filters button:hover,.row button:hover{color:var(--atlas-ink);background:var(--atlas-wash)}.refresh:disabled{opacity:.5}
   .filters{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.filters button.active{color:var(--atlas-ink);border-color:var(--atlas-signal);background:var(--atlas-panel)}.count{margin-left:auto;color:var(--atlas-ink-4);font:10px var(--font-mono)}
+  .search-form{display:flex;gap:6px}.search-form input{flex:1;min-width:0;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px;background:var(--atlas-base);color:var(--atlas-ink);font:12px var(--font-sans)}.search-form button{border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px 10px;background:var(--atlas-panel);color:var(--atlas-ink);font-size:11px}.search-form button:disabled{opacity:.45}
   .capture-form{display:flex;flex-direction:column;gap:5px;padding:9px;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);background:var(--atlas-panel)}.capture-form label{font-size:11px;color:var(--atlas-ink-3)}.capture-form>div{display:flex;gap:6px}.capture-form textarea{flex:1;min-width:0;resize:vertical;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px;background:var(--atlas-base);color:var(--atlas-ink);font:12px var(--font-sans)}.capture-form button{align-self:center;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px 10px;background:var(--atlas-panel);color:var(--atlas-ink);font-size:11px}.capture-form button:disabled{opacity:.45}
   .rows{display:flex;flex-direction:column;gap:6px;overflow:auto}.row{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);background:var(--atlas-panel)}.row> :global(svg){margin-top:2px;color:var(--atlas-ink-4);flex:0 0 auto}.row-actions{display:flex;align-items:center;gap:4px}.copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}.copy strong{font-size:12px;font-weight:550}.copy span,.copy small{font-size:10px;color:var(--atlas-ink-4);overflow-wrap:anywhere}.copy p{margin:2px 0;color:var(--atlas-ink-2);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.empty,.notice{padding:24px;text-align:center;color:var(--atlas-ink-4);font-size:12px}.notice{color:var(--atlas-bad)}
 </style>

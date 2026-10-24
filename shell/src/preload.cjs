@@ -57,6 +57,11 @@ const api = {
     saveSource: (profileId, pageId) => ipcRenderer.invoke("research:save-source", { profileId, pageId }),
     capture: (profileId, pageId, kind, text) => ipcRenderer.invoke("research:capture", { profileId, pageId, kind, text }),
     keptCount: (profileId, pageId) => ipcRenderer.invoke("research:kept-count", { profileId, pageId }),
+    capturePage: (profileId, pageId) => ipcRenderer.invoke("research:capture-page", { profileId, pageId }),
+    captureSelection: (profileId, pageId) => ipcRenderer.invoke("research:capture-selection", { profileId, pageId }),
+    deleteSource: (profileId, sourceId) => ipcRenderer.invoke("research:delete-source", { profileId, sourceId }),
+    deletePassage: (profileId, captureId) => ipcRenderer.invoke("research:delete-passage", { profileId, captureId }),
+    search: (profileId, query, limit) => ipcRenderer.invoke("research:search", { profileId, query, limit }),
   },
 
   dashboard: {
@@ -264,11 +269,20 @@ const api = {
   // the whole mirror after a renderer reload, because browser pages live in main
   // and outlive this window.
   browser: {
-    createPage: (profileId, url) =>
-      ipcRenderer.invoke("browser:create-page", { profileId, url }),
+    createPage: (profileId, url, restoreBrowserTabId) =>
+      ipcRenderer.invoke(
+        "browser:create-page",
+        restoreBrowserTabId === undefined
+          ? { profileId, url }
+          : { profileId, url, restoreBrowserTabId },
+      ),
     navigate: (pageId, url) => ipcRenderer.invoke("browser:navigate", { pageId, url }),
     reload: (pageId) => ipcRenderer.invoke("browser:reload", { pageId }),
+    goBack: (pageId) => ipcRenderer.invoke("browser:go-back", { pageId }),
+    goForward: (pageId) => ipcRenderer.invoke("browser:go-forward", { pageId }),
+    navigation: (pageId) => ipcRenderer.invoke("browser:navigation", { pageId }),
     closePage: (pageId) => ipcRenderer.invoke("browser:close-page", { pageId }),
+    listTabs: (profileId) => ipcRenderer.invoke("browser:list-tabs", { profileId }),
     state: () => ipcRenderer.invoke("browser:state"),
     setBounds: (pageId, rect) => ipcRenderer.invoke("browser:set-bounds", { pageId, rect }),
     setVisible: (pageId, visible) =>

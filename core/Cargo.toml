@@ -15,6 +15,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.24"
 url = "2"
+sha2 = "0.10"
 [build-dependencies]
 napi-build = "2"
 # Integration tests (core/tests/db_schema.rs) exercise the migration SQL + query

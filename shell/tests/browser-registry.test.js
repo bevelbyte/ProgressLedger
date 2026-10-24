@@ -41,6 +41,7 @@ test("mints opaque ids and never exposes a partition to the public shape", () =>
     "attached",
     "crashed",
     "createdAt",
+    "hibernated",
     "id",
     "insecure",
     "lastError",
@@ -73,13 +74,24 @@ test("refuses an unknown profile and an unsafe URL before creating any view", ()
 });
 
 test("bounds the number of live pages", () => {
-  const { registry } = fakeRegistry({ maxLive: 2 });
+  const { registry, destroyed } = fakeRegistry({ maxLive: 2 });
   assert.equal(registry.create({ profileId: 1, url: "https://a.test/" }).ok, true);
   assert.equal(registry.create({ profileId: 1, url: "https://b.test/" }).ok, true);
+  // A third background page does not grow the live views: the least
+  // recently used background page sleeps (its record stays, its view is
+  // torn down) and the new page takes the freed slot.
   const over = registry.create({ profileId: 1, url: "https://c.test/" });
-  assert.equal(over.ok, false);
-  assert.equal(over.reason, REASONS.LIVE_CAP);
-  assert.equal(registry.count(), 2);
+  assert.equal(over.ok, true);
+  assert.equal(registry.get("bp-1").hibernated, true);
+  assert.deepEqual(destroyed, ["bp-1"]);
+  assert.equal(registry.count(), 3, "records are kept; only views are bounded");
+  // When every live page is visible there is nothing safe to sleep, so
+  // the cap refuses instead of evicting a page the user is reading.
+  registry.update("bp-2", { visible: true });
+  registry.update("bp-3", { visible: true });
+  const refused = registry.create({ profileId: 1, url: "https://d.test/" });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, REASONS.LIVE_CAP);
   assert.equal(MAX_LIVE_PAGES > 0, true);
 });
 
