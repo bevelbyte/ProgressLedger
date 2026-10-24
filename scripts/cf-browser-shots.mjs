@@ -1,7 +1,7 @@
 // R5 — capture the REAL embedded browser in the REAL Electron window.
 //
 // WebContentsView is native and paints above the renderer, so a Playwright DOM
-// screenshot alone is not sufficient. This harness drives CareerFlow through
+// screenshot alone is not sufficient. This harness drives Progress Ledger through
 // its own profile/workspace controls and captures the top-level desktop window.
 // It writes only new, uniquely named files under shots/r5 and refuses overwrite.
 
@@ -15,7 +15,7 @@ import http from "node:http";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "shots", "r5");
-const prefix = process.env.CAREERFLOW_R5_SHOT_PREFIX ?? "capture";
+const prefix = process.env.PROGRESSLEDGER_V2_R5_SHOT_PREFIX ?? "capture";
 if (!/^[a-z0-9-]+$/i.test(prefix)) throw new Error("Invalid R5 screenshot prefix");
 mkdirSync(outDir, { recursive: true });
 
@@ -54,12 +54,12 @@ const fixtureUrl = `http://127.0.0.1:${port}/article`;
 const userDataDir = mkdtempSync(join(tmpdir(), "cf-r5-browser-shots-"));
 const env = {
   ...process.env,
-  CAREERFLOW_E2E: "1",
-  CAREERFLOW_E2E_BROWSER_NAVIGATION_TIMEOUT_MS: "10000",
-  CAREERFLOW_DONUT_SETTINGS_DIR: absentDonutDir,
+  PROGRESSLEDGER_V2_E2E: "1",
+  PROGRESSLEDGER_V2_E2E_BROWSER_NAVIGATION_TIMEOUT_MS: "10000",
+  PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentDonutDir,
 };
-delete env.CAREERFLOW_E2E_DONUT_STUB;
-delete env.CAREERFLOW_E2E_DONUT_MODE;
+delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
 function captureWindow(hwndHex, outputPath) {
   const escapedPath = outputPath.replace(/'/g, "''");
@@ -126,20 +126,20 @@ try {
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 1000));
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const profileId = await win.evaluate(async () => {
-    const result = await window.careerflow.profiles.add("R5 Visual Acceptance", "r5-visual-acceptance");
+    const result = await window.progressLedger.profiles.add("R5 Visual Acceptance", "r5-visual-acceptance");
     const profile = result?.profile || result;
     return profile?.id ?? profile?.profileId ?? (typeof result === "number" ? result : null);
   });
   if (profileId == null) throw new Error("Could not create the isolated R5 test profile");
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
   const profileCard = win.locator("button.profile-main").first();
   await profileCard.waitFor({ state: "visible", timeout: 15_000 });

@@ -26,7 +26,7 @@ test("real Electron IPC rejects an untrusted renderer sender", async () => {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-ipc-adversarial-"));
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1", CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1" },
     timeout: 60000,
   });
   try {

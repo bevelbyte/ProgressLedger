@@ -80,7 +80,7 @@ test("Daily-use acceptance: normal study, learning-to-resource flow, and real me
   const launchApp = () =>
     electron.launch({
       args: [root, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1", CAREERFLOW_DONUT_SETTINGS_DIR: absentDonutDir },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentDonutDir },
     });
 
   let app = await launchApp();
@@ -88,17 +88,17 @@ test("Daily-use acceptance: normal study, learning-to-resource flow, and real me
 
   try {
     await win.waitForLoadState("domcontentloaded");
-    await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+    await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
     await win.reload();
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     // Bootstrap rich student dataset
     const seed = await win.evaluate(async () => {
-      const p = await window.careerflow.profiles.add("Daily Student", `daily-student-${Date.now()}`);
-      const trackId = await window.careerflow.academic.addTrack(p.id, "B.Tech Computer Science");
-      const semId = await window.careerflow.academic.addSemester(p.id, trackId, "Semester 5");
-      const msId = await window.careerflow.academic.addMilestone(p.id, semId, "Core Systems");
-      const subjectId = await window.careerflow.academic.addSubject(p.id, msId, "Distributed Systems", "CS405");
+      const p = await window.progressLedger.profiles.add("Daily Student", `daily-student-${Date.now()}`);
+      const trackId = await window.progressLedger.academic.addTrack(p.id, "B.Tech Computer Science");
+      const semId = await window.progressLedger.academic.addSemester(p.id, trackId, "Semester 5");
+      const msId = await window.progressLedger.academic.addMilestone(p.id, semId, "Core Systems");
+      const subjectId = await window.progressLedger.academic.addSubject(p.id, msId, "Distributed Systems", "CS405");
       return { profileId: p.id, subjectId };
     });
 
@@ -196,8 +196,8 @@ test("Daily-use acceptance: normal study, learning-to-resource flow, and real me
     await expect(win.getByText("Paxos Consensus Paper")).toBeVisible();
     await expect(win.getByText(paxosUrl)).toBeVisible();
 
-    // 2. Direct integrated workflow: Open link in CareerFlow embedded browser from Saved Places
-    const openInBrowserBtn = win.locator('button[title="Open in CareerFlow Browser"]').first();
+    // 2. Direct integrated workflow: Open link in Progress Ledger embedded browser from Saved Places
+    const openInBrowserBtn = win.locator('button[title="Open in Progress Ledger Browser"]').first();
     await expect(openInBrowserBtn).toBeVisible();
     await openInBrowserBtn.click();
 

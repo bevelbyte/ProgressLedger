@@ -6,7 +6,7 @@
 //   - ApprovalRequest modal appears when a tool needs approval
 //   - ProviderConfigPanel does NOT show the saved key (only a "key set" indicator)
 //
-// The IPC namespace is mocked via window.careerflow.projectMode. Tests
+// The IPC namespace is mocked via window.progressLedger.projectMode. Tests
 // reset the shared `projectModeStore` between cases via direct mutation
 // to keep things hermetic (no IPC needed).
 
@@ -36,7 +36,7 @@ function setupIpc({ projects = [], messages = [], providerConfig = null } = {}) 
   const setProviderConfig = vi.fn().mockResolvedValue({ ok: true, config: { endpoint: "https://api.example.com", model: "gpt-test", hasKey: true } });
   const clearProviderConfig = vi.fn().mockResolvedValue({ ok: true });
 
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listProjects,
       createProject,
@@ -122,7 +122,7 @@ describe("project context profile isolation", () => {
     const listProjects = vi.fn()
       .mockResolvedValueOnce(oldProjects)
       .mockResolvedValueOnce(newProjects);
-    window.careerflow = { projectMode: { listProjects } };
+    window.progressLedger = { projectMode: { listProjects } };
 
     await loadProjects(1);
     projectModeStore.activeProjectId = 10;
@@ -151,7 +151,7 @@ describe("project context profile isolation", () => {
     const listProjects = vi.fn()
       .mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
       .mockResolvedValueOnce(newProjects);
-    window.careerflow = { projectMode: { listProjects } };
+    window.progressLedger = { projectMode: { listProjects } };
 
     const oldRequest = loadProjects(1);
     await loadProjects(2);

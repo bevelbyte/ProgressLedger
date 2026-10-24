@@ -1,5 +1,5 @@
 <script>
-  // CareerFlow — shell composition.
+  // Progress Ledger — shell composition.
   //
   // Composition (docs/DESIGN-ATLAS.md §4, updated for the W1 workspace):
   //
@@ -27,7 +27,6 @@
 
   import { CommandPalette } from "./features/command-palette";
   import { NoteEditor, QuickNote } from "./features/notes";
-  import { QuickActionsPanel } from "./features/quick-actions/index.js";
   import { FocusSession } from "./features/focus";
   import Toaster from "./shared/components/Toaster.svelte";
   import { Onboarding } from "./features/onboarding";
@@ -76,7 +75,7 @@
 
   async function checkCore() {
     try {
-      coreStatus = await window.careerflow.ping();
+      coreStatus = await window.progressLedger.ping();
       online = true;
     } catch (e) {
       coreStatus = "Rust core unreachable: " + (e?.message ?? e);
@@ -93,7 +92,7 @@
   });
 
   function handleOnboardingComplete() {
-    toast.success("Welcome to CareerFlow!", "Tutorial Complete");
+    toast.success("Welcome to Progress Ledger!", "Tutorial Complete");
   }
 
   // ---- Routing & layout state ----
@@ -151,7 +150,6 @@
     navigate(view);
   }
 
-  let rightSidebarOpen = $state(false);
   let newTabMenuOpen = $state(false);
   let pendingAgentId = $state(null);
   let pendingProjectId = $state(null);
@@ -260,11 +258,11 @@
   //
   // Gated on the preload bridge's own existing E2E marker
   // (`runtime.isE2E`, shell/src/preload.cjs:7), which is driven by the
-  // --careerflow-e2e argv flag rather than an env var -- so a probe must pass
+  // --progressledger-v2-e2e argv flag rather than an env var -- so a probe must pass
   // that flag, and an ordinary packaged run leaves this inert. It adds no
   // capability: it is the same `selectProfile` the profile card dispatches.
   $effect(() => {
-    if (window?.careerflow?.runtime?.isE2E === true) {
+    if (window?.progressLedger?.runtime?.isE2E === true) {
       window.__cfSelectProfile = (id) => selectProfile(id);
     }
   });
@@ -293,7 +291,6 @@
     "flashcards",
     "mistakes",
     "formulas",
-    "browser",
     "research-ledger",
     "deadlines",
     "sessions",
@@ -324,7 +321,7 @@
   }
 
   /**
-   * Open a CareerFlow browser page tab in a specific pane (D2-D6 plan, Phase 1).
+   * Open a Progress Ledger browser page tab in a specific pane (D2-D6 plan, Phase 1).
    * A page is not a rail destination, so it is created here, in the pane the user
    * asked for; the identity travels on the TAB once a real page exists. Each
    * press gives the pane ANOTHER page slot (`ws.openPageTab`), never a re-focus
@@ -467,7 +464,7 @@
       return;
     }
     try {
-      quickNoteTree = await window.careerflow.academic.tree(profileStore.activeProfileId);
+      quickNoteTree = await window.progressLedger.academic.tree(profileStore.activeProfileId);
     } catch (e) {
       console.error("loadQuickNoteTree failed:", e);
       quickNoteTree = [];
@@ -478,7 +475,7 @@
     if (focusOpen) return;
     if (profileStore.activeProfileId == null) return;
     try {
-      focusTree = await window.careerflow.academic.tree(profileStore.activeProfileId);
+      focusTree = await window.progressLedger.academic.tree(profileStore.activeProfileId);
     } catch (e) {
       reportError(e, "Could not load subjects for focus");
       return;
@@ -594,7 +591,7 @@
       openNote(hit.id, hit.subjectId);
     } else {
       try {
-        await window.careerflow.resources.openFile({
+        await window.progressLedger.resources.openFile({
           profileId: profileStore.activeProfileId,
           resourceId: hit.id,
         });
@@ -608,7 +605,7 @@
 
   // Alt+N quick note, owned by the Electron main process.
   $effect(() => {
-    const off = window.careerflow?.notes?.onQuickNoteShortcut?.(() => {
+    const off = window.progressLedger?.notes?.onQuickNoteShortcut?.(() => {
       loadQuickNoteTree();
       quickNoteOpen = true;
     });
@@ -624,7 +621,7 @@
     return () => window.removeEventListener("cf:navigate", onNavigate);
   });
 
-  // cf:open-page — any component can request opening a URL in CareerFlow's embedded browser.
+  // cf:open-page — any component can request opening a URL in Progress Ledger's embedded browser.
   $effect(() => {
     const onOpenPage = (e) => {
       const url = e?.detail?.url;
@@ -833,8 +830,6 @@
       {railCollapsed}
       onToggleRail={cycleRail}
       onOpenPalette={openCommandPalette}
-      quickOpen={rightSidebarOpen}
-      onToggleQuick={() => (rightSidebarOpen = !rightSidebarOpen)}
       onOpenConsole={() => (operator.consoleOpen = !operator.consoleOpen)}
       onShowTutorial={() => (onboarding.active = true)}
     />
@@ -926,17 +921,6 @@
           {/if}
         </main>
 
-        <!-- Quick Actions: pinned shortcuts, one click from anywhere. -->
-        <aside class="right-sidebar" class:open={rightSidebarOpen}>
-          <header class="sidebar-header">
-            <div class="sidebar-title">
-              <span class="atl-label">Quick actions</span>
-            </div>
-          </header>
-          <div class="sidebar-content">
-            <QuickActionsPanel />
-          </div>
-        </aside>
       </div>
 
       <OperatorConsole
@@ -1064,44 +1048,6 @@
 
   .immerse-exit:hover {
     opacity: 1;
-  }
-
-  /* ---- Quick Actions sidebar ----
-     Width and open/closed behaviour are functional contracts (the E2E suite
-     asserts `aside.right-sidebar.open` is visible at 450px). */
-  .right-sidebar {
-    width: 450px;
-    flex: 0 0 auto;
-    border-left: 1px solid var(--atlas-line);
-    background: var(--atlas-chrome);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-    transition: width var(--dur-slow) var(--ease), margin-right var(--dur-slow) var(--ease);
-  }
-
-  .right-sidebar:not(.open) {
-    width: 0;
-    border-left: none;
-    margin-right: -1px;
-  }
-
-  .sidebar-header {
-    display: flex;
-    align-items: center;
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--atlas-line);
-    flex-shrink: 0;
-  }
-
-  .sidebar-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
   }
 
 </style>

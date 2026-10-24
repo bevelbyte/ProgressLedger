@@ -39,7 +39,7 @@ test("production bootstrap loads the active workspace plugin registry and honors
   const main = readTextFile(new URL("../src/main.js", import.meta.url), "utf8");
   assert.match(main, /Plugins\.configurePlugins\(\{ rootDir: pluginRoot \}\)/);
   assert.match(main, /Plugins\.loadFromDisk\(\{ rootDir: pluginRoot \}\)/);
-  assert.match(main, /process\.env\.CAREERFLOW_PLUGIN_AUTO_RELOAD === "1"/);
+  assert.match(main, /process\.env\.PROGRESSLEDGER_V2_PLUGIN_AUTO_RELOAD === "1"/);
   assert.match(main, /Plugins\.configureAutoReload\(\{ enabled: autoReload \}\)/);
   assert.match(main, /Plugins\.configureAutoReload\(\{ enabled: false \}\)/);
 });

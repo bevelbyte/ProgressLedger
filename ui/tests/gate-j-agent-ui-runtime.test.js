@@ -31,10 +31,10 @@ import { projectModeService } from "../src/features/project-mode/services/projec
 import { profileService } from "../src/features/profiles/services/profile.service.js";
 import { profileStore, loadProfiles, selectProfile } from "../src/features/profiles/stores/profile.svelte.js";
 
-const LAST_PROFILE_KEY = "careerflow_last_active_profile_id";
+const LAST_PROFILE_KEY = "progressledger_v2_last_active_profile_id";
 
 afterEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   vi.restoreAllMocks();
 });
 
@@ -45,7 +45,7 @@ afterEach(() => {
 describe("GATE J — projectModeService.startAgent forwards positional args", () => {
   it("converts the { profileId, agentId } object form into (profileId, agentId)", async () => {
     const startAgent = vi.fn().mockResolvedValue({ ok: true, runId: "run-1" });
-    window.careerflow = { projectMode: { startAgent } };
+    window.progressLedger = { projectMode: { startAgent } };
 
     const res = await projectModeService.startAgent({ profileId: 3, agentId: 7 });
 
@@ -62,7 +62,7 @@ describe("GATE J — projectModeService.startAgent forwards positional args", ()
     // If this assertion fails, a UI-driven start will be rejected by the
     // main-process ownership check (profileId would arrive as an object).
     const startAgent = vi.fn().mockResolvedValue({ ok: true });
-    window.careerflow = { projectMode: { startAgent } };
+    window.progressLedger = { projectMode: { startAgent } };
 
     await projectModeService.startAgent({ profileId: 11, agentId: 22 });
 
@@ -71,7 +71,7 @@ describe("GATE J — projectModeService.startAgent forwards positional args", ()
   });
 
   it("surfaces a missing binding as a rejection instead of throwing synchronously", async () => {
-    window.careerflow = { projectMode: {} };
+    window.progressLedger = { projectMode: {} };
     await expect(projectModeService.startAgent({ profileId: 1, agentId: 1 })).rejects.toThrow(
       /projectMode\.startAgent is not available/,
     );

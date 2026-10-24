@@ -2,7 +2,7 @@
  * Degree <-> SQLite mapper for the CGPA feature.
  *
  * This is the persistence boundary that replaces the old
- * localStorage["careerflow_degree_data_<profileId>"] blob. SQLite is now
+ * localStorage["progressledger_v2_degree_data_<profileId>"] blob. SQLite is now
  * authoritative, split across two real domain stores:
  *
  *   structure (degree/semester/subject)  -> academic tree tables
@@ -64,7 +64,7 @@ function normalizeStatus(status) {
 
 /**
  * Build the component's `degrees[]` UI model from SQLite.
- * @param {object} api  window.careerflow
+ * @param {object} api  window.progressLedger
  * @param {number} profileId
  */
 export async function buildDegreesFromDb(api, profileId) {

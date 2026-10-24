@@ -43,7 +43,7 @@ function defaultUserDataDir() {
     const a = electron && electron.app;
     if (a && typeof a.getPath === "function") return a.getPath("userData");
   } catch {}
-  return process.env.CAREERFLOW_USER_DATA || path.join(process.cwd(), ".userData");
+  return process.env.PROGRESSLEDGER_V2_USER_DATA || path.join(process.cwd(), ".userData");
 }
 
 export function _dbPathFor(projectId) {

@@ -17,29 +17,29 @@ test("Today surfaces urgent items and deep-links a deadline to the subject works
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-today-"));
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   // Seed data through the real IPC surface, then note the subject name.
   const info = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Today Student", `today-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add("Today Student", `today-${Date.now()}`);
     const pid = p.id;
-    const trackId = await window.careerflow.academic.addTrack(pid, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(pid, semId, "Subjects");
-    const subjectId = await window.careerflow.academic.addSubject(pid, msId, "Algorithms", null);
+    const trackId = await window.progressLedger.academic.addTrack(pid, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(pid, semId, "Subjects");
+    const subjectId = await window.progressLedger.academic.addSubject(pid, msId, "Algorithms", null);
 
     // Overdue deadline (yesterday), a due flashcard, and a study session.
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    await window.careerflow.deadlines.add(pid, subjectId, yesterday, "assignment", "Lab Report", "");
-    await window.careerflow.cards.create(pid, subjectId, "Q1", "A1"); // new cards are due immediately
-    await window.careerflow.sessions.add(pid, subjectId, 20);
+    await window.progressLedger.deadlines.add(pid, subjectId, yesterday, "assignment", "Lab Report", "");
+    await window.progressLedger.cards.create(pid, subjectId, "Q1", "A1"); // new cards are due immediately
+    await window.progressLedger.sessions.add(pid, subjectId, 20);
     return { pid, subjectId };
   });
 
@@ -54,7 +54,7 @@ test("Today surfaces urgent items and deep-links a deadline to the subject works
   // list picks up the IPC-created profile, then select it.
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const card = win.locator(".profile-card", { hasText: "Today Student" });
   await expect(card).toBeVisible();
@@ -97,16 +97,16 @@ test("Today surfaces urgent items and deep-links a deadline to the subject works
 
   // --- Return to Dashboard reflects updated state (log more study) ---
   const before = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    return (await window.careerflow.sessions.stats(pid)).minutesToday;
+    return (await window.progressLedger.sessions.stats(pid)).minutesToday;
   });
   await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const subjectId = tree[0].semesters[0].milestones[0].subjects[0].id;
-    await window.careerflow.sessions.add(pid, subjectId, 15);
+    await window.progressLedger.sessions.add(pid, subjectId, 15);
     window.dispatchEvent(new Event("cf:data-changed"));
   });
   await homeNav().click();

@@ -13,7 +13,7 @@ async function launchApp() {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: '1',
+      PROGRESSLEDGER_V2_E2E: '1',
     },
   });
   const win = await app.firstWindow();
@@ -21,7 +21,7 @@ async function launchApp() {
   return { app, win };
 }
 
-test.describe('Explore CareerFlow UI Structure', () => {
+test.describe('Explore Progress Ledger UI Structure', () => {
   let app;
   let win;
 

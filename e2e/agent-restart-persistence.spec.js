@@ -105,9 +105,9 @@ async function launchIsolated(userDataDir) {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: "1",
-      CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-      CAREERFLOW_E2E_USER_DATA: userDataDir,
+      PROGRESSLEDGER_V2_E2E: "1",
+      PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+      PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     },
     timeout: 60_000,
   });
@@ -127,22 +127,22 @@ async function dismissOnboarding(win) {
 }
 
 async function setupAgent(win, { userDataDir, endpoint, objective, projectName, projectRootPath, withGoal = true, projectMemory = null }) {
-  const profile = await win.evaluate(() => window.careerflow.profiles.add("PM Restart", `pm-restart-${Date.now()}`));
+  const profile = await win.evaluate(() => window.progressLedger.profiles.add("PM Restart", `pm-restart-${Date.now()}`));
   expect(profile.id).toBeGreaterThan(0);
   const created = await win.evaluate(([pid, rootPath, name]) =>
-    window.careerflow.projectMode.createProject({ profileId: pid, name, description: "restart e2e", rootPath, configJson: "{}" }),
+    window.progressLedger.projectMode.createProject({ profileId: pid, name, description: "restart e2e", rootPath, configJson: "{}" }),
     [profile.id, projectRootPath, projectName]);
   const projectId = typeof created === "number" ? created : (created && created.id);
   expect(projectId).toBeGreaterThan(0);
 
   const agentRes = await win.evaluate(([pid, projId, obj]) =>
-    window.careerflow.projectMode.createAgent(pid, projId, obj), [profile.id, projectId, objective]);
+    window.progressLedger.projectMode.createAgent(pid, projId, obj), [profile.id, projectId, objective]);
   const agentId = typeof agentRes === "number" ? agentRes : (agentRes && agentRes.id);
   expect(agentId).toBeGreaterThan(0);
 
   let goalId = null;
   if (withGoal) {
-    const g = await win.evaluate(([pid, prid, obj]) => window.careerflow.goals.create({
+    const g = await win.evaluate(([pid, prid, obj]) => window.progressLedger.goals.create({
       profileId: pid,
       projectId: prid,
       title: "restart e2e goal",
@@ -153,14 +153,14 @@ async function setupAgent(win, { userDataDir, endpoint, objective, projectName, 
     goalId = typeof g === "number" ? g : (g && (g.id ?? (g.result && g.result.id)));
     expect(goalId).toBeGreaterThan(0);
     const link = await win.evaluate(([pid, gid, aid]) =>
-      window.careerflow.goals.linkAgent(pid, gid, aid), [profile.id, goalId, agentId]);
+      window.progressLedger.goals.linkAgent(pid, gid, aid), [profile.id, goalId, agentId]);
     expect(link && link.ok !== false, `goal.linkAgent: ${JSON.stringify(link)}`).toBe(true);
   }
 
   if (projectMemory && projectMemory.length) {
     for (const [kind, key, value] of projectMemory) {
       const r = await win.evaluate(([pid, prid, k, kk, vv]) =>
-        window.careerflow.memory.projectSet(pid, prid, k, kk, vv, 1.0),
+        window.progressLedger.memory.projectSet(pid, prid, k, kk, vv, 1.0),
         [profile.id, projectId, kind, key, value]);
       expect(r && r.ok !== false, `memory.projectSet: ${JSON.stringify(r)}`).toBe(true);
     }
@@ -184,10 +184,10 @@ async function setupAgent(win, { userDataDir, endpoint, objective, projectName, 
 async function startAgentRun(win, profileId, agentId) {
   await win.evaluate(() => {
     window.__agentEvents = [];
-    window.careerflow.projectMode.onEvent((e) => window.__agentEvents.push(e));
+    window.progressLedger.projectMode.onEvent((e) => window.__agentEvents.push(e));
   });
   const startRes = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.startAgent(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.startAgent(pid, aid), [profileId, agentId]);
   expect(startRes.ok, `startAgent: ${JSON.stringify(startRes)}`).toBe(true);
   return startRes;
 }
@@ -216,13 +216,13 @@ async function dumpAgentDiagnostics(win, profileId, agentId) {
 
 async function getAgentState(win, profileId, agentId) {
   const a = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.getAgent(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.getAgent(pid, aid), [profileId, agentId]);
   return a && (a.agent || a);
 }
 
 async function getMessages(win, profileId, agentId) {
   const m = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.listMessages(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.listMessages(pid, aid), [profileId, agentId]);
   return m && m.ok !== false ? (m.messages || m.result || m) : m;
 }
 
@@ -246,7 +246,7 @@ async function relaunchAndSweep(userDataDir, profileId) {
   const launched = await launchIsolated(userDataDir);
   await dismissOnboarding(launched.win);
   const sweep = await launched.win.evaluate((pid) =>
-    window.careerflow.goals.recoverySweep(pid), profileId);
+    window.progressLedger.goals.recoverySweep(pid), profileId);
   return { ...launched, sweep };
 }
 
@@ -281,7 +281,7 @@ test("LEG1 GRACEFUL: approval pending -> app close cancels agent -> run-state cl
     // awaiting_approval while the approval blocks the tool.
     const pending = await waitFor(async () => {
       const r = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
       return r && r.ok && r.count === 1 ? r.approvals[0] : null;
     }, { what: "leg1 pending approval" }).catch(async (e) => {
       await dumpAgentDiagnostics(launched.win, profileId, agentId);
@@ -362,12 +362,12 @@ test("LEG2 CRASH: SIGKILL mid-execution -> relaunch -> sweep safe-resume -> goal
     // A SECOND project under the SAME profile with its own memory —
     // Milestone H: no cross-project leakage.
     const createdB = await launched.win.evaluate(([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({ profileId: pid, name: "Restart Leg2 B", description: "isolation", rootPath, configJson: "{}" }),
+      window.progressLedger.projectMode.createProject({ profileId: pid, name: "Restart Leg2 B", description: "isolation", rootPath, configJson: "{}" }),
       [profileId, projectRootPathB]);
     const projectIdB = typeof createdB === "number" ? createdB : (createdB && createdB.id);
     expect(projectIdB).toBeGreaterThan(0);
     const memB = await launched.win.evaluate(([pid, prid, marker]) =>
-      window.careerflow.memory.projectSet(pid, prid, "finding", "other-project-token", marker, 1.0),
+      window.progressLedger.memory.projectSet(pid, prid, "finding", "other-project-token", marker, 1.0),
     [profileId, projectIdB, SECRET_MARKER]);
     expect(memB && memB.ok !== false).toBe(true);
 
@@ -378,14 +378,14 @@ test("LEG2 CRASH: SIGKILL mid-execution -> relaunch -> sweep safe-resume -> goal
     // run proceeds into real tool execution.
     const pending = await waitFor(async () => {
       const r = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
       return r && r.ok && r.count === 1 ? r.approvals[0] : null;
     }, { what: "leg2 pending approval" }).catch(async (e) => {
       await dumpAgentDiagnostics(launched.win, profileId, agentId);
       throw e;
     });
     const ok = await launched.win.evaluate(([pid, aid, id]) =>
-      window.careerflow.projectMode.approveCall(pid, aid, id), [profileId, agentId, pending.id]);
+      window.progressLedger.projectMode.approveCall(pid, aid, id), [profileId, agentId, pending.id]);
     expect(ok && ok.ok).toBe(true);
 
     // Wait until round 1 is fully answered (tool call streamed).
@@ -421,14 +421,14 @@ test("LEG2 CRASH: SIGKILL mid-execution -> relaunch -> sweep safe-resume -> goal
 
       // DIAGNOSTIC: dump the relaunched agent row shape.
       const agentRow = await relaunched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.getAgent(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.getAgent(pid, aid), [profileId, agentId]);
       console.log(`[diag] relaunched agent row: ${JSON.stringify(agentRow)}`);
 
       // Allow the resumed round-2 request to be answered, then
       // GOAL-LINKED RESUME (the user-visible recovery path).
       server.releaseRound2();
       const resume = await relaunched.win.evaluate(([pid, gid, aid]) =>
-        window.careerflow.goals.resume(pid, gid, aid), [profileId, goalId, agentId]);
+        window.progressLedger.goals.resume(pid, gid, aid), [profileId, goalId, agentId]);
       expect(resume && resume.ok !== false, `resume: ${JSON.stringify(resume)}`).toBe(true);
 
       // CONTINUATION -> COMPLETED in the NEW process.
@@ -461,7 +461,7 @@ test("LEG2 CRASH: SIGKILL mid-execution -> relaunch -> sweep safe-resume -> goal
 
       // MILESTONE H — memory survives restart, scoped correctly.
       const memA = await relaunched.win.evaluate(([pid, prid]) =>
-        window.careerflow.memory.projectList(pid, prid), [profileId, projectId]);
+        window.progressLedger.memory.projectList(pid, prid), [profileId, projectId]);
       expect(memA && memA.ok !== false).toBe(true);
       const rowsA = Array.isArray(memA.result) ? memA.result
         : Array.isArray(memA.result && memA.result.result) ? memA.result.result
@@ -474,21 +474,21 @@ test("LEG2 CRASH: SIGKILL mid-execution -> relaunch -> sweep safe-resume -> goal
       // NO CROSS-PROJECT LEAKAGE.
       expect(valuesA.some((v) => v.includes(SECRET_MARKER))).toBe(false);
       const memBAfter = await relaunched.win.evaluate(([pid, prid]) =>
-        window.careerflow.memory.projectList(pid, prid), [profileId, projectIdB]);
+        window.progressLedger.memory.projectList(pid, prid), [profileId, projectIdB]);
       const rowsB = Array.isArray(memBAfter && memBAfter.result) ? memBAfter.result
         : Array.isArray(memBAfter && memBAfter.result && memBAfter.result.result) ? memBAfter.result.result
         : Array.isArray(memBAfter && memBAfter.rows) ? memBAfter.rows : [];
       if (!rowsB.length) {
         console.log(`[diag] memB raw: ${JSON.stringify(memBAfter).slice(0, 400)}`);
         const lB2 = await relaunched.win.evaluate(([pid, prid]) =>
-          window.careerflow.memory.projectList(pid, prid, { kind: "finding" }), [profileId, projectIdB]);
+          window.progressLedger.memory.projectList(pid, prid, { kind: "finding" }), [profileId, projectIdB]);
         console.log(`[diag] projectList B kind=finding: ${JSON.stringify(lB2).slice(0, 300)}`);
         await sleep(1500);
         const lB3 = await relaunched.win.evaluate(([pid, prid]) =>
-          window.careerflow.memory.projectList(pid, prid), [profileId, projectIdB]);
+          window.progressLedger.memory.projectList(pid, prid), [profileId, projectIdB]);
         console.log(`[diag] projectList B delayed: ${JSON.stringify(lB3).slice(0, 300)}`);
         const lA2 = await relaunched.win.evaluate(([pid, prid]) =>
-          window.careerflow.memory.projectList(pid, prid), [profileId, projectId]);
+          window.progressLedger.memory.projectList(pid, prid), [profileId, projectId]);
         console.log(`[diag] projectList A delayed (control): ${JSON.stringify(lA2).slice(0, 200)}`);
       }
       const valuesB = rowsB.map((r) => `${r.key}=${r.value}`);

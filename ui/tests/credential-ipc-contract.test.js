@@ -28,12 +28,12 @@ function bindIpc() {
     getDefaultProvider: vi.fn().mockResolvedValue({ ok: true }),
     setDefaultProvider: vi.fn().mockResolvedValue({ ok: true }),
   };
-  window.careerflow = { projectMode: ns };
+  window.progressLedger = { projectMode: ns };
   return ns;
 }
 
 afterEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   vi.restoreAllMocks();
 });
 

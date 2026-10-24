@@ -2,7 +2,7 @@
 --
 -- Adds a single boolean column to the existing browser_shortcuts table.
 -- No new tables, no duplicated state. The Quick Actions panel is a read-only
--- view of this column, restricted to the active CareerFlow profile's rows.
+-- view of this column, restricted to the active Progress Ledger profile's rows.
 --
 -- A small partial index keeps the pinned-row query at O(pinned) regardless of
 -- the size of the shortcut table — the panel's hot path is

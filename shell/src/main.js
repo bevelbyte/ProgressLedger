@@ -59,23 +59,27 @@ const BUILT_UI_ROOT = resolvePath(join(__dirname, "../../ui/dist"));
 // renderer sandbox. The handler serves only files under the packaged UI root.
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: "careerflow",
+    scheme: "progressledger-v2",
     privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
   },
  ]);
 const core = require(join(__dirname, "../../core"));
 
 const isDev = !app.isPackaged;
-const isE2E = process.env.CAREERFLOW_E2E === "1";
-const isMigrationTest = process.env.CAREERFLOW_MIGRATION_TEST === "1";
+const isE2E = process.env.PROGRESSLEDGER_V2_E2E === "1";
+const isMigrationTest = process.env.PROGRESSLEDGER_V2_MIGRATION_TEST === "1";
 
-// Packaged E2E runs must be isolated from the user's real CareerFlow data.
+// Packaged E2E runs must be isolated from the user's real Progress Ledger data.
 // Electron's Chromium switch does not reliably change app.getPath("userData")
 // for a packaged executable launched through the Electron test harness, so a
 // test-only environment override is applied before app readiness. Production
 // launches have no supported path to this branch.
-if ((isE2E || isMigrationTest) && process.env.CAREERFLOW_E2E_USER_DATA) {
-  app.setPath("userData", process.env.CAREERFLOW_E2E_USER_DATA);
+if ((isE2E || isMigrationTest) && process.env.PROGRESSLEDGER_V2_E2E_USER_DATA) {
+  app.setPath("userData", process.env.PROGRESSLEDGER_V2_E2E_USER_DATA);
+} else {
+  // v2 identity: this build must never open the original Progress Ledger's
+  // data folder, so its own userData directory carries a -v2 suffix.
+  app.setPath("userData", join(app.getPath("appData"), "progress-ledger-v2"));
 }
 
 
@@ -83,7 +87,7 @@ if ((isE2E || isMigrationTest) && process.env.CAREERFLOW_E2E_USER_DATA) {
 if (!isE2E) {
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {
-    console.info("CareerFlow is already running. Exiting second instance.");
+    console.info("Progress Ledger is already running. Exiting second instance.");
     app.quit();
     process.exit(0);
   }
@@ -110,7 +114,7 @@ app.on("second-instance", () => {
 // the new view" cannot ship silently.
 //
 // The backstop is deliberately NARROW in scope. It must never see the app's own
-// privileged renderer, which navigates to `file:`/`careerflow:` app surfaces by
+// privileged renderer, which navigates to `file:`/`progressLedger:` app surfaces by
 // design and is governed by its own `isTrustedNavigation` check below. The two
 // privileged windows therefore register their contents in `appContents`, and
 // the embedded browser registers its pages in `governedWebContents` — either
@@ -149,13 +153,13 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      additionalArguments: isE2E ? ["--careerflow-e2e"] : [],
+      additionalArguments: isE2E ? ["--progressledger-v2-e2e"] : [],
     },
   });
 
   // This renderer is privileged and is exempt from the global navigation
   // backstop above (see the comment there): it loads the app UI from
-  // `file:` / `careerflow:`, and its own `isTrustedNavigation` check is what
+  // `file:` / `progressLedger:`, and its own `isTrustedNavigation` check is what
   // governs it.
   appContents.add(mainWindow.webContents);
 
@@ -166,7 +170,7 @@ function createWindow() {
       if (url.protocol === "file:") {
         return url.hostname === "" && resolvePath(fileURLToPath(url)) === builtUiPath;
       }
-      if (url.protocol === "careerflow:") {
+      if (url.protocol === "progressLedger:") {
         return url.hostname === "app" && url.pathname === "/index.html";
       }
       return isDev
@@ -199,12 +203,12 @@ function createWindow() {
   // top-level window.
   //
   // This is the default for EVERY E2E spec, including the native
-  // separate-mode Donut browser specs. CAREERFLOW_E2E_VISIBLE=1 exists only as
+  // separate-mode browser specs. PROGRESSLEDGER_V2_E2E_VISIBLE=1 exists only as
   // an explicit, per-invocation escape hatch; no spec sets it, because an
   // automated run must not take over the operator's desktop.
   //
   // Gated on isE2E, so the packaged/shipped app is bit-for-bit unaffected.
-  if (isE2E && process.env.CAREERFLOW_E2E_VISIBLE !== "1") {
+  if (isE2E && process.env.PROGRESSLEDGER_V2_E2E_VISIBLE !== "1") {
     mainWindow.setPosition(-32000, -32000);
   }
 
@@ -212,7 +216,7 @@ function createWindow() {
 
   const useBuiltUI = !isDev || isE2E;
   if (useBuiltUI) {
-    mainWindow.loadURL("careerflow://app/index.html");
+    mainWindow.loadURL("progressledger-v2://app/index.html");
   } else {
     mainWindow.loadURL("http://127.0.0.1:5173");
     mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -239,7 +243,7 @@ async function cleanupTempDir() {
 }
 
 app.whenReady().then(async () => {
-  protocol.handle("careerflow", async (request) => {
+  protocol.handle("progressledger-v2", async (request) => {
     const url = new URL(request.url);
     const relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, "");
     const candidate = resolvePath(join(BUILT_UI_ROOT, relativePath || "index.html"));
@@ -278,7 +282,7 @@ app.whenReady().then(async () => {
         appVersion: app.getVersion(),
       })
     );
-    const legacyLock = join(legacyPath, ".careerflow.lock");
+    const legacyLock = join(legacyPath, ".progressLedger.lock");
     if (existsSync(legacyLock)) {
       try {
         unlinkSync(legacyLock);
@@ -301,12 +305,12 @@ app.whenReady().then(async () => {
     }
   }
   Menu.setApplicationMenu(null);
-  initLogger(isDev ? join(process.cwd(), "logs", "careerflow.log") : resolveLogPath());
+  initLogger(isDev ? join(process.cwd(), "logs", "progress-ledger-v2.log") : resolveLogPath());
   installFileLogger();
   rotateAndPruneLogs();
   await cleanupTempDir();
 
-  console.info("CareerFlow starting", { packaged: app.isPackaged, version: app.getVersion() });
+  console.info("Progress Ledger starting", { packaged: app.isPackaged, version: app.getVersion() });
 
   // --- Native core / SQLite ---
   const dbPath = resolveDbPath();
@@ -347,8 +351,8 @@ app.whenReady().then(async () => {
   //
   // WHAT IS NOT RECORDED — a real, reported gap, not an oversight to paper
   // over: marketplace install/enable/disable/update/uninstall, provider
-  // credential writes and clears, backup export/restore, and every browser /
-  // Donut lifecycle and navigation action. See
+  // credential writes and clears, backup export/restore, and every browser
+  // lifecycle and navigation action. See
   // _evidence_FINALVAL_remaining_gaps_20260926.txt.
   //
   // Initialized immediately after the DB, because the audit trail must be able
@@ -372,7 +376,7 @@ app.whenReady().then(async () => {
     Plugins.configurePlugins({ rootDir: pluginRoot });
     const loaded = Plugins.loadFromDisk({ rootDir: pluginRoot });
     if (!loaded.ok) console.warn("Plugin registry load reported errors:", loaded.errors);
-    const autoReload = process.env.CAREERFLOW_PLUGIN_AUTO_RELOAD === "1";
+    const autoReload = process.env.PROGRESSLEDGER_V2_PLUGIN_AUTO_RELOAD === "1";
     Plugins.configureAutoReload({ enabled: autoReload });
     console.log("Plugin registry ready", {
       count: loaded.count,
@@ -538,10 +542,10 @@ function runMigrationFlow() {
     // The migration-test mode uses a pre-created directory instead of opening
     // a native folder picker. This keeps first-run migration reproducible and
     // isolated without weakening the production picker/IPC path.
-    if (isMigrationTest && process.env.CAREERFLOW_MIGRATION_TEST_TARGET) {
+    if (isMigrationTest && process.env.PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET) {
       try {
         selectedMigrationPath = realpathSync(
-          resolvePath(process.env.CAREERFLOW_MIGRATION_TEST_TARGET),
+          resolvePath(process.env.PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET),
         );
       } catch {
         selectedMigrationPath = null;
@@ -608,14 +612,14 @@ function runMigrationFlow() {
 
       mkdirSync(targetPath, { recursive: true });
 
-      const legacyDbPath = join(app.getPath("userData"), "careerflow.db");
+      const legacyDbPath = join(app.getPath("userData"), "progress-ledger-v2.db");
       const hasLegacyData = existsSync(legacyDbPath);
 
       if (hasLegacyData) {
         // Flush committed SQLite WAL pages into the primary file before copy.
         core.checkpointDb(legacyDbPath);
         migWindow.webContents.send("migration:progress", { step: "Copying database...", percent: 10 });
-        const targetDbPath = join(targetPath, "careerflow.db");
+        const targetDbPath = join(targetPath, "progress-ledger-v2.db");
         await cp(legacyDbPath, targetDbPath);
 
         migWindow.webContents.send("migration:progress", {

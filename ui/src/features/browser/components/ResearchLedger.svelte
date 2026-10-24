@@ -20,8 +20,8 @@
     loading = true;
     try {
       const [nextSources, nextCaptures] = await Promise.all([
-        window.careerflow.research.listSources(Number(requestedProfileId)),
-        window.careerflow.research.listCaptures(Number(requestedProfileId)),
+        window.progressLedger.research.listSources(Number(requestedProfileId)),
+        window.progressLedger.research.listCaptures(Number(requestedProfileId)),
       ]);
       if (requestId !== refreshRequest) return false;
       sources = Array.isArray(nextSources) ? nextSources : [];
@@ -43,7 +43,7 @@
     savingPassage = true;
     notice = "";
     try {
-      const result = await window.careerflow.research.capture(Number(profileId), researchPageId, "clip", passageText.trim());
+      const result = await window.progressLedger.research.capture(Number(profileId), researchPageId, "clip", passageText.trim());
       if (result?.ok === false) throw new Error(result.reason ?? "capture-failed");
       const refreshed = await refresh();
       if (!refreshed) throw new Error("capture-saved-refresh-failed");
@@ -85,7 +85,7 @@
 
 <main class="research-ledger-page" data-testid="research-ledger-page">
   <header class="ledger-header">
-    <div><p class="eyebrow">SPACE BUNNY · RESEARCH</p><h1>Research ledger</h1><p class="sub">Sources and passages kept from CareerFlow's embedded browser.</p></div>
+    <div><p class="eyebrow">RESEARCH</p><h1>Research ledger</h1><p class="sub">Sources and passages kept from Progress Ledger's embedded browser.</p></div>
     <button class="refresh" type="button" aria-label="Refresh Research ledger" onclick={() => refresh()} disabled={loading}><RotateCw size={13} /> Refresh</button>
   </header>
   <nav class="filters" aria-label="Research ledger filter">

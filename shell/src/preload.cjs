@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 // shell/src/ipc/*.js — scripts/check-ipc.mjs enforces this at test time.
 const api = {
   runtime: {
-    isE2E: process.argv.includes("--careerflow-e2e"),
+    isE2E: process.argv.includes("--progressledger-v2-e2e"),
   },
   ping: () => ipcRenderer.invoke("core:ping"),
 
@@ -255,7 +255,7 @@ const api = {
       ipcRenderer.invoke("career:set-milestone-subject", { profileId, milestoneId, subjectId }),
   },
 
-  // CareerFlow-owned embedded browser (D2-D6 plan, Phase 1).
+  // Progress Ledger-owned embedded browser (D2-D6 plan, Phase 1).
   //
   // The renderer names an OPAQUE page id (`bp-N`, minted in the main process)
   // and, for the layout declaration, integers. It cannot name a partition, a
@@ -287,134 +287,14 @@ const api = {
     },
   },
 
-  // Donut browser integration (optional capability). Sanitized lifecycle
-  // status only — bearer tokens and raw runtime configuration never cross.
-  donut: {
-    getStatus: () => ipcRenderer.invoke("donut:get-status"),
-    ensureStarted: () => ipcRenderer.invoke("donut:ensure-started"),
-    openSubjectLink: (url, profileId) =>
-      ipcRenderer.invoke("donut:open-subject-link", { url, profileId }),
+  // System browser: subject links open outside the app. Only http(s)
+  // URLs are accepted; the main process refuses everything else.
+  system: {
+    openExternal: (url) => ipcRenderer.invoke("system:open-external", { url }),
   },
 
-  // Donut Browser Manager: durable metadata for managed isolated browser
-  // profiles + their URL shortcuts. Opaque local ids only — the machine-local
-  // Donut UUID and all transport detail stay in the main process. Every
-  // mutation carries the active CareerFlow profileId so the main process can
-  // enforce the ownership invariant at the SQL boundary.
-  browserManager: {
-    list: (profileId) => ipcRenderer.invoke("bm:list", profileId),
-    add: (profileId, localId, name) =>
-      ipcRenderer.invoke("bm:add", { profileId, localId, name }),
-    rename: (profileId, localId, name) =>
-      ipcRenderer.invoke("bm:rename", { profileId, localId, name }),
-    setEnabled: (profileId, localId, enabled) =>
-      ipcRenderer.invoke("bm:set-enabled", { profileId, localId, enabled }),
-    remove: (profileId, localId) =>
-      ipcRenderer.invoke("bm:delete", { profileId, localId }),
-    reorderProfiles: (profileId, orderedIds) =>
-      ipcRenderer.invoke("bm:reorder-profiles", { profileId, orderedIds }),
-    listShortcuts: (profileId, browserProfileLocalId) =>
-      ipcRenderer.invoke("bm:list-shortcuts", {
-        profileId,
-        browserProfileId: browserProfileLocalId,
-      }),
-    addShortcut: (profileId, browserProfileLocalId, label, url) =>
-      ipcRenderer.invoke("bm:add-shortcut", {
-        profileId,
-        browserProfileId: browserProfileLocalId,
-        label,
-        url,
-      }),
-    updateShortcut: (profileId, id, label, url) =>
-      ipcRenderer.invoke("bm:update-shortcut", {
-        profileId,
-        id,
-        label,
-        url,
-      }),
-    deleteShortcut: (profileId, id) =>
-      ipcRenderer.invoke("bm:delete-shortcut", { profileId, id }),
-    reorderShortcuts: (profileId, browserProfileLocalId, orderedIds) =>
-      ipcRenderer.invoke("bm:reorder-shortcuts", {
-        profileId,
-        browserProfileId: browserProfileLocalId,
-        orderedIds,
-      }),
-    togglePin: (profileId, shortcutId, pinned) =>
-      ipcRenderer.invoke("bm:toggle-shortcut-pin", {
-        profileId,
-        shortcutId,
-        pinned,
-      }),
-    listPinned: (profileId) => ipcRenderer.invoke("bm:list-pinned", profileId),
-    openBrowserProfile: (browserProfileLocalId, profileId) =>
-      ipcRenderer.invoke("donut:open-browser-profile", {
-        browserProfileLocalId,
-        profileId,
-      }),
-    openShortcutUrl: (shortcutId, profileId) =>
-      ipcRenderer.invoke("donut:open-shortcut-url", { shortcutId, profileId }),
-  },
 
-  // Retired Donut Browser Workspace compatibility surface. Main returns a
-  // stable feature-not-supported refusal for every operation; these wrappers
-  // remain only so older renderer/agent callers fail honestly during migration.
-  // They do not expose a CDP endpoint or invoke the CareerFlow-owned embedded
-  // browser, which has its separate `browser` namespace above.
-  browserWorkspace: {
-    launch: (profileLocalId, cfProfileId, mode = "separate") =>
-      ipcRenderer.invoke("browser-workspace:launch", { profileLocalId, cfProfileId, mode }),
-    state: () => ipcRenderer.invoke("browser-workspace:state"),
-    stop: () => ipcRenderer.invoke("browser-workspace:stop"),
-    navigate: (profileLocalId, cfProfileId, url) => {
-      // Preserve the original two-argument workspace API while keeping the
-      // owner resolution in the main process. The compatibility marker is
-      // never a profile id and cannot select a different browser owner.
-      if (url === undefined && typeof cfProfileId === "string" && /^https?:\/\//i.test(cfProfileId)) {
-        return ipcRenderer.invoke("browser-workspace:navigate", {
-          profileLocalId,
-          cfProfileId: null,
-          url: cfProfileId,
-          legacyActiveWorkspace: true,
-        });
-      }
-      return ipcRenderer.invoke("browser-workspace:navigate", { profileLocalId, cfProfileId, url });
-    },
-    newTab: (profileLocalId, cfProfileId) =>
-      ipcRenderer.invoke("browser-workspace:new-tab", { profileLocalId, cfProfileId }),
-    closeTab: (profileLocalId, cfProfileId, tabId) =>
-      ipcRenderer.invoke("browser-workspace:close-tab", { profileLocalId, cfProfileId, tabId }),
-    activateTab: (profileLocalId, cfProfileId, tabId) =>
-      ipcRenderer.invoke("browser-workspace:activate-tab", { profileLocalId, cfProfileId, tabId }),
-    reload: (profileLocalId, cfProfileId, tabId) => {
-      if (tabId === undefined && typeof cfProfileId === "string") {
-        return ipcRenderer.invoke("browser-workspace:reload", {
-          profileLocalId,
-          cfProfileId: null,
-          tabId: cfProfileId,
-          legacyActiveWorkspace: true,
-        });
-      }
-      return ipcRenderer.invoke("browser-workspace:reload", { profileLocalId, cfProfileId, tabId });
-    },
-    back: (profileLocalId, cfProfileId, tabId) =>
-      ipcRenderer.invoke("browser-workspace:back", { profileLocalId, cfProfileId, tabId }),
-    forward: (profileLocalId, cfProfileId, tabId) =>
-      ipcRenderer.invoke("browser-workspace:forward", { profileLocalId, cfProfileId, tabId }),
-    screenshot: (profileLocalId, cfProfileId, tabId) =>
-      ipcRenderer.invoke("browser-workspace:screenshot", { profileLocalId, cfProfileId, tabId }),
-    // `integratedResize` / `integratedFocus` were removed with `integrated`
-    // mode (approved decision C): they existed only to resize and focus a
-    // foreign Donut/Wayfern window reparented into the CareerFlow window.
-    subscribe: () => ipcRenderer.invoke("browser-workspace:subscribe"),
-    // Main-process pushes sanitized events here; the renderer never has to
-    // poll. Returns an unsubscribe function (mirrors the goal / sync pattern).
-    onEvent: (cb) => {
-      const handler = (_e, payload) => cb(payload);
-      ipcRenderer.on("browser-workspace:on-event", handler);
-      return () => ipcRenderer.removeListener("browser-workspace:on-event", handler);
-    },
-  },
+
 
   // Project Mode tool system. The renderer sees the safe metadata
   // (name, description, permission, inputSchema) and can invoke tools
@@ -545,7 +425,7 @@ const api = {
         limit: typeof limit === "number" ? limit : 50,
       }),
     // Resumable previous run: most-recent non-terminal agent for the
-    // profile (running or paused when CareerFlow was last closed).
+    // profile (running or paused when Progress Ledger was last closed).
     // Returns { ok, agent } where agent is null when nothing is
     // resumable. The renderer's ResumeBanner surfaces this on top of
     // Project Mode so the user can pick up where they left off.
@@ -832,7 +712,7 @@ const api = {
   },
 };
 
-/** Optional IPC debug tracing, enabled via localStorage["careerflow_debug_mode"]. */
+/** Optional IPC debug tracing, enabled via localStorage["progressledger_v2_debug_mode"]. */
 function wrapApi(obj, path = "") {
   for (const key of Object.keys(obj)) {
     const val = obj[key];
@@ -848,7 +728,7 @@ function wrapApi(obj, path = "") {
       obj[key] = async function (...args) {
         let isDebug = false;
         try {
-          isDebug = localStorage.getItem("careerflow_debug_mode") === "true";
+          isDebug = localStorage.getItem("progressledger_v2_debug_mode") === "true";
         } catch (e) {}
 
         if (!isDebug) {
@@ -898,4 +778,4 @@ function wrapApi(obj, path = "") {
 }
 
 wrapApi(api);
-contextBridge.exposeInMainWorld("careerflow", api);
+contextBridge.exposeInMainWorld("progressLedger", api);

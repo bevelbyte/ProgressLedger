@@ -195,8 +195,8 @@
     if (typeof profileId !== "number" || apid == null || aaid == null || !obj) return;
     promoting = true;
     try {
-      const goals = window.careerflow && window.careerflow.goals;
-      const pm = window.careerflow && window.careerflow.projectMode;
+      const goals = window.progressLedger && window.progressLedger.goals;
+      const pm = window.progressLedger && window.progressLedger.projectMode;
       if (!goals || typeof goals.create !== "function") {
         toast.error("Goals API unavailable.", "Cannot promote");
         return;
@@ -271,7 +271,7 @@ async function exportSession() {
     }
     exporting = true;
     try {
-      const result = await window.careerflow.projectMode.exportSession(profileId, agentId);
+      const result = await window.progressLedger.projectMode.exportSession(profileId, agentId);
       if (!result || result.ok === false) {
         toast.error(result && result.error ? String(result.error) : "Export failed.", "Export error");
         return;

@@ -12,7 +12,7 @@ const T = "2026-10-04";
 //
 // This deliberately does NOT use toISOString(): that converts to UTC first, so
 // in any timezone behind UTC a "0 day offset" deadline serialises to the
-// PREVIOUS day and the whole bucket model silently shifts. CareerFlow's date
+// PREVIOUS day and the whole bucket model silently shifts. Progress Ledger's date
 // semantics are local-calendar everywhere (today.js documents this), so the
 // helper has to build local strings the same way.
 const dl = (id, subjectId, offset, completedAt = null) => {

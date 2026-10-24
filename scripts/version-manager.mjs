@@ -1,8 +1,8 @@
 /**
- * CareerFlow Safe Version Management Tool
+ * Progress Ledger Safe Version Management Tool
  * 
  * Provides deterministic, non-destructive freeze, verify, list, and restore
- * operations for CareerFlow versions.
+ * operations for Progress Ledger versions.
  * 
  * Usage:
  *   node scripts/version-manager.mjs freeze [tag] [--desc "description"]
@@ -85,7 +85,7 @@ export const MANAGED_PROJECT_PREFIXES = [
  *
  * POLICY:
  * Versions v1 and v2 contain post-freeze companion batch launchers
- * ('Launch-CareerFlow-V1.bat' and 'Launch-CareerFlow-V2.bat') created to allow
+ * ('Launch-Progress Ledger-V1.bat' and 'Launch-Progress Ledger-V2.bat') created to allow
  * standalone execution of historical releases without mutating the active workspace.
  *
  * Because frozen releases are immutable and their cryptographic manifests were generated
@@ -98,8 +98,8 @@ export const MANAGED_PROJECT_PREFIXES = [
  * 3. The launcher must reside directly at the root of the version snapshot, not in subdirectories.
  */
 export const ALLOWED_VERSION_COMPANION_LAUNCHERS = Object.freeze({
-  v1: Object.freeze(['Launch-CareerFlow-V1.bat']),
-  v2: Object.freeze(['Launch-CareerFlow-V2.bat']),
+  v1: Object.freeze(['Launch-Progress Ledger-V1.bat']),
+  v2: Object.freeze(['Launch-Progress Ledger-V2.bat']),
 });
 
 /**
@@ -318,14 +318,14 @@ export async function freezeVersion(options = {}) {
   const cwd = options.cwd || ROOT_DIR;
   const versionsDir = path.join(cwd, 'versions');
   let tag = options.tag;
-  const description = options.description || 'CareerFlow Daily-Use Frozen Baseline';
+  const description = options.description || 'Progress Ledger Daily-Use Frozen Baseline';
 
   if (!tag) {
     tag = getNextVersionTag(versionsDir);
   }
 
   console.log(`\n============================================================`);
-  console.log(`CAREERFLOW FREEZE: Version ${tag}`);
+  console.log(`PROGRESSLEDGER FREEZE: Version ${tag}`);
   console.log(`============================================================`);
   console.log(`Source workspace: ${cwd}`);
   console.log(`Target version:   ${tag}`);
@@ -345,7 +345,7 @@ export async function freezeVersion(options = {}) {
   try {
     // Pre-flight checks
     console.log(`\n[1/6] Running pre-freeze validations...`);
-    const coreNodePath = path.join(cwd, 'core', 'careerflow_core.win32-x64-msvc.node');
+    const coreNodePath = path.join(cwd, 'core', 'progress_ledger_core.win32-x64-msvc.node');
     const uiDistPath = path.join(cwd, 'ui', 'dist', 'index.html');
     const packageJsonPath = path.join(cwd, 'package.json');
 
@@ -443,7 +443,7 @@ export async function freezeVersion(options = {}) {
     fs.writeFileSync(toExtendedPath(manifestPath), JSON.stringify(manifestData, null, 2), 'utf8');
 
     // Generate VERSION-SUMMARY.md
-    const summaryContent = `# CareerFlow Release ${tag}
+    const summaryContent = `# Progress Ledger Release ${tag}
 
 - **Version:** ${tag}
 - **Status:** VERIFIED / FROZEN
@@ -498,7 +498,7 @@ or double-click \`verify-version.bat\` and enter \`${tag}\`.
 
 ## Contents Summary
 
-- **Core Native Addon:** \`core/careerflow_core.win32-x64-msvc.node\` (Included & Verified)
+- **Core Native Addon:** \`core/progress_ledger_core.win32-x64-msvc.node\` (Included & Verified)
 - **UI Distribution:** \`ui/dist/**\` (Included & Verified)
 - **Rust Core Sources:** \`core/src/**\`, \`core/migrations/**\`, \`core/Cargo.toml\`
 - **Electron Shell:** \`shell/src/**\`, \`shell/tests/**\`
@@ -570,7 +570,7 @@ export async function verifyVersion(tag, options = {}) {
 
   if (!quiet) {
     console.log(`\n============================================================`);
-    console.log(`CAREERFLOW VERIFY: Version ${tag}`);
+    console.log(`PROGRESSLEDGER VERIFY: Version ${tag}`);
     console.log(`============================================================`);
     console.log(`Checking path: ${targetDir}`);
   }
@@ -707,7 +707,7 @@ export async function listVersions(options = {}) {
   const doVerify = !!options.verify;
 
   console.log(`\n============================================================`);
-  console.log(`CAREERFLOW VERSION INVENTORY`);
+  console.log(`PROGRESSLEDGER VERSION INVENTORY`);
   console.log(`============================================================`);
   console.log(`Versions Directory: ${versionsDir}`);
   console.log(`Integrity Mode:     ${doVerify ? 'Live Cryptographic Verification' : 'Manifest Record Only (live check pending)'}\n`);
@@ -850,7 +850,7 @@ export async function restoreVersion(tag, options = {}) {
   const dryRun = !!options.dryRun;
 
   console.log(`\n============================================================`);
-  console.log(`CAREERFLOW RESTORE: Version ${tag}${dryRun ? ' (DRY RUN)' : ''}`);
+  console.log(`PROGRESSLEDGER RESTORE: Version ${tag}${dryRun ? ' (DRY RUN)' : ''}`);
   console.log(`============================================================`);
 
   if (!fs.existsSync(toExtendedPath(targetDir))) {
@@ -1089,7 +1089,7 @@ async function main() {
       const dryRun = args.includes('--dry-run');
       await restoreVersion(tag, { dryRun });
     } else {
-      console.log(`CareerFlow Version Manager`);
+      console.log(`Progress Ledger Version Manager`);
       console.log(`Available commands:`);
       console.log(`  freeze [tag] [--desc "description"] - Freeze current working copy into versions/<tag>`);
       console.log(`  verify <tag>                        - Verify integrity of frozen version <tag>`);

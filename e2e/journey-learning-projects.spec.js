@@ -23,46 +23,46 @@ test("learning + project data persists across an application restart", async () 
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const seed = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Journey Kim", `journey-${Date.now()}`);
-    const trackId = await window.careerflow.academic.addTrack(p.id, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(p.id, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(p.id, semId, "Subjects");
-    const subjectId = await window.careerflow.academic.addSubject(p.id, msId, "Operating Systems", "CS401");
+    const p = await window.progressLedger.profiles.add("Journey Kim", `journey-${Date.now()}`);
+    const trackId = await window.progressLedger.academic.addTrack(p.id, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(p.id, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(p.id, semId, "Subjects");
+    const subjectId = await window.progressLedger.academic.addSubject(p.id, msId, "Operating Systems", "CS401");
 
     // Learning domain.
-    await window.careerflow.resources.addNote(p.id, subjectId, "Lecture 4", "scheduling algorithms");
-    await window.careerflow.cards.create(p.id, subjectId, "What is a deadlock?", "Circular wait");
-    await window.careerflow.mistakes.add(p.id, subjectId, "wrong wait order", "conceptual", "lock ordering", "[\"sync\"]");
-    await window.careerflow.labs.add(p.id, subjectId, 2, "Xv6 scheduler lab");
-    await window.careerflow.formulas.add(p.id, subjectId, "Turnaround", "T = finish - arrive", "metrics");
+    await window.progressLedger.resources.addNote(p.id, subjectId, "Lecture 4", "scheduling algorithms");
+    await window.progressLedger.cards.create(p.id, subjectId, "What is a deadlock?", "Circular wait");
+    await window.progressLedger.mistakes.add(p.id, subjectId, "wrong wait order", "conceptual", "lock ordering", "[\"sync\"]");
+    await window.progressLedger.labs.add(p.id, subjectId, 2, "Xv6 scheduler lab");
+    await window.progressLedger.formulas.add(p.id, subjectId, "Turnaround", "T = finish - arrive", "metrics");
 
     // Review the card once (Good) so SM-2 leaves its initial state.
-    const cardId = (await window.careerflow.cards.all(p.id))[0].id;
-    await window.careerflow.cards.review(p.id, cardId, 3);
+    const cardId = (await window.progressLedger.cards.all(p.id))[0].id;
+    await window.progressLedger.cards.review(p.id, cardId, 3);
 
     // Projects domain.
-    await window.careerflow.projects.add(p.id, "Xv6 Extensions", "major", "2026-12-20", "course capstone");
-    const projects = await window.careerflow.projects.list(p.id);
+    await window.progressLedger.projects.add(p.id, "Xv6 Extensions", "major", "2026-12-20", "course capstone");
+    const projects = await window.progressLedger.projects.list(p.id);
     const projectId = projects[0].id;
-    await window.careerflow.projectTasks.add(p.id, projectId, "Syscall harness", "high", null);
-    const tasks = await window.careerflow.projectTasks.list(p.id, projectId);
+    await window.progressLedger.projectTasks.add(p.id, projectId, "Syscall harness", "high", null);
+    const tasks = await window.progressLedger.projectTasks.list(p.id, projectId);
 
     // Career link: milestone -> this project.
-    const goalId = await window.careerflow.career.addGoal({ profileId: p.id, title: "Kernel Engineer", isPrimary: true });
-    const milestoneId = await window.careerflow.career.addMilestone({ profileId: p.id, goalId, title: "Finish Xv6 work" });
-    await window.careerflow.career.setMilestoneProject(p.id, milestoneId, projectId);
+    const goalId = await window.progressLedger.career.addGoal({ profileId: p.id, title: "Kernel Engineer", isPrimary: true });
+    const milestoneId = await window.progressLedger.career.addMilestone({ profileId: p.id, goalId, title: "Finish Xv6 work" });
+    await window.progressLedger.career.setMilestoneProject(p.id, milestoneId, projectId);
 
     return {
       pid: p.id, slug: p.slug, subjectId, projectId, taskId: tasks[0].id,
@@ -72,21 +72,21 @@ test("learning + project data persists across an application restart", async () 
 
   // Complete the project task (status transition) before restart.
   await win.evaluate(async ({ pid, taskId }) => {
-    await window.careerflow.projectTasks.update(pid, taskId, "Syscall harness", "done", "high", null, null);
+    await window.progressLedger.projectTasks.update(pid, taskId, "Syscall harness", "done", "high", null, null);
   }, seed);
 
   // Pre-restart snapshot of everything we expect to survive.
   const before = await win.evaluate(async ({ pid, subjectId, projectId, milestoneId }) => {
-    const cards = await window.careerflow.cards.all(pid);
+    const cards = await window.progressLedger.cards.all(pid);
     const card = cards.find((c) => c.subjectId === subjectId);
-    const mistakes = await window.careerflow.mistakes.list({ profileId: pid, subjectId });
-    const resources = await window.careerflow.resources.list({ profileId: pid, subjectId });
-    const labs = await window.careerflow.labs.list(pid, subjectId);
-    const formulas = await window.careerflow.formulas.list(pid, subjectId, null);
-    const tasks = await window.careerflow.projectTasks.list(pid, projectId);
-    const milestones = await window.careerflow.career.milestones(
+    const mistakes = await window.progressLedger.mistakes.list({ profileId: pid, subjectId });
+    const resources = await window.progressLedger.resources.list({ profileId: pid, subjectId });
+    const labs = await window.progressLedger.labs.list(pid, subjectId);
+    const formulas = await window.progressLedger.formulas.list(pid, subjectId, null);
+    const tasks = await window.progressLedger.projectTasks.list(pid, projectId);
+    const milestones = await window.progressLedger.career.milestones(
       pid,
-      (await window.careerflow.career.goals(pid)).find((g) => g.isPrimary).id
+      (await window.progressLedger.career.goals(pid)).find((g) => g.isPrimary).id
     );
     const ms = milestones.find((m) => m.title === "Finish Xv6 work");
     return {
@@ -104,7 +104,7 @@ test("learning + project data persists across an application restart", async () 
   // Activate the seeded profile so feature views bind to it.
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.locator(".nav-item", { hasText: "Profiles" }).click();
   await win.locator(".profile-card", { hasText: "Journey Kim" }).locator(".profile-main").click();
   await win.waitForTimeout(700);
@@ -120,19 +120,19 @@ test("learning + project data persists across an application restart", async () 
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const afterRestart = await win.evaluate(async ({ pid, subjectId, projectId, milestoneId }) => {
-    const cards = await window.careerflow.cards.all(pid);
+    const cards = await window.progressLedger.cards.all(pid);
     const card = cards.find((c) => c.subjectId === subjectId);
-    const mistakes = await window.careerflow.mistakes.list({ profileId: pid, subjectId });
-    const resources = await window.careerflow.resources.list({ profileId: pid, subjectId });
-    const labs = await window.careerflow.labs.list(pid, subjectId);
-    const formulas = await window.careerflow.formulas.list(pid, subjectId, null);
-    const tasks = await window.careerflow.projectTasks.list(pid, projectId);
-    const milestones = await window.careerflow.career.milestones(
+    const mistakes = await window.progressLedger.mistakes.list({ profileId: pid, subjectId });
+    const resources = await window.progressLedger.resources.list({ profileId: pid, subjectId });
+    const labs = await window.progressLedger.labs.list(pid, subjectId);
+    const formulas = await window.progressLedger.formulas.list(pid, subjectId, null);
+    const tasks = await window.progressLedger.projectTasks.list(pid, projectId);
+    const milestones = await window.progressLedger.career.milestones(
       pid,
-      (await window.careerflow.career.goals(pid)).find((g) => g.isPrimary).id
+      (await window.progressLedger.career.goals(pid)).find((g) => g.isPrimary).id
     );
     const ms = milestones.find((m) => m.title === "Finish Xv6 work");
     return {

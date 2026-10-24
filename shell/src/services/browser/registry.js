@@ -1,4 +1,4 @@
-// Browser page registry — the main process's record of live CareerFlow browser
+// Browser page registry — the main process's record of live Progress Ledger browser
 // pages. Phase 1 of the approved D2-D6 plan.
 //
 // WHY A REGISTRY AT ALL. The renderer must never hold a `WebContentsView`, a

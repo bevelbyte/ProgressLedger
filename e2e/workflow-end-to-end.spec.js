@@ -10,7 +10,7 @@
 //   prove every one of those facts survived -> visit the Marketplace ->
 //   prove the installed set persisted -> CLOSE again
 //
-// Why the packaged binary: the renderer is served over `careerflow://` rather
+// Why the packaged binary: the renderer is served over `progressledger-v2://` rather
 // than `file:`, `app.getPath("userData")` resolves differently, and `whenReady`
 // ordering is the real one. None of that is exercised by a dev-server run.
 //
@@ -35,7 +35,7 @@ import http from "node:http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
-const PACKAGED_EXE = join(projectRoot, "release", "win-unpacked", "CareerFlow.exe");
+const PACKAGED_EXE = join(projectRoot, "release", "win-unpacked", "Progress Ledger.exe");
 
 const FIXTURE_KEY = "E2E-WORKFLOW-FIXTURE-KEY-NOT-A-SECRET";
 
@@ -53,7 +53,7 @@ async function waitFor(fn, { timeoutMs = 60_000, intervalMs = 250, what = "condi
 
 /**
  * A scripted OpenAI-compatible provider. The credential is planted through
- * CareerFlow's OWN pm-secrets.json mechanism with a fixture value, so no real
+ * Progress Ledger's OWN pm-secrets.json mechanism with a fixture value, so no real
  * provider and no real secret is involved.
  */
 function startScriptedProvider() {
@@ -127,10 +127,10 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
         args: [`--user-data-dir=${userDataDir}`],
         env: {
           ...process.env,
-          CAREERFLOW_E2E: "1",
-          CAREERFLOW_E2E_USER_DATA: userDataDir,
-          CAREERFLOW_E2E_DONUT_STUB: "1",
-          CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+          PROGRESSLEDGER_V2_E2E: "1",
+          PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+          PROGRESSLEDGER_V2_E2E_DONUT_STUB: "1",
+          PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
         },
       });
 
@@ -139,12 +139,12 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       app = await launch();
       let win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30_000 });
       await dismissOnboarding(win);
 
       // ---- 1. PROFILE -----------------------------------------------------
       const profileId = await win.evaluate(async () => {
-        const p = await window.careerflow.profiles.add("Workflow Owner", `wf-${Date.now()}`);
+        const p = await window.progressLedger.profiles.add("Workflow Owner", `wf-${Date.now()}`);
         return Number(p.id);
       });
       expect(profileId).toBeGreaterThan(0);
@@ -154,7 +154,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // must accept a real existing directory and store its CANONICAL path.
       const projectId = await win.evaluate(
         ([pid, root]) =>
-          window.careerflow.projectMode.createProject({
+          window.progressLedger.projectMode.createProject({
             profileId: pid,
             name: "Workflow Project",
             description: "phase-12",
@@ -166,7 +166,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       expect(projectId, "createProject must succeed against a real root").toBeGreaterThan(0);
 
       const project = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectMode.getProject(pid, id),
+        ([pid, id]) => window.progressLedger.projectMode.getProject(pid, id),
         [profileId, projectId]
       );
       // `project:get-project` returns the project ROW directly once ownership
@@ -179,7 +179,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       const missingRoot = join(userDataDir, "definitely", "not", "here");
       const badRoot = await win.evaluate(
         ([pid, root]) =>
-          window.careerflow.projectMode.createProject({
+          window.progressLedger.projectMode.createProject({
             profileId: pid,
             name: "Bad Root",
             description: "no",
@@ -193,13 +193,13 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
 
       // ---- 4. PROJECT INTELLIGENCE over the bound root ---------------------
       const indexed = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectIntel.index(pid, id, "full"),
+        ([pid, id]) => window.progressLedger.projectIntel.index(pid, id, "full"),
         [profileId, projectId]
       );
       expect(indexed.ok, `project-intel index must succeed: ${JSON.stringify(indexed)}`).toBe(true);
 
       const files = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectIntel.list(pid, id, { max: 200 }),
+        ([pid, id]) => window.progressLedger.projectIntel.list(pid, id, { max: 200 }),
         [profileId, projectId]
       );
       expect(files.ok).toBe(true);
@@ -211,7 +211,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // read to it (SF-1 + SF-2). So a read for a project this profile does
       // not own must be refused outright.
       const foreignIntel = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectIntel.list(pid, id, {}),
+        ([pid, id]) => window.progressLedger.projectIntel.list(pid, id, {}),
         [profileId + 9999, projectId]
       );
       expect(foreignIntel.ok, "project-intel must refuse a project the profile does not own").toBeFalsy();
@@ -229,14 +229,14 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // academic: track -> semester -> milestone -> subject. Notes live inside
       // a subject, so the whole chain has to exist first.
       const subjectId = await win.evaluate(async ([pid]) => {
-        await window.careerflow.academic.tree(pid).catch(() => {});
-        const track = await window.careerflow.academic.addTrack(pid, "Workflow BSc");
+        await window.progressLedger.academic.tree(pid).catch(() => {});
+        const track = await window.progressLedger.academic.addTrack(pid, "Workflow BSc");
         const trackId = typeof track === "number" ? track : track?.id;
-        const semester = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
+        const semester = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
         const semesterId = typeof semester === "number" ? semester : semester?.id;
-        const milestone = await window.careerflow.academic.addMilestone(pid, semesterId, "Core");
+        const milestone = await window.progressLedger.academic.addMilestone(pid, semesterId, "Core");
         const milestoneId = typeof milestone === "number" ? milestone : milestone?.id;
-        const subject = await window.careerflow.academic.addSubject(pid, milestoneId, "Workflow Subject", "WFS101");
+        const subject = await window.progressLedger.academic.addSubject(pid, milestoneId, "Workflow Subject", "WFS101");
         return typeof subject === "number" ? subject : subject?.id;
       }, [profileId]);
       expect(subjectId).toBeGreaterThan(0);
@@ -244,7 +244,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // `resources:add-note` returns the new row id (core.addNote), so accept
       // either the bare number or an envelope.
       const noteAdd = await win.evaluate(
-        ([pid, sid]) => window.careerflow.resources.addNote(pid, sid, "Workflow Note", "Body that must survive."),
+        ([pid, sid]) => window.progressLedger.resources.addNote(pid, sid, "Workflow Note", "Body that must survive."),
         [profileId, subjectId]
       );
       const noteId = typeof noteAdd === "number" ? noteAdd : noteAdd?.id;
@@ -254,7 +254,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // field landed in the right column. Before the fix the body was written
       // into `title` and `content` was null.
       const readBack = await win.evaluate(
-        ([pid, id]) => window.careerflow.resources.get({ profileId: pid, id }),
+        ([pid, id]) => window.progressLedger.resources.get({ profileId: pid, id }),
         [profileId, noteId]
       );
       expect(readBack.title, "the title must be the title").toBe("Workflow Note");
@@ -263,18 +263,18 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // And it must be reachable through the profile-scoped LIST, which is how
       // the UI actually finds it. A misfiled note would be invisible here.
       const listed = await win.evaluate(
-        ([pid, sid]) => window.careerflow.resources.list({ profileId: pid, subjectId: sid }),
+        ([pid, sid]) => window.progressLedger.resources.list({ profileId: pid, subjectId: sid }),
         [profileId, subjectId]
       );
       expect(JSON.stringify(listed)).toContain("Workflow Note");
 
       // Edit it and re-read: the update path is equally positional.
       await win.evaluate(
-        ([pid, id]) => window.careerflow.resources.updateNote(pid, id, "Workflow Note v2", "Edited body."),
+        ([pid, id]) => window.progressLedger.resources.updateNote(pid, id, "Workflow Note v2", "Edited body."),
         [profileId, noteId]
       );
       const afterEdit = await win.evaluate(
-        ([pid, id]) => window.careerflow.resources.get({ profileId: pid, id }),
+        ([pid, id]) => window.progressLedger.resources.get({ profileId: pid, id }),
         [profileId, noteId]
       );
       expect(afterEdit.title).toBe("Workflow Note v2");
@@ -287,20 +287,20 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
         "utf8",
       );
       // The credential must be read from the app's own userData, which the
-      // packaged app resolves via CAREERFLOW_E2E_USER_DATA.
+      // packaged app resolves via PROGRESSLEDGER_V2_E2E_USER_DATA.
       provider.state.rounds = [
         { toolCalls: [{ name: "fs_write", args: { path: markerName, content: "WORKFLOW-OK" } }] },
         { text: "workflow complete" },
       ];
 
       const agentId = await win.evaluate(
-        ([pid, proj]) => window.careerflow.projectMode.createAgent(pid, proj, "Write the workflow proof file."),
+        ([pid, proj]) => window.progressLedger.projectMode.createAgent(pid, proj, "Write the workflow proof file."),
         [profileId, projectId]
       );
       expect(agentId).toBeGreaterThan(0);
 
       const startRes = await win.evaluate(
-        ([pid, aid]) => window.careerflow.projectMode.startAgent(pid, aid),
+        ([pid, aid]) => window.progressLedger.projectMode.startAgent(pid, aid),
         [profileId, agentId]
       );
       expect(startRes.ok, `startAgent: ${JSON.stringify(startRes)}`).toBe(true);
@@ -308,7 +308,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // ---- 9. AUDIT: the privileged decision is on the record --------------
       const approvals = await waitFor(async () => {
         const r = await win.evaluate(
-          ([pid, aid]) => window.careerflow.projectMode.listPendingApprovals(pid, aid),
+          ([pid, aid]) => window.progressLedger.projectMode.listPendingApprovals(pid, aid),
           [profileId, agentId]
         );
         return r && r.ok && r.count >= 1 ? r : null;
@@ -319,7 +319,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       expect(row).not.toHaveProperty("input");
 
       const approveRes = await win.evaluate(
-        ([pid, aid, id]) => window.careerflow.projectMode.approveCall(pid, aid, id),
+        ([pid, aid, id]) => window.progressLedger.projectMode.approveCall(pid, aid, id),
         [profileId, agentId, row.id]
       );
       expect(approveRes && approveRes.ok, `approveCall: ${JSON.stringify(approveRes)} row=${JSON.stringify(row)}`).toBe(true);
@@ -330,7 +330,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
 
       await waitFor(async () => {
         const a = await win.evaluate(
-          ([pid, aid]) => window.careerflow.projectMode.getAgent(pid, aid),
+          ([pid, aid]) => window.progressLedger.projectMode.getAgent(pid, aid),
           [profileId, agentId]
         );
         const s = a && (a.agent || a);
@@ -338,7 +338,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       }, { what: "agent terminal state" });
 
       const audit = await win.evaluate(
-        (pid) => window.careerflow.audit.list({ profileId: pid, limit: 200 }),
+        (pid) => window.progressLedger.audit.list({ profileId: pid, limit: 200 }),
         profileId
       );
       expect(audit.ok, "the audit trail must be readable by the owning profile").toBe(true);
@@ -363,22 +363,22 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30_000 });
       await dismissOnboarding(win);
 
       // Profile, project, root, note, and the filesystem effect all survive.
-      const profilesAfter = await win.evaluate(() => window.careerflow.profiles.list());
+      const profilesAfter = await win.evaluate(() => window.progressLedger.profiles.list());
       expect(profilesAfter.some((p) => Number(p.id) === profileId)).toBe(true);
 
       const projectAfter = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectMode.getProject(pid, id),
+        ([pid, id]) => window.progressLedger.projectMode.getProject(pid, id),
         [profileId, projectId]
       );
       expect(projectAfter && projectAfter.id, "the project must survive the restart").toBe(projectId);
       expect(projectAfter.rootPath, "the canonicalized root must survive the restart").toBe(projectRootPath);
 
       const noteAfter = await win.evaluate(
-        ([pid, id]) => window.careerflow.resources.get({ profileId: pid, id }),
+        ([pid, id]) => window.progressLedger.resources.get({ profileId: pid, id }),
         [profileId, noteId]
       );
       expect(noteAfter.title).toBe("Workflow Note v2");
@@ -390,7 +390,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // Project Intelligence cache must still answer for the SAME root, and
       // must still refuse a mismatched one (SF-2).
       const intelAfter = await win.evaluate(
-        ([pid, id]) => window.careerflow.projectIntel.list(pid, id, {}),
+        ([pid, id]) => window.progressLedger.projectIntel.list(pid, id, {}),
         [profileId, projectId]
       );
       expect(intelAfter.ok).toBe(true);
@@ -398,7 +398,7 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
 
       // The audit trail survives too, and is still profile-scoped.
       const auditAfter = await win.evaluate(
-        (pid) => window.careerflow.audit.list({ profileId: pid, limit: 200 }),
+        (pid) => window.progressLedger.audit.list({ profileId: pid, limit: 200 }),
         profileId
       );
       expect(auditAfter.ok).toBe(true);
@@ -406,12 +406,12 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
 
       // A DIFFERENT profile must not be able to read this profile's audit.
       const otherProfile = await win.evaluate(async () => {
-        const p = await window.careerflow.profiles.add("Other Owner", `wf-other-${Date.now()}`);
+        const p = await window.progressLedger.profiles.add("Other Owner", `wf-other-${Date.now()}`);
         return Number(p.id);
       });
       expect(otherProfile).not.toBe(profileId);
       const auditWrongProfile = await win.evaluate(
-        (pid) => window.careerflow.audit.list({ profileId: pid, limit: 200 }),
+        (pid) => window.progressLedger.audit.list({ profileId: pid, limit: 200 }),
         otherProfile
       );
       expect(auditWrongProfile.ok).toBe(true);
@@ -426,12 +426,12 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // invisible on the audit trail, so after the fact there was no way to
       // tell the profile had ever existed.
       const doomed = await win.evaluate(async () => {
-        const p = await window.careerflow.profiles.add("Doomed Owner", `wf-doomed-${Date.now()}`);
+        const p = await window.progressLedger.profiles.add("Doomed Owner", `wf-doomed-${Date.now()}`);
         return Number(p.id);
       });
       expect(doomed).toBeGreaterThan(0);
       const createEvent = (await win.evaluate(
-        (pid) => window.careerflow.audit.list({ profileId: pid, limit: 200 }),
+        (pid) => window.progressLedger.audit.list({ profileId: pid, limit: 200 }),
         doomed
       ));
       expect(JSON.stringify(createEvent), "profile.create must be audited").toContain("profile.create");
@@ -439,8 +439,8 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       // `profiles:delete` returns whatever `core.deleteProfile` returns, which
       // may be undefined on success — so the call must not dereference `.ok`.
       // The real proof that it worked is the profile list immediately after.
-      await win.evaluate((pid) => window.careerflow.profiles.remove(pid), doomed);
-      const afterDelete = await win.evaluate(() => window.careerflow.profiles.list());
+      await win.evaluate((pid) => window.progressLedger.profiles.remove(pid), doomed);
+      const afterDelete = await win.evaluate(() => window.progressLedger.profiles.list());
       expect(afterDelete.some((p) => Number(p.id) === doomed), "the profile must really be gone").toBe(false);
 
       // The `profile.delete` event is attributed to the DELETED profile id,
@@ -474,10 +474,10 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
         JSON.stringify({ name: "Workflow Plugin", version: "1.2.3", skills: [], tools: [], mcpServers: [] }, null, 2),
         "utf8",
       );
-      const mktInstalled = await win.evaluate((p) => window.careerflow.marketplace.installLocal(p), mktSource);
+      const mktInstalled = await win.evaluate((p) => window.progressLedger.marketplace.installLocal(p), mktSource);
       expect(mktInstalled.ok).toBe(true);
       expect(mktInstalled.id).toBe("workflow-plugin");
-      const mktEnabled = await win.evaluate(() => window.careerflow.marketplace.enable("workflow-plugin"));
+      const mktEnabled = await win.evaluate(() => window.progressLedger.marketplace.enable("workflow-plugin"));
       expect(mktEnabled.ok).toBe(true);
 
       // ---- 12. CLOSE AGAIN -------------------------------------------------
@@ -485,10 +485,10 @@ test.describe("Phase 12 — realistic end-to-end workflow (packaged)", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30_000 });
       await dismissOnboarding(win);
 
-      const mktAfter = await win.evaluate(() => window.careerflow.marketplace.list());
+      const mktAfter = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(mktAfter.ok, "the marketplace must be live on the third launch too").toBe(true);
       const item = mktAfter.items.find((i) => i.id === "workflow-plugin");
       expect(item, "the installed marketplace item must survive").toBeTruthy();

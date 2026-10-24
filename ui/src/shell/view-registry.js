@@ -146,14 +146,6 @@ export const VIEWS = [
     subtitle: "Every agent run, its plan, its changes and its approvals.",
   },
   {
-    id: "browser",
-    label: "Browser",
-    plane: "operator",
-    icon: Globe,
-    title: "Research",
-    subtitle: "Saved places, the live browser, and what the operator did there.",
-  },
-  {
     // THE EMBEDDED BROWSER'S PAGE SURFACE (D2-D6 plan, Phase 1).
     //
     // `hidden: true` because a web page is not a rail destination: it is opened
@@ -168,7 +160,7 @@ export const VIEWS = [
     icon: Globe,
     hidden: true,
     title: "Web page",
-    subtitle: "A live page in the CareerFlow-owned browser.",
+    subtitle: "A live page in the Progress Ledger-owned browser.",
   },
   {
     id: "research-ledger",
@@ -294,7 +286,7 @@ export function orderedViews() {
  * showing as disabled, and that view then waited on a profile that would never
  * arrive.
  */
-const PROFILE_GATED = new Set(["browser", "project", "goals", "career"]);
+const PROFILE_GATED = new Set(["project", "goals", "career"]);
 
 /** True when `id` must stay unreachable until a profile is selected. */
 export function isProfileGated(id, profileReady) {

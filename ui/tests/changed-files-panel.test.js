@@ -18,7 +18,7 @@ import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/sv
 import ChangedFilesPanel from "../src/features/project-mode/components/ChangedFilesPanel.svelte";
 
 beforeEach(() => {
-  window.careerflow = window.careerflow || {};
+  window.progressLedger = window.progressLedger || {};
 });
 
 afterEach(() => {
@@ -55,10 +55,10 @@ const SAMPLE_DIFF = [
 const FOO_MTIME = Date.UTC(2026, 6, 31, 3, 44, 12);
 
 function stubDiff(diff = "", entries = [], truncated = false) {
-  window.careerflow.diff = {
+  window.progressLedger.diff = {
     workingTree: async () => ({ ok: true, result: { diff, truncated } }),
   };
-  window.careerflow.projectIntel = {
+  window.progressLedger.projectIntel = {
     list: async () => ({ ok: true, result: { entries, total: entries.length } }),
   };
 }
@@ -160,7 +160,7 @@ describe("ChangedFilesPanel", () => {
   it("offers an Index project control and calls project:intel:index with no root", async () => {
     stubDiff(SAMPLE_DIFF, []);
     const index = vi.fn().mockResolvedValue({ ok: true });
-    window.careerflow.projectIntel.index = index;
+    window.progressLedger.projectIntel.index = index;
 
     render(ChangedFilesPanel, { props: { profileId: 1, projectId: 7, agentId: 1 } });
 
@@ -181,7 +181,7 @@ describe("ChangedFilesPanel", () => {
 
   it("reports success only after the main process actually returns ok", async () => {
     stubDiff(SAMPLE_DIFF, []);
-    window.careerflow.projectIntel.index = vi.fn().mockResolvedValue({ ok: true });
+    window.progressLedger.projectIntel.index = vi.fn().mockResolvedValue({ ok: true });
 
     render(ChangedFilesPanel, { props: { profileId: 1, projectId: 7, agentId: 1 } });
     await fireEvent.click(await screen.findByTestId("changed-files-index"));
@@ -192,7 +192,7 @@ describe("ChangedFilesPanel", () => {
 
   it("keeps a refused index visible as a failure, including its code", async () => {
     stubDiff(SAMPLE_DIFF, []);
-    window.careerflow.projectIntel.index = vi.fn().mockResolvedValue({
+    window.progressLedger.projectIntel.index = vi.fn().mockResolvedValue({
       ok: false,
       error: { code: "root-mismatch", message: "stored root does not match" },
     });
@@ -209,7 +209,7 @@ describe("ChangedFilesPanel", () => {
 
   it("surfaces a thrown index call as a failure rather than swallowing it", async () => {
     stubDiff(SAMPLE_DIFF, []);
-    window.careerflow.projectIntel.index = vi.fn().mockRejectedValue(new Error("ipc exploded"));
+    window.progressLedger.projectIntel.index = vi.fn().mockRejectedValue(new Error("ipc exploded"));
 
     render(ChangedFilesPanel, { props: { profileId: 1, projectId: 7, agentId: 1 } });
     await fireEvent.click(await screen.findByTestId("changed-files-index"));
@@ -222,7 +222,7 @@ describe("ChangedFilesPanel", () => {
   it("disables the control when no project is selected", async () => {
     stubDiff(SAMPLE_DIFF, []);
     const index = vi.fn();
-    window.careerflow.projectIntel.index = index;
+    window.progressLedger.projectIntel.index = index;
 
     render(ChangedFilesPanel, { props: { profileId: 1, projectId: null, agentId: 1 } });
     const btn = await screen.findByTestId("changed-files-index");

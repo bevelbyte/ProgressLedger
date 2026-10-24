@@ -36,33 +36,33 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-browser-r4-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_BROWSER_NAVIGATION_TIMEOUT_MS: "1200",
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_BROWSER_NAVIGATION_TIMEOUT_MS: "1200",
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
   const app = await electron.launch({ args: [projectRoot, `--user-data-dir=${userDataDir}`], env });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 1000));
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win };
 }
 
 async function seedAndSelectProfile(win) {
   const profileId = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("Browser R4", "browser-r4");
+    const created = await window.progressLedger.profiles.add("Browser R4", "browser-r4");
     const profile = created?.profile || created;
     return profile?.id ?? profile?.profileId ?? (typeof created === "number" ? created : null);
   });
   expect(profileId).not.toBeNull();
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
   await win.locator("button.profile-main").first().waitFor({ state: "visible", timeout: 10_000 });
   await win.locator("button.profile-main").first().click();
@@ -125,7 +125,7 @@ test.describe("R4 browser failure, crash, reload and recovery", () => {
       return page ? `${page.state}:${page.lastError?.reason ?? ""}` : "missing";
     }, { timeout: 10_000 }).toBe("failed:navigation-timeout");
     await expect(win.locator('[data-testid="browser-state"]')).toHaveText("Navigation timed out");
-    const publicState = await win.evaluate(() => window.careerflow.browser.state());
+    const publicState = await win.evaluate(() => window.progressLedger.browser.state());
     expect(publicState.pages[0]).toMatchObject({ state: "failed", loading: false });
 
     await navigateTo(win, `${server.origin}/good?label=Recovered`);
@@ -165,7 +165,7 @@ test.describe("R4 browser failure, crash, reload and recovery", () => {
     expect((await snapshot(app)).pages.find((page) => page.id === first.id).url).toContain("label=FirstPage");
     await expect(win.locator('[data-testid="browser-title"]')).toHaveText("FirstPage");
     expect((await snapshot(app)).pages.find((page) => page.id === sibling.id).state).toBe("ready");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   });
 
   test("renderer reload reconciles orphan native views and repeated create/destroy cycles return to baseline", async () => {
@@ -178,19 +178,19 @@ test.describe("R4 browser failure, crash, reload and recovery", () => {
 
     await win.reload();
     await win.waitForLoadState("domcontentloaded");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
     await expect.poll(async () => (await snapshot(app))?.pages?.length ?? -1, { timeout: 10_000 }).toBe(0);
     await expect.poll(() => webContentsCount(app), { timeout: 10_000 }).toBe(baseline);
 
     // Repeated native view creation/destruction must not accumulate webContents.
     for (let i = 0; i < 3; i += 1) {
-      const created = await win.evaluate(async (spec) => window.careerflow.browser.createPage(spec.profileId, spec.url), {
+      const created = await win.evaluate(async (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url), {
         profileId,
         url: `${server.origin}/good?label=Cycle${i}`,
       });
       expect(created.ok).toBe(true);
       await expect.poll(() => webContentsCount(app), { timeout: 5_000 }).toBe(baseline + 1);
-      const closed = await win.evaluate((id) => window.careerflow.browser.closePage(id), created.page.id);
+      const closed = await win.evaluate((id) => window.progressLedger.browser.closePage(id), created.page.id);
       expect(closed.ok).toBe(true);
       await expect.poll(async () => (await snapshot(app))?.pages?.some((page) => page.id === created.page.id) ?? false, { timeout: 5_000 }).toBe(false);
       await expect.poll(() => webContentsCount(app), { timeout: 5_000 }).toBe(baseline);
@@ -198,13 +198,13 @@ test.describe("R4 browser failure, crash, reload and recovery", () => {
 
     // Closing a page while its navigation is still pending must cancel its
     // timeout ownership; a late loading/failure callback may not resurrect it.
-    const transient = await win.evaluate(async (spec) => window.careerflow.browser.createPage(spec.profileId, spec.url), {
+    const transient = await win.evaluate(async (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url), {
       profileId,
       url: `${server.origin}/hang`,
     });
     expect(transient.ok).toBe(true);
     const transientId = transient.page.id;
-    expect((await win.evaluate((id) => window.careerflow.browser.closePage(id), transientId)).ok).toBe(true);
+    expect((await win.evaluate((id) => window.progressLedger.browser.closePage(id), transientId)).ok).toBe(true);
     await expect.poll(async () => (await snapshot(app))?.pages?.some((page) => page.id === transientId) ?? false, { timeout: 5_000 }).toBe(false);
     await win.waitForTimeout(1_500);
     expect((await snapshot(app)).pages.some((page) => page.id === transientId)).toBe(false);
@@ -212,14 +212,14 @@ test.describe("R4 browser failure, crash, reload and recovery", () => {
 
     const live = [];
     for (let i = 0; i < MAX_LIVE_PAGES; i += 1) {
-      const created = await win.evaluate(async (spec) => window.careerflow.browser.createPage(spec.profileId, "about:blank"), { profileId });
+      const created = await win.evaluate(async (spec) => window.progressLedger.browser.createPage(spec.profileId, "about:blank"), { profileId });
       expect(created.ok).toBe(true);
       live.push(created.page.id);
     }
-    const overCap = await win.evaluate(async (spec) => window.careerflow.browser.createPage(spec.profileId, "about:blank"), { profileId });
+    const overCap = await win.evaluate(async (spec) => window.progressLedger.browser.createPage(spec.profileId, "about:blank"), { profileId });
     expect(overCap).toMatchObject({ ok: false, reason: "live-cap-reached" });
     for (const id of live) {
-      const closed = await win.evaluate((pageId) => window.careerflow.browser.closePage(pageId), id);
+      const closed = await win.evaluate((pageId) => window.progressLedger.browser.closePage(pageId), id);
       expect(closed.ok).toBe(true);
     }
     await expect.poll(async () => (await snapshot(app))?.pages?.length ?? -1, { timeout: 10_000 }).toBe(0);

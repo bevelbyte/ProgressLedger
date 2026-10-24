@@ -8,7 +8,7 @@
 //   3. clicking Resume calls projectMode.startAgent with the leftover
 //      agent id and hides the banner
 //
-// The IPC namespace is mocked on window.careerflow.projectMode, mirroring
+// The IPC namespace is mocked on window.progressLedger.projectMode, mirroring
 // the shape shipped by shell/src/preload.cjs +
 // shell/src/ipc/project-mode.js (`agent:list-resumable` → { ok, agent }).
 
@@ -32,7 +32,7 @@ function setupIpc({
   listResumableAgent = vi.fn().mockResolvedValue({ ok: true, agent: null }),
   startAgent = vi.fn().mockResolvedValue({ ok: true, runId: "abc123" }),
 } = {}) {
-  window.careerflow = { projectMode: { listResumableAgent, startAgent } };
+  window.progressLedger = { projectMode: { listResumableAgent, startAgent } };
   return { listResumableAgent, startAgent };
 }
 
@@ -48,7 +48,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ describe("ResumeBanner — discard action", () => {
     );
     // The dismiss flag is profile-scoped so a different profile would
     // still see its own banner.
-    expect(localStorage.getItem("careerflow_resume_banner_dismissed:1")).toBe("1");
+    expect(localStorage.getItem("progressledger_v2_resume_banner_dismissed:1")).toBe("1");
   });
 });
 
@@ -178,7 +178,7 @@ describe("ResumeBanner — discard action", () => {
 
 describe("ResumeBanner — missing IPC surface", () => {
   it("renders nothing when projectMode.listResumableAgent is not on the namespace", async () => {
-    window.careerflow = { projectMode: {} };
+    window.progressLedger = { projectMode: {} };
     render(ResumeBanner, { profileId: 1 });
     await vi.waitFor(() =>
       expect(screen.queryByTestId("resume-banner")).not.toBeInTheDocument()

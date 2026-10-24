@@ -30,7 +30,7 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-pm-e2e-"));
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
@@ -42,12 +42,12 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
   test.setTimeout(180_000);
   try {
     // 1. Profile + project + agent (goal entry).
-    const profile = await win.evaluate(() => window.careerflow.profiles.add("PM E2E", `pm-e2e-${Date.now()}`));
+    const profile = await win.evaluate(() => window.progressLedger.profiles.add("PM E2E", `pm-e2e-${Date.now()}`));
     expect(profile.id).toBeGreaterThan(0);
     // The renderer is sandboxed (no `process`); resolve the project
     // root on the Node side and pass it in.
     const projectRootPath = process.cwd();    const created = await win.evaluate(([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({ profileId: pid, name: "E2E Lifecycle", description: "ui e2e", rootPath, configJson: "{}" }), [profile.id, projectRootPath]);
+      window.progressLedger.projectMode.createProject({ profileId: pid, name: "E2E Lifecycle", description: "ui e2e", rootPath, configJson: "{}" }), [profile.id, projectRootPath]);
     // The REAL NAPI pmCreateProject returns the new row id as a plain
     // number (the IPC handler passes it through); older fakes return
     // { ok, id }.
@@ -57,7 +57,7 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
     expect(projectId).toBeGreaterThan(0);
 
     const agentRes = await win.evaluate(([pid, projId]) =>
-      window.careerflow.projectMode.createAgent(pid, projId, "E2E lifecycle goal: summarize the workspace"), [profile.id, projectId]);
+      window.progressLedger.projectMode.createAgent(pid, projId, "E2E lifecycle goal: summarize the workspace"), [profile.id, projectId]);
     // REAL NAPI returns the row id as a plain number.
     expect(typeof agentRes === "number" || agentRes && typeof agentRes.id === "number",
       `createAgent: ${JSON.stringify(agentRes)}`).toBe(true);
@@ -68,7 +68,7 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
     // initial plan is created authoritatively by the main-process loop; the
     // renderer has no direct plan/state mutation channel.
     const startRes = await win.evaluate(([pid, aid]) =>
-      window.careerflow.projectMode.startAgent(pid, aid), [profile.id, agentId]);
+      window.progressLedger.projectMode.startAgent(pid, aid), [profile.id, agentId]);
     expect(startRes.ok, `startAgent: ${JSON.stringify(startRes)}`).toBe(true);
 
     // 3. Poll through the SAME IPC the renderer polls: the agent must
@@ -76,7 +76,7 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
     let finalAgent = null;
     for (let i = 0; i < 120; i++) {
       const a = await win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.getAgent(pid, aid), [profile.id, agentId]);
+        window.progressLedger.projectMode.getAgent(pid, aid), [profile.id, agentId]);
       const row = a.agent || a;
       if (row && (row.state === "completed" || row.state === "failed" || row.state === "cancelled")) { finalAgent = row; break; }
       await new Promise((r) => setTimeout(r, 500));
@@ -91,7 +91,7 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
     // 4. Task activity: the transcript must contain the recorded
     //    system/user/assistant messages (real loop wrote them).
     const msgs = await win.evaluate(([pid, aid]) =>
-      window.careerflow.projectMode.listMessages(pid, aid), [profile.id, agentId]);
+      window.progressLedger.projectMode.listMessages(pid, aid), [profile.id, agentId]);
     const list = msgs.messages || msgs;
     const roles = (Array.isArray(list) ? list : []).map((m) => m.role);
     expect(roles).toContain("system");
@@ -108,28 +108,28 @@ test("Project Mode lifecycle through the real app: goal -> plan -> steps -> comp
 test("Project Mode IPC rejects cross-profile agent access", async () => {
   const { app, win } = await launch();
   try {
-    const owner = await win.evaluate(() => window.careerflow.profiles.add("PM Security Owner", `pm-sec-owner-${Date.now()}`));
-    const attacker = await win.evaluate(() => window.careerflow.profiles.add("PM Security Attacker", `pm-sec-attacker-${Date.now()}`));
+    const owner = await win.evaluate(() => window.progressLedger.profiles.add("PM Security Owner", `pm-sec-owner-${Date.now()}`));
+    const attacker = await win.evaluate(() => window.progressLedger.profiles.add("PM Security Attacker", `pm-sec-attacker-${Date.now()}`));
     const rootPath = process.cwd();
     const project = await win.evaluate(([pid, root]) =>
-      window.careerflow.projectMode.createProject({ profileId: pid, name: "Owned Project", description: "security e2e", rootPath: root, configJson: "{}" }), [owner.id, rootPath]);
+      window.progressLedger.projectMode.createProject({ profileId: pid, name: "Owned Project", description: "security e2e", rootPath: root, configJson: "{}" }), [owner.id, rootPath]);
     const projectId = typeof project === "number" ? project : project.id;
     const agent = await win.evaluate(([pid, projId]) =>
-      window.careerflow.projectMode.createAgent(pid, projId, "owned agent"), [owner.id, projectId]);
+      window.progressLedger.projectMode.createAgent(pid, projId, "owned agent"), [owner.id, projectId]);
     const agentId = typeof agent === "number" ? agent : agent.id;
 
     const foreignRun = await win.evaluate(([pid, aid]) =>
-      window.careerflow.projectMode.getAgentRun(pid, aid), [attacker.id, agentId]);
+      window.progressLedger.projectMode.getAgentRun(pid, aid), [attacker.id, agentId]);
     expect(foreignRun.ok).toBe(false);
     expect(foreignRun.error).toBe("agent-not-owned");
 
     const foreignCancel = await win.evaluate(([pid, aid]) =>
-      window.careerflow.projectMode.cancelAgent(pid, aid), [attacker.id, agentId]);
+      window.progressLedger.projectMode.cancelAgent(pid, aid), [attacker.id, agentId]);
     expect(foreignCancel.ok).toBe(false);
     expect(foreignCancel.error).toBe("agent-not-owned");
 
     const foreignCreate = await win.evaluate(([pid, projId]) =>
-      window.careerflow.projectMode.createAgent(pid, projId, "must not create"), [attacker.id, projectId]);
+      window.progressLedger.projectMode.createAgent(pid, projId, "must not create"), [attacker.id, projectId]);
     expect(foreignCreate.ok).toBe(false);
     expect(foreignCreate.error.code).toBe("project-not-owned");
   } finally {

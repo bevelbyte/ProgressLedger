@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================================
-echo   CareerFlow -- Safe Version Restore / Rollback
+echo   Progress Ledger -- Safe Version Restore / Rollback
 echo ============================================================
 echo.
 echo NOTE: A safety backup of your current working workspace will

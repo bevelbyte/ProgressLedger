@@ -2,7 +2,7 @@
 //! These tests call the exact NAPI functions exposed to the shell against a
 //! real migrated database. No SQL model is duplicated here.
 
-use careerflow_core::db::{
+use progress_ledger_core::db::{
     add_deadline, add_experiment, add_formula, add_mistake, add_profile, add_subject_link,
     calculate_deadline_pace, delete_deadline, delete_experiment, delete_formula, delete_mistake,
     delete_subject_link, get_deadline_paces, get_deadlines, get_experiments, get_formulas,

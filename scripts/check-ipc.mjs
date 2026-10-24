@@ -3,7 +3,7 @@
  * IPC contract guard: every channel invoked by preload.cjs must have an
  * ipcMain.handle/safeHandle in the shell. Main-only handlers are deliberately
  * outside this renderer contract. This exists because the
- * previous CareerFlow implementation shipped 26 preload channels with no
+ * previous Progress Ledger implementation shipped 26 preload channels with no
  * main-process handler (courses, labs, projects, projectTasks, formulas,
  * focus, notes:quick) - features that failed silently at runtime.
  *

@@ -13,7 +13,7 @@
  * main has not sanitized. It sees an opaque id (`bp-N`) and display strings.
  */
 
-const bridge = () => (typeof window === "undefined" ? null : window.careerflow?.browser ?? null);
+const bridge = () => (typeof window === "undefined" ? null : window.progressLedger?.browser ?? null);
 
 /** `{ [pageId]: page }` — sanitized metadata only. */
 export const browser = $state({

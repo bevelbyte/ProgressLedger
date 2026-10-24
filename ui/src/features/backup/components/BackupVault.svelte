@@ -52,7 +52,7 @@
   async function clearFolder() {
     const ok = await confirmDialog({
       title: "Disconnect backup folder",
-      message: "CareerFlow will forget this backup location. Existing .cfprofile files stay on disk.",
+      message: "Progress Ledger will forget this backup location. Existing .cfprofile files stay on disk.",
       confirmLabel: "Disconnect",
     });
     if (!ok) return;

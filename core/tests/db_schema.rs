@@ -1,7 +1,7 @@
-//! Integration tests for the CareerFlow schema+ migration SQL.
+//! Integration tests for the Progress Ledger schema+ migration SQL.
 //!
 //! WHY here and not `#[cfg(test)] mod tests` in db.rs:
-//! `careerflow_core` is a `cdylib` napi-rs addon. A unit-test executable built
+//! `progress_ledger_core` is a `cdylib` napi-rs addon. A unit-test executable built
 //! from it would need the N-API runtime symbols (provided by node.exe at load),
 //! which aren't present when linking a plain test binary — so `cargo test` on the
 //! lib itself fails to link. This integration test depends ONLY on `rusqlite`

@@ -1,6 +1,6 @@
 // Goal Mode real-UI navigation E2E (Phase 16).
 //
-// Validates that Goal Mode is reachable through the REAL CareerFlow
+// Validates that Goal Mode is reachable through the REAL Progress Ledger
 // navigation and that the GoalsView UI (project picker -> list +
 // create form) works end to end in the built renderer:
 //
@@ -21,7 +21,7 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-goals-ui-"));
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
@@ -33,11 +33,11 @@ test("Goal Mode is reachable from the real navigation and the UI can create a go
   test.setTimeout(120_000);
   try {
     // 1. Seed a profile + project through the real IPC.
-    const profile = await win.evaluate(() => window.careerflow.profiles.add("Goals Nav E2E", `goals-nav-${Date.now()}`));
+    const profile = await win.evaluate(() => window.progressLedger.profiles.add("Goals Nav E2E", `goals-nav-${Date.now()}`));
     expect(profile.id).toBeGreaterThan(0);
     const projectRootPath = process.cwd();
     const created = await win.evaluate(([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({ profileId: pid, name: "Nav E2E Project", description: "nav", rootPath, configJson: "{}" }), [profile.id, projectRootPath]);
+      window.progressLedger.projectMode.createProject({ profileId: pid, name: "Nav E2E Project", description: "nav", rootPath, configJson: "{}" }), [profile.id, projectRootPath]);
     const projectId = typeof created === "number" ? created : created && created.id;
     expect(projectId).toBeGreaterThan(0);
 

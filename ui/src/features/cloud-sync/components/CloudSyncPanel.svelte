@@ -66,7 +66,7 @@
   async function disconnect() {
     const ok = await confirmDialog({
       title: "Disconnect cloud sync",
-      message: "CareerFlow will forget this remote vault and stored credentials. Remote backups stay on the server.",
+      message: "Progress Ledger will forget this remote vault and stored credentials. Remote backups stay on the server.",
       confirmLabel: "Disconnect",
     });
     if (!ok) return;
@@ -172,7 +172,7 @@
     <form class="cloud-form" onsubmit={(e) => { e.preventDefault(); connect(); }}>
       <label>
         <span>WebDAV Folder URL</span>
-        <input bind:value={url} placeholder="https://cloud.example.com/remote.php/dav/files/me/CareerFlow/" />
+        <input bind:value={url} placeholder="https://cloud.example.com/remote.php/dav/files/me/Progress Ledger/" />
       </label>
       <label>
         <span>Username</span>

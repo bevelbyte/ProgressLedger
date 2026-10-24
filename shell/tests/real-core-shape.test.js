@@ -1,6 +1,6 @@
 // Production-stack shape regression tests (Phase 12).
 //
-// The REAL NAPI core (@careerflow/core) has a different surface shape
+// The REAL NAPI core (@progress-ledger/core) has a different surface shape
 // than the in-memory fake cores used across the older test suite:
 //
 //   * pmCreateProject / pmCreateAgent return a PLAIN NUMBER row id.

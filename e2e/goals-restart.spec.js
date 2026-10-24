@@ -33,7 +33,7 @@ const projectRoot = join(__dirname, "..");
 async function launch(userDataDir) {
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
@@ -52,7 +52,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
     app1 = app;
 
     const profile = await win.evaluate(() =>
-      window.careerflow.profiles.add("Restart E2E", `restart-e2e-${Date.now()}`));
+      window.progressLedger.profiles.add("Restart E2E", `restart-e2e-${Date.now()}`));
     expect(profile.id).toBeGreaterThan(0);
     profileId = profile.id;
 
@@ -63,7 +63,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
       test_command: 'node -e "setTimeout(()=>{},30000)"',
     });
     const created = await win.evaluate(([pid, rootPath, cfg]) =>
-      window.careerflow.projectMode.createProject({
+      window.progressLedger.projectMode.createProject({
         profileId: pid, name: "Restart Proj", description: "restart e2e",
         rootPath, configJson: cfg,
       }), [profile.id, projectRootPath, configJson]);
@@ -71,7 +71,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
     expect(projectId).toBeGreaterThan(0);
 
     const goalRes = await win.evaluate(([pid, projId]) =>
-      window.careerflow.goals.create({
+      window.progressLedger.goals.create({
         profileId: pid, projectId: projId,
         title: "Restart goal",
         objective: "Run a long task that we will interrupt.",
@@ -82,7 +82,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
     expect(goalId).toBeGreaterThan(0);
 
     const startRes = await win.evaluate(([pid, gid]) =>
-      window.careerflow.goals.start(pid, gid), [profile.id, goalId]);
+      window.progressLedger.goals.start(pid, gid), [profile.id, goalId]);
     expect(startRes.ok, `start: ${JSON.stringify(startRes)}`).toBe(true);
 
     // Give the engine ~1.5s to create the agent + enter the run.
@@ -90,7 +90,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
 
     // Confirm the agent exists (linked) before the crash.
     const g = await win.evaluate(([pid, gid]) =>
-      window.careerflow.goals.get(pid, gid), [profile.id, goalId]);
+      window.progressLedger.goals.get(pid, gid), [profile.id, goalId]);
     const gRow = g.goal || g;
     const linkedAgentId = gRow.linkedAgentId ?? gRow.linked_agent_id;
     expect(linkedAgentId).toBeGreaterThan(0);
@@ -111,7 +111,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
 
     // Run the recovery sweep — the same IPC GoalsView calls on mount.
     const sweep = await win.evaluate((pid) =>
-      window.careerflow.goals.recoverySweep(pid), profileId);
+      window.progressLedger.goals.recoverySweep(pid), profileId);
 
     // Exactly one candidate row max (no duplicate agent created).
     expect(Array.isArray(sweep.resumable)).toBe(true);
@@ -122,7 +122,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
     // 30s command finished), so valid outcomes are recoverable
     // (running/verifying) or a truthful failure/cancel.
     const goalsList = await win.evaluate((pid) =>
-      window.careerflow.goals.list(pid, { limit: 50 }), profileId);
+      window.progressLedger.goals.list(pid, { limit: 50 }), profileId);
     const list = goalsList.goals || goalsList;
     const goal = Array.isArray(list) ? list.find((x) => x.title === "Restart goal") : null;
     expect(goal).not.toBeNull();
@@ -130,7 +130,7 @@ test("crash mid-run -> restart -> recovery discovers the candidate and never fak
 
     // Idempotency: a second sweep changes nothing observable.
     const sweep2 = await win.evaluate((pid) =>
-      window.careerflow.goals.recoverySweep(pid), profileId);
+      window.progressLedger.goals.recoverySweep(pid), profileId);
     expect(sweep2.resumable.length).toBe(sweep.resumable.length);
   } finally {
     await app2?.close();

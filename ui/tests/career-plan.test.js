@@ -54,7 +54,7 @@ function setupIpc({
   subjects = [],
 } = {}) {
   milestones = rows.map((m) => ({ ...m }));
-  window.careerflow = {
+  window.progressLedger = {
     career: {
       goals: vi.fn(async () => goals),
       milestones: vi.fn(async () => milestones),
@@ -85,7 +85,7 @@ function setupIpc({
       ]),
     },
   };
-  return window.careerflow;
+  return window.progressLedger;
 }
 
 function tick() {

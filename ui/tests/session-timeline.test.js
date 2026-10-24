@@ -7,7 +7,7 @@
 //   - "Load more" button appends the next page without duplicates
 //   - Does not crash when profileId or agentId is null
 //
-// The IPC namespace is mocked via window.careerflow.projectMode.
+// The IPC namespace is mocked via window.progressLedger.projectMode.
 // The shared projectModeStore is NOT touched — the component calls the
 // service directly (not the store), so the two are fully independent.
 
@@ -26,7 +26,7 @@ const MOCK_MESSAGES = [
 ];
 
 function mockListMessagesPaginated(resolver) {
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listMessagesPaginated: vi.fn().mockImplementation(resolver),
     },

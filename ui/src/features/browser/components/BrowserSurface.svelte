@@ -67,7 +67,7 @@
   let researchNotice = $state("");
   let researchNoticeKind = $state("");
   let researchLoadRequest = 0;
-  const researchApi = () => (typeof window === "undefined" ? null : window.careerflow?.research ?? null);
+  const researchApi = () => (typeof window === "undefined" ? null : window.progressLedger?.research ?? null);
   function normalizeResearchUrl(value) {
     try {
       const url = new URL(value);
@@ -459,8 +459,7 @@
       <div class="browser-empty">
         <p class="browser-empty-title">No page in this tab</p>
         <p class="browser-empty-help">
-          Enter an address above. The page opens here, in this pane, in CareerFlow's own browser —
-          Donut is not involved and does not need to be installed.
+          Enter an address above. The page opens here, in this pane, in Progress Ledger's own browser.
         </p>
       </div>
     {:else if !page}

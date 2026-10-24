@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // rebuild-native.mjs — rebuild better-sqlite3 for the target runtime.
 //
-// CareerFlow may run better-sqlite3 under both the system Node and Electron.
+// Progress Ledger may run better-sqlite3 under both the system Node and Electron.
 // The native binary must match the active Node module ABI. Modern Electron
 // can share the system-Node ABI; older Electron lines may require a rebuild.
 // The lockfile pins the JS dependency versions; only the compiled artifact

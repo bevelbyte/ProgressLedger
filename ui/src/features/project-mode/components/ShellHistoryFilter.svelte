@@ -8,7 +8,7 @@
   // (client-side, applied on top of the server-side date range to keep
   // the result set small while the user types).
   //
-  // IPC namespace (shell/src/preload.cjs -> window.careerflow.audit):
+  // IPC namespace (shell/src/preload.cjs -> window.progressLedger.audit):
   //   listEvents({ eventName, profileId, since, until, limit })
   //     -> { ok: true, events: [...] }
 
@@ -32,7 +32,7 @@
 
   function auditApi() {
     const w = typeof window !== "undefined" ? window : undefined;
-    const ns = w && w.careerflow && w.careerflow.audit;
+    const ns = w && w.progressLedger && w.progressLedger.audit;
     return ns && typeof ns.listEvents === "function" ? ns : null;
   }
 

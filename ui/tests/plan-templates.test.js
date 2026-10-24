@@ -42,7 +42,7 @@ function setupIpc({ templates = [], deleteOk = true } = {}) {
     Promise.resolve(templates.find((t) => t.id === id) || null)
   );
   const deletePlanTemplate = vi.fn().mockResolvedValue(deleteOk ? { ok: true } : { ok: false, reason: "not-found" });
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listPlanTemplates,
       savePlanTemplate,
@@ -54,7 +54,7 @@ function setupIpc({ templates = [], deleteOk = true } = {}) {
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   // Reset the renderer plan store so each test starts clean.
   projectModeStore.plan = [];
 });

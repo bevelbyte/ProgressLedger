@@ -80,7 +80,9 @@
 <style>
   .toast-stack {
     position: fixed;
-    bottom: 16px;
+    /* Clear the 26px status bar with the same 16px gap: at bottom 16px
+       the stack painted over the bar (it covered the CTRL K readout). */
+    bottom: calc(var(--shell-status-h) + 16px);
     right: 16px;
     /* Above every feature overlay (Focus / QuickNote use 1200): a feedback toast
        fired while an overlay is open would otherwise be painted underneath it. */

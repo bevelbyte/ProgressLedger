@@ -8,7 +8,7 @@
 //!     migration whose version is greater, each inside its own transaction, and
 //!     bumps `user_version` to match. Re-running is a no-op (idempotent).
 //!   * New installs apply 001..=N in order (full schema). Existing DBs upgrade
-//!     from wherever they are — no `Remove-Item careerflow.db`, no data loss.
+//!     from wherever they are — no `Remove-Item progress-ledger-v2.db`, no data loss.
 //!
 //! Adding a migration: drop `migrations/00X_name.sql` and append a line below.
 //! NEVER edit a shipped migration — always add a new one.

@@ -7,7 +7,7 @@
 // controlled URL such as `http://localhost:51730`.
 
 export const DEFAULT_IPC_ALLOW_LIST = Object.freeze([
-  "careerflow://app",
+  "progressledger-v2://app",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]);

@@ -10,7 +10,7 @@ const HITS = [
 ];
 
 beforeEach(() => {
-  window.careerflow = {
+  window.progressLedger = {
     resources: { search: vi.fn().mockResolvedValue(HITS) },
   };
 });
@@ -121,7 +121,7 @@ describe("CommandPalette keyboard selection", () => {
   it("does nothing dangerous when there is no result to choose", async () => {
     const { input, onOpen } = await openWithHits();
     // The second search comes up empty; the first already returned HITS.
-    window.careerflow.resources.search.mockResolvedValueOnce([]);
+    window.progressLedger.resources.search.mockResolvedValueOnce([]);
     typeInto(input, "zzz-no-such-term");
 
     await screen.findByText(/No matches found/);
@@ -170,6 +170,6 @@ describe("CommandPalette keyboard selection", () => {
 
     typeInto(input, "tail");
     await new Promise((r) => setTimeout(r, 200));
-    expect(window.careerflow.resources.search).not.toHaveBeenCalled();
+    expect(window.progressLedger.resources.search).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@
 // Drives the REAL Electron app, REAL main-process agent loop, REAL IPC
 // approval queue, REAL fs_write tool execution — with the provider
 // network leg replaced by a local scripted SSE server (OpenAI
-// wire-compatible). The credential is planted through CareerFlow's OWN
+// wire-compatible). The credential is planted through Progress Ledger's OWN
 // pm-secrets.json mechanism (fixture value, not a secret), so the
 // production provider path (createOpenAiProvider) is what runs.
 //
@@ -77,9 +77,9 @@ async function launchIsolated(userDataDir) {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: "1",
-      CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-      CAREERFLOW_E2E_USER_DATA: userDataDir,
+      PROGRESSLEDGER_V2_E2E: "1",
+      PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+      PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     },
     timeout: 60_000,
   });
@@ -99,10 +99,10 @@ async function dismissOnboarding(win) {
   await overlay.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
 }
 
-// Plant a credential through CareerFlow's OWN store format, then build
+// Plant a credential through Progress Ledger's OWN store format, then build
 // profile + project + agent and start the loop. Returns identifiers.
 async function setupAgent(win, { userDataDir, endpoint, objective, projectName, projectRootPath }) {
-  const profile = await win.evaluate(() => window.careerflow.profiles.add("PM Approvals", `pm-approval-${Date.now()}`));
+  const profile = await win.evaluate(() => window.progressLedger.profiles.add("PM Approvals", `pm-approval-${Date.now()}`));
   expect(profile.id).toBeGreaterThan(0);
   // projectRootPath must be provided by the test: fs_write's security
   // boundary (assertInsideProjectRoot) resolves every write against the
@@ -110,13 +110,13 @@ async function setupAgent(win, { userDataDir, endpoint, objective, projectName, 
   // MUST live under the registered root.
   const rootPath = projectRootPath || process.cwd();
   const created = await win.evaluate(([pid, rootPath, name]) =>
-    window.careerflow.projectMode.createProject({ profileId: pid, name, description: "approval e2e", rootPath, configJson: "{}" }),
+    window.progressLedger.projectMode.createProject({ profileId: pid, name, description: "approval e2e", rootPath, configJson: "{}" }),
     [profile.id, rootPath, projectName]);
   const projectId = typeof created === "number" ? created : (created && created.id);
   expect(projectId).toBeGreaterThan(0);
 
   const agentRes = await win.evaluate(([pid, projId, obj]) =>
-    window.careerflow.projectMode.createAgent(pid, projId, obj), [profile.id, projectId, objective]);
+    window.progressLedger.projectMode.createAgent(pid, projId, obj), [profile.id, projectId, objective]);
   const agentId = typeof agentRes === "number" ? agentRes : (agentRes && agentRes.id);
   expect(agentId).toBeGreaterThan(0);
 
@@ -142,10 +142,10 @@ async function startAgentRun(win, profileId, agentId, events) {
   // Subscribe to the sanitized renderer event stream (Milestone I leg).
   await win.evaluate(() => {
     window.__agentEvents = [];
-    window.careerflow.projectMode.onEvent((e) => window.__agentEvents.push(e));
+    window.progressLedger.projectMode.onEvent((e) => window.__agentEvents.push(e));
   });
   const startRes = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.startAgent(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.startAgent(pid, aid), [profileId, agentId]);
   expect(startRes.ok, `startAgent: ${JSON.stringify(startRes)}`).toBe(true);
   return startRes;
 }
@@ -178,13 +178,13 @@ async function dumpAgentDiagnostics(win, profileId, agentId) {
 
 async function getAgentState(win, profileId, agentId) {
   const a = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.getAgent(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.getAgent(pid, aid), [profileId, agentId]);
   return a && (a.agent || a);
 }
 
 async function getMessages(win, profileId, agentId) {
   const m = await win.evaluate(([pid, aid]) =>
-    window.careerflow.projectMode.listMessages(pid, aid), [profileId, agentId]);
+    window.progressLedger.projectMode.listMessages(pid, aid), [profileId, agentId]);
   return m && m.messages ? m.messages : m;
 }
 
@@ -216,7 +216,7 @@ test.describe("Agent approval lifecycle (real Electron runtime)", () => {
       // the main-process approval queue must list exactly one entry.
       const pending = await waitFor(async () => {
         const r = await launched.win.evaluate(([pid, aid]) =>
-          window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+          window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
         return r && r.ok && r.count === 1 ? r.approvals[0] : null;
       }, { what: "pending approval" }).catch(async (e) => {
         await dumpAgentDiagnostics(launched.win, profileId, agentId);
@@ -245,39 +245,39 @@ test.describe("Agent approval lifecycle (real Electron runtime)", () => {
       // approval-ownership binding (isApprovalOwned) with exactly
       // "approval-not-owned". This is the precise cross-agent attack.
       const agentB = await launched.win.evaluate(([pid, prid]) =>
-        window.careerflow.projectMode.createAgent(pid, prid, "unrelated agent"), [profileId, projectId]);
+        window.progressLedger.projectMode.createAgent(pid, prid, "unrelated agent"), [profileId, projectId]);
       const agentBId = typeof agentB === "number" ? agentB : agentB.id;
       expect(agentBId).toBeGreaterThan(0);
       const crossAgent = await launched.win.evaluate(([pid, aidB, id]) =>
-        window.careerflow.projectMode.approveCall(pid, aidB, id), [profileId, agentBId, approvalId]);
+        window.progressLedger.projectMode.approveCall(pid, aidB, id), [profileId, agentBId, approvalId]);
       expect(crossAgent && crossAgent.error).toBe("approval-not-owned");
 
       // ADVERSARIAL — layer 2: a NONEXISTENT agent id is rejected earlier
       // by the agent-ownership check (authorization precedence). The
       // security property is the same: the approval is NOT resolved.
       const nonAgent = await launched.win.evaluate(([pid, id]) =>
-        window.careerflow.projectMode.approveCall(pid, 999999, id), [profileId, approvalId]);
+        window.progressLedger.projectMode.approveCall(pid, 999999, id), [profileId, approvalId]);
       expect(nonAgent && nonAgent.ok).toBeFalsy();
 
       // ADVERSARIAL — unknown approval id under the RIGHT owner.
       const unknownId = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.approveCall(pid, aid, "bogus-approval-id"), [profileId, agentId]);
+        window.progressLedger.projectMode.approveCall(pid, aid, "bogus-approval-id"), [profileId, agentId]);
       expect(unknownId && unknownId.error).toBe("approval-not-found");
 
       // The queue must have survived every adversarial attempt intact.
       const stillPending = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
       expect(stillPending.count).toBe(1);
 
       // Duplicate-run refusal while an approval is pending.
       const dup = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.startAgent(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.startAgent(pid, aid), [profileId, agentId]);
       expect(dup.ok).toBeFalsy();
       expect(dup.reason).toBe("already-running");
 
       // APPROVE.
       const ok = await launched.win.evaluate(([pid, aid, id]) =>
-        window.careerflow.projectMode.approveCall(pid, aid, id), [profileId, agentId, approvalId]);
+        window.progressLedger.projectMode.approveCall(pid, aid, id), [profileId, agentId, approvalId]);
       expect(ok && ok.ok).toBe(true);
 
       // TOOL EXECUTES -> CONTINUATION -> COMPLETED.
@@ -345,7 +345,7 @@ test.describe("Agent approval lifecycle (real Electron runtime)", () => {
 
       const pending = await waitFor(async () => {
         const r = await launched.win.evaluate(([pid, aid]) =>
-          window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+          window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
         return r && r.ok && r.count === 1 ? r.approvals[0] : null;
       }, { what: "pending approval (deny leg)" }).catch(async (e) => {
         await dumpAgentDiagnostics(launched.win, profileId, agentId);
@@ -354,7 +354,7 @@ test.describe("Agent approval lifecycle (real Electron runtime)", () => {
 
       // DENY.
       const ok = await launched.win.evaluate(([pid, aid, id]) =>
-        window.careerflow.projectMode.denyCall(pid, aid, id), [profileId, agentId, pending.id]);
+        window.progressLedger.projectMode.denyCall(pid, aid, id), [profileId, agentId, pending.id]);
       expect(ok && ok.ok).toBe(true);
 
       const finalAgent = await waitFor(async () => {
@@ -376,7 +376,7 @@ test.describe("Agent approval lifecycle (real Electron runtime)", () => {
 
       // Queue is empty after resolution.
       const after = await launched.win.evaluate(([pid, aid]) =>
-        window.careerflow.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
+        window.progressLedger.projectMode.listPendingApprovals(pid, aid), [profileId, agentId]);
       expect(after.count).toBe(0);
       server.close();
     } finally {

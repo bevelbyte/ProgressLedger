@@ -1,7 +1,7 @@
 <script>
   // ToolInventory -- browse the agent's available tools + their schemas.
   //
-  // Reads the safe metadata from `window.careerflow.projectTools.list()`
+  // Reads the safe metadata from `window.progressLedger.projectTools.list()`
   // which calls the main-process `project:list-tools` IPC. The renderer
   // never sees the execute function -- only `name`, `description`,
   // `permission`, `inputSchema` (plus `approvalRequired` and
@@ -60,7 +60,7 @@
   async function refresh() {
     loading = true;
     try {
-      const res = await window.careerflow.projectTools.list();
+      const res = await window.progressLedger.projectTools.list();
       if (res && res.ok) {
         tools = Array.isArray(res.tools) ? res.tools : [];
         approvalRequired = Array.isArray(res.approvalRequired) ? res.approvalRequired : [];

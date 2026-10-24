@@ -1,7 +1,7 @@
 // Project Mode — LIVE Project Mode acceptance harness (Phase 11).
 //
 // Env-gated exactly like provider-live.test.js:
-//   CAREERFLOW_LIVE_TEST=1  CAREERFLOW_USER_DATA=<dir with pm-secrets.json>
+//   PROGRESSLEDGER_V2_LIVE_TEST=1  PROGRESSLEDGER_V2_USER_DATA=<dir with pm-secrets.json>
 //
 // Runs the REAL agent loop (loop.js), the REAL tool registry, the REAL
 // verify gate with a real node subprocess, and the LIVE OpenAI-
@@ -17,12 +17,12 @@
 //   G5  real live development task (understand -> plan -> modify -> test)
 //   G6  real failure -> diagnose -> fix -> retest (REAL failing test)
 //   G7  live DAG: seeded A,B,C independent + D dependent, run by model
-//   G8  CareerFlow sub-agent orchestration (delegate_research, live child)
+//   G8  Progress Ledger sub-agent orchestration (delegate_research, live child)
 //   G9  live cancellation mid-run (parent cancelled, no zombies)
 //   G10 401 live (wrong key), 429/5xx stay MOCK-tested (gate3/audit)
 //   G11 live memory recall into the context packet + isolation
 //
-// Run: CAREERFLOW_LIVE_TEST=1 CAREERFLOW_USER_DATA=<dir> node --test tests/live-project-mode.test.js
+// Run: PROGRESSLEDGER_V2_LIVE_TEST=1 PROGRESSLEDGER_V2_USER_DATA=<dir> node --test tests/live-project-mode.test.js
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -41,18 +41,18 @@ import { _setUserDataDir, _closeAll } from "../src/services/memory/index.js";
 // gate logic (identical convention to provider-live.test.js)
 // ---------------------------------------------------------------------------
 
-const ENABLED = process.env.CAREERFLOW_LIVE_TEST === "1";
+const ENABLED = process.env.PROGRESSLEDGER_V2_LIVE_TEST === "1";
 
 function resolveUserDataDir() {
-  if (process.env.CAREERFLOW_USER_DATA) return process.env.CAREERFLOW_USER_DATA;
+  if (process.env.PROGRESSLEDGER_V2_USER_DATA) return process.env.PROGRESSLEDGER_V2_USER_DATA;
   if (process.platform === "win32") {
     const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming");
-    return join(appData, "careerflow");
+    return join(appData, "progressledger");
   }
   if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", "careerflow");
+    return join(homedir(), "Library", "Application Support", "progressledger");
   }
-  return join(homedir(), ".careerflow", "data");
+  return join(homedir(), ".progressledger", "data");
 }
 
 function findFirstCredential(userDataDir) {
@@ -74,7 +74,7 @@ function findFirstCredential(userDataDir) {
 
 const CREDENTIAL = findFirstCredential(resolveUserDataDir());
 const SKIP = !ENABLED || !CREDENTIAL;
-const skipReason = !ENABLED ? "CAREERFLOW_LIVE_TEST is not set to 1" : !CREDENTIAL ? "no usable credential in pm-secrets.json" : null;
+const skipReason = !ENABLED ? "PROGRESSLEDGER_V2_LIVE_TEST is not set to 1" : !CREDENTIAL ? "no usable credential in pm-secrets.json" : null;
 
 // ---------------------------------------------------------------------------
 // harness
@@ -414,7 +414,7 @@ test("LIVE G7: seeded DAG A,B,C independent + D dependent completes with no dupl
 }));
 
 // ---------------------------------------------------------------------------
-// G8 — CareerFlow's own sub-agent orchestration (live child)
+// G8 — Progress Ledger's own sub-agent orchestration (live child)
 // ---------------------------------------------------------------------------
 
 test("LIVE G8: parent delegates to a live child sub-agent and continues to completion", { skip: SKIP, timeout: 420_000 }, withLive(async (dir) => {

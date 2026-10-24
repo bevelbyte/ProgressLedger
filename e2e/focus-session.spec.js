@@ -11,7 +11,7 @@ const projectRoot = join(__dirname, "..");
 //
 // The Focus overlay is a *surface*: it runs a timer against a real subject and
 // logs exactly one row through sessions.add(). This spec never touches UI
-// source — locators assert UI state, window.careerflow.* asserts persistence.
+// source — locators assert UI state, window.progressLedger.* asserts persistence.
 //
 // The 5-minute recipe: FocusSession.svelte reads Date.now() on start
 // (beginTimer) and on finish, and refreshes `nowMs` from a 1s interval. Patching
@@ -48,15 +48,15 @@ function localDateShifted(days) {
 async function launchApp(userDataDir) {
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
   // Onboarding bypass BEFORE any locator work — the overlay intercepts clicks.
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
   return { app, win };
 }
 
@@ -76,12 +76,12 @@ async function closeApp(app) {
 async function seedProfile(win, slugPrefix, subjectName = SUBJECT) {
   return win.evaluate(
     async ({ slugPrefix, subjectName, profile, track, semester, milestone }) => {
-      const p = await window.careerflow.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
+      const p = await window.progressLedger.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
       const pid = p.id;
-      const trackId = await window.careerflow.academic.addTrack(pid, track);
-      const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-      const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
-      const subjectId = await window.careerflow.academic.addSubject(pid, msId, subjectName, null);
+      const trackId = await window.progressLedger.academic.addTrack(pid, track);
+      const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+      const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
+      const subjectId = await window.progressLedger.academic.addSubject(pid, msId, subjectName, null);
       return { pid, subjectId, subjectName };
     },
     { slugPrefix, subjectName, profile: PROFILE, track: TRACK, semester: SEMESTER, milestone: MILESTONE }
@@ -90,7 +90,7 @@ async function seedProfile(win, slugPrefix, subjectName = SUBJECT) {
 
 async function seedBareProfile(win, slugPrefix) {
   return win.evaluate(async ({ slugPrefix, profile }) => {
-    const p = await window.careerflow.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
     return { pid: p.id };
   }, { slugPrefix, profile: PROFILE });
 }
@@ -99,7 +99,7 @@ async function seedBareProfile(win, slugPrefix) {
 async function activateProfile(win, name = PROFILE) {
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
   await win.locator(".nav-item", { hasText: "Profiles" }).click();
   // aria-label="Select <name>" is exact, unlike a hasText filter (which would also
@@ -216,11 +216,11 @@ async function chooseSubject(win, index = 0) {
 }
 
 async function readSessions(win, pid) {
-  return win.evaluate(async (id) => window.careerflow.sessions.list(id, 500), pid);
+  return win.evaluate(async (id) => window.progressLedger.sessions.list(id, 500), pid);
 }
 
 async function readStats(win, pid) {
-  return win.evaluate(async (id) => window.careerflow.sessions.stats(id), pid);
+  return win.evaluate(async (id) => window.progressLedger.sessions.stats(id), pid);
 }
 
 async function finishSession(win) {
@@ -626,16 +626,16 @@ test.describe("Focus Session — UI-driven lifecycle", () => {
 
       // A deadline and a due flashcard on the first subject.
       await win.evaluate(async ({ pid, subjectId, dueDate }) => {
-        await window.careerflow.deadlines.add(pid, subjectId, dueDate, "assignment", "Lab Report", "");
-        await window.careerflow.cards.create(pid, subjectId, "What is a red-black tree?", "Self-balancing BST");
+        await window.progressLedger.deadlines.add(pid, subjectId, dueDate, "assignment", "Lab Report", "");
+        await window.progressLedger.cards.create(pid, subjectId, "What is a red-black tree?", "Self-balancing BST");
       }, { pid: seed.pid, subjectId: seed.subjectId, dueDate: localDateShifted(2) });
 
       // A second subject with no deadlines and no cards (the empty-context case).
       const bare = await win.evaluate(async ({ pid, track, semester, milestone }) => {
-        const trackId = await window.careerflow.academic.addTrack(pid, track);
-        const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-        const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
-        const subjectId = await window.careerflow.academic.addSubject(pid, msId, "Graph Theory", null);
+        const trackId = await window.progressLedger.academic.addTrack(pid, track);
+        const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+        const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
+        const subjectId = await window.progressLedger.academic.addSubject(pid, msId, "Graph Theory", null);
         return { subjectId, name: "Graph Theory" };
       }, { pid: seed.pid, track: TRACK, semester: SEMESTER, milestone: MILESTONE });
 
@@ -880,12 +880,12 @@ test.describe("Focus Session — UI-driven lifecycle", () => {
 
       // list() returns ResourceMeta (kind/title/subjectId); content lives on the
       // full Resource from get().
-      const notes = await win.evaluate(async ({ pid, subjectId }) => window.careerflow.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
+      const notes = await win.evaluate(async ({ pid, subjectId }) => window.progressLedger.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
       expect(notes.length).toBe(1);
       expect(notes[0].kind).toBe("note");
       expect(notes[0].title).toBe(`Focus note — ${SUBJECT}`);
       expect(notes[0].subjectId).toBe(seed.subjectId);
-      const saved = await win.evaluate(async ({ pid, id }) => window.careerflow.resources.get({ profileId: pid, id }), { pid: seed.pid, id: notes[0].id });
+      const saved = await win.evaluate(async ({ pid, id }) => window.progressLedger.resources.get({ profileId: pid, id }), { pid: seed.pid, id: notes[0].id });
       expect(saved.content).toBe(noteText);
 
       // The session still finishes cleanly afterwards.
@@ -895,9 +895,9 @@ test.describe("Focus Session — UI-driven lifecycle", () => {
       expect(rows[0].durationMinutes).toBe(5);
 
       // The note survives the session.
-      const after = await win.evaluate(async ({ pid, subjectId }) => window.careerflow.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
+      const after = await win.evaluate(async ({ pid, subjectId }) => window.progressLedger.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
       expect(after.length).toBe(1);
-      const afterFull = await win.evaluate(async ({ pid, id }) => window.careerflow.resources.get({ profileId: pid, id }), { pid: seed.pid, id: after[0].id });
+      const afterFull = await win.evaluate(async ({ pid, id }) => window.progressLedger.resources.get({ profileId: pid, id }), { pid: seed.pid, id: after[0].id });
       expect(afterFull.content).toBe(noteText);
 
       await closeApp(app);
@@ -986,7 +986,7 @@ test.describe("Focus Session — UI-driven lifecycle", () => {
       const m = focusModal(win);
 
       const readNotes = () =>
-        win.evaluate(async ({ pid, subjectId }) => window.careerflow.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
+        win.evaluate(async ({ pid, subjectId }) => window.progressLedger.resources.list({ profileId: pid, subjectId }), { pid: seed.pid, subjectId: seed.subjectId });
 
       // Enter in the objective field is a no-op. It used to save the quick note,
       // which meant either warning about an empty note the user never meant to

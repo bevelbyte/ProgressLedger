@@ -153,7 +153,7 @@ export function aggregateSessions(sessions, todayStr = localDay()) {
     bySubjectId[id].totalMinutes += s.durationMinutes || 0;
     // Check if started_at is within the current week.
     //
-    // CareerFlow stores session timestamps as "YYYY-MM-DD HH:MM:SS" (local,
+    // Progress Ledger stores session timestamps as "YYYY-MM-DD HH:MM:SS" (local,
     // space-separated) via datetime('now','localtime') / toLocalTimestamp(), and
     // may also receive "YYYY-MM-DDTHH:MM:SS" from ISO callers. Splitting on "T"
     // alone left the whole "2026-01-14 10:00:00" string as the date, which made

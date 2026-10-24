@@ -15,7 +15,7 @@ const projectRoot = join(__dirname, "..");
  * THIS FILE IS THE EXTERNAL-NAVIGATION AND IPC HALF. It answers one question
  * from every angle the roadmap asks it: can page content, or a compromised
  * renderer, get the app to launch an OS application or open a URL outside
- * CareerFlow's own policy?
+ * Progress Ledger's own policy?
  *
  * WHAT IT PROVES IN THE REAL APP
  *   * the embedded browser exposes NO path to `shell.openExternal` â€” there is no
@@ -30,7 +30,7 @@ const projectRoot = join(__dirname, "..");
  *   * fabricated download ids and unknown page ids are refused.
  *
  * DONUT IS ABSENT FOR EVERY TEST, asserted at launch rather than assumed. This
- * is CareerFlow's own embedded browser: no Donut path is involved anywhere.
+ * is Progress Ledger's own embedded browser: no Donut path is involved anywhere.
  */
 
 /** A directory guaranteed NOT to exist: Donut is "absent from the machine". */
@@ -50,7 +50,7 @@ const EXTERNAL_SCHEMES = [
   ["data:", "data:text/html,<h1>x</h1>"],
   ["blob:", "blob:https://example.com/x"],
   ["view-source:", "view-source:https://example.com/"],
-  ["careerflow:", "careerflow://app/index.html"],
+  ["progressLedger:", "progressledger-v2://app/index.html"],
 ];
 
 /** The bridge's exact public surface. A new key here is a new capability. */
@@ -167,12 +167,12 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-r3-ext-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -186,21 +186,21 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
   return { app, win, userDataDir };
 }
 
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("R3 External", "r3-external");
+    const created = await window.progressLedger.profiles.add("R3 External", "r3-external");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -208,10 +208,10 @@ async function seedAndSelectProfile(win) {
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
@@ -312,12 +312,12 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
 
     // (b) The renderer's bridge has exactly the pinned surface: nothing that
     //     could open, grant, name a session or name a path.
-    const surface = await win.evaluate(() => Object.keys(window.careerflow.browser).sort());
+    const surface = await win.evaluate(() => Object.keys(window.progressLedger.browser).sort());
     expect(surface).toEqual([...BROWSER_BRIDGE_KEYS].sort());
 
     // (c) No method on that surface could open, launch or exec anything.
     const opens = await win.evaluate(() =>
-      Object.keys(window.careerflow.browser).filter((k) =>
+      Object.keys(window.progressLedger.browser).filter((k) =>
         /open|external|launch|exec|spawn/i.test(k),
       ),
     );
@@ -325,7 +325,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
 
     // (d) No preload method anywhere in the renderer's namespace does it either.
     const anyExternal = await win.evaluate(() => {
-      const cf = window.careerflow ?? {};
+      const cf = window.progressLedger ?? {};
       return Object.keys(cf).filter((k) => /openExternal|openexternal/i.test(k));
     });
     expect(anyExternal).toEqual([]);
@@ -333,7 +333,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
     // (e) The whole bridge surface â€” every namespace, not just `browser` â€” is
     //     checked, so a NEW top-level opener cannot be missed either.
     const topLevel = await win.evaluate(() =>
-      Object.keys(window.careerflow ?? {}).filter((k) =>
+      Object.keys(window.progressLedger ?? {}).filter((k) =>
         /openExternal|openexternal|launchExternal/i.test(k),
       ),
     );
@@ -360,7 +360,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
 
     // No OS window, and the app is still alive.
     expect(await browserWindowCount(app), "no OS window").toBe(1);
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
     // The page that made all those attempts is STILL our page.
     await expect(win.locator('[data-testid="browser-title"]')).toHaveText("R3 External Probe");
   });
@@ -533,7 +533,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
     // Every hostile URL through the app's own navigation bridge.
     for (const [, url] of EXTERNAL_SCHEMES) {
       const res = await win.evaluate(
-        (spec) => window.careerflow.browser.navigate(spec.pageId, spec.url),
+        (spec) => window.progressLedger.browser.navigate(spec.pageId, spec.url),
         { pageId, url },
       );
       expect(res.ok, `${url} must be refused`).toBe(false);
@@ -544,7 +544,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
     // Fabricated download ids through the app's own cancel bridge.
     for (const bogus of ["dl-99999", "..", "", "dl-1;rm -rf"]) {
       const res = await win.evaluate(
-        (id) => window.careerflow.browser.cancelDownload(id),
+        (id) => window.progressLedger.browser.cancelDownload(id),
         bogus,
       );
       expect(res.ok, `${JSON.stringify(bogus)} must not be accepted`).toBe(false);
@@ -553,7 +553,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
 
     // A page id that does not exist cannot be operated on.
     const unknown = await win.evaluate(
-      (url) => window.careerflow.browser.navigate("bp-99999", url),
+      (url) => window.progressLedger.browser.navigate("bp-99999", url),
       "https://example.com",
     );
     expect(unknown.ok).toBe(false);
@@ -561,7 +561,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
 
     // And the renderer cannot name a download's path: the only strings it gets
     // are the opaque id and the safe base name.
-    const downloads = await win.evaluate(() => window.careerflow.browser.downloads());
+    const downloads = await win.evaluate(() => window.progressLedger.browser.downloads());
     for (const d of downloads.downloads ?? []) {
       expect(Object.keys(d).sort()).toEqual(
         [
@@ -605,7 +605,7 @@ test.describe("R3 external navigation â€” no page, popup, redirect or IPC p
     expect(await webContentsCount(app), "no extra renderer process").toBeLessThanOrEqual(3);
 
     const donut = await app.evaluate(() => ({
-      stub: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+      stub: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
       recorder: globalThis.__cfDonutE2E ?? null,
     }));
     expect(donut.stub).toBe(null);

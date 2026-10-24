@@ -283,3 +283,27 @@ No new design. CareerFlow's design.
   pass and at close-out; Progress Ledger's own data folder was never
   touched. Temporary driver scripts (e2e/p1-shots*.mjs) are deleted
   before the Phase 1 commit and are never committed.
+
+## Phase 2 record (2026-10-24, done)
+- Rename by ordered plain-string script (338 files / 2378 replacements),
+  then fix passes for the preload bridge name, the protocol scheme and
+  the userData path. Two rename lessons recorded as V2-20: display-name
+  rules (with a space) and hyphenated-name rules break identifiers, and
+  only a repo-wide scan finds every break (11 files, including 3 e2e
+  specs and 3 shell files no unit test imports).
+- Donut removal by named-list force-delete (git rm -f required: the
+  first attempt without -f silently refused every file with unstaged
+  rename modifications) plus targeted source edits (14 files) and test
+  adaptations. The full-test loop took 5 runs: 3 shell failures (rename
+  casualties + a guard that assumed the transport still existed), 1
+  brand-guard self-hit (my own comment), 2 UI failures (jsdom has no
+  scrollIntoView; the browser view's ownership expectation), 1 latent
+  timer-after-teardown error (QuickNote cleanup), then 5 collection
+  failures that were the V2-20 identifier breaks. Final: all green.
+- Fonts, build ID, logo and B6 per V2-19. The app-run proof ran after
+  the e2e smoke spec, so its screenshot shows the Degree view with 8
+  semesters (Semester 7 visible, not clipped) and the status bar
+  carrying the build ID — the two deferred B6 layout items show no
+  defect in that shot but stay open for Phase 5 reproduction.
+- Temporary driver scripts (e2e/p2-iso-before.mjs, e2e/p2-shots.mjs)
+  are deleted before the Phase 2 commit and are never committed.

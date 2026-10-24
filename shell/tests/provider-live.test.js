@@ -1,12 +1,12 @@
 // Project Mode — OpenAI provider LIVE smoke test.
 //
 // This file is intentionally NOT part of the standard `npm test` run.
-// It is skipped unless the env var CAREERFLOW_LIVE_TEST=1 is set AND a
+// It is skipped unless the env var PROGRESSLEDGER_V2_LIVE_TEST=1 is set AND a
 // stored credential is found on disk. It must NEVER cause the regular
 // test suite to fail.
 //
 // Skip conditions (any one skips):
-//   1. CAREERFLOW_LIVE_TEST is not set to "1".
+//   1. PROGRESSLEDGER_V2_LIVE_TEST is not set to "1".
 //   2. userDataDir env override not provided OR no pm-secrets.json
 //      exists with at least one (profileId, projectId) entry whose
 //      apiKey is a non-empty string.
@@ -30,7 +30,7 @@
 //   - Emits a sanitised summary (event counts only).
 //
 // Run manually:
-//   CAREERFLOW_LIVE_TEST=1 node --test tests/provider-live.test.js
+//   PROGRESSLEDGER_V2_LIVE_TEST=1 node --test tests/provider-live.test.js
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -44,24 +44,24 @@ import { createOpenAiProvider } from "../src/services/agent/provider.js";
 // gate logic
 // ---------------------------------------------------------------------------
 
-const ENABLED = process.env.CAREERFLOW_LIVE_TEST === "1";
+const ENABLED = process.env.PROGRESSLEDGER_V2_LIVE_TEST === "1";
 
 // Resolve the userData directory. We accept a few sources, in order:
-//   1. CAREERFLOW_USER_DATA env var (explicit override).
-//   2. ~/.careerflow/data (Linux / macOS default).
-//   3. %APPDATA%/careerflow on Windows.
+//   1. PROGRESSLEDGER_V2_USER_DATA env var (explicit override).
+//   2. ~/.progressledger/data (Linux / macOS default).
+//   3. %APPDATA%/progressledger on Windows.
 function resolveUserDataDir() {
-  if (process.env.CAREERFLOW_USER_DATA) return process.env.CAREERFLOW_USER_DATA;
+  if (process.env.PROGRESSLEDGER_V2_USER_DATA) return process.env.PROGRESSLEDGER_V2_USER_DATA;
   // Use the standard Electron userData location. On Windows this is
-  // %APPDATA%/<productName>; productName is "careerflow" in package.json.
+  // %APPDATA%/<productName>; productName is "progressledger" in package.json.
   if (process.platform === "win32") {
     const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming");
-    return join(appData, "careerflow");
+    return join(appData, "progressledger");
   }
   if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", "careerflow");
+    return join(homedir(), "Library", "Application Support", "progressledger");
   }
-  return join(homedir(), ".careerflow", "data");
+  return join(homedir(), ".progressledger", "data");
 }
 
 /**
@@ -112,7 +112,7 @@ const credential = findFirstCredential(userDataDir);
 // can debug without digging through the source.
 function skipReason() {
   if (!ENABLED) {
-    return "CAREERFLOW_LIVE_TEST is not set to 1";
+    return "PROGRESSLEDGER_V2_LIVE_TEST is not set to 1";
   }
   if (!credential) {
     return `no usable credential found in ${join(userDataDir, "pm-secrets.json")}`;

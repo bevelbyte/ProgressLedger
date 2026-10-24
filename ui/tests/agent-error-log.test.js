@@ -74,14 +74,14 @@ const NO_DETAIL = {
 
 function setupIpc({ runs = [], errors = [] } = {}) {
   const listAgentErrors = vi.fn().mockResolvedValue(runs);
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: { listAgentErrors },
   };
   return { listAgentErrors };
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   vi.clearAllMocks();
 });
 

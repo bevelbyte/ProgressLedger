@@ -22,7 +22,7 @@ const projectRoot = join(__dirname, "..");
  * run it.
  *
  * WHAT IT PROVES IN THE REAL APP
- *   * an approved popup becomes an UNFOCUSED CareerFlow workspace tab;
+ *   * an approved popup becomes an UNFOCUSED Progress Ledger workspace tab;
  *   * the tab the user was reading stays active, and the pane trail is untouched;
  *   * NO OS-level BrowserWindow is ever created — the handler denies it and main
  *     creates its own page instead;
@@ -82,8 +82,8 @@ const PAGE_HTML = `<!doctype html>
           case "open-data":
             openIt("data:text/html,<h1>data popup</h1>");
             break;
-          case "open-careerflow":
-            openIt("careerflow://app/index.html");
+          case "open-progressledger":
+            openIt("progressledger-v2://app/index.html");
             break;
           default:
             report("auto", { note: "idle" });
@@ -132,12 +132,12 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-r3-popup-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -151,23 +151,23 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   // Main's own push stream: popups, refusals, everything.
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
   return { app, win, userDataDir };
 }
 
-/** Seed one CareerFlow profile and select it through the app's own card. */
+/** Seed one Progress Ledger profile and select it through the app's own card. */
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("R3 Popup", "r3-popup");
+    const created = await window.progressLedger.profiles.add("R3 Popup", "r3-popup");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -175,10 +175,10 @@ async function seedAndSelectProfile(win) {
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
@@ -260,7 +260,7 @@ function events(win) {
 /** Page tabs in the pane, in strip order. Selected by VIEW, never by label. */
 const pageTabs = (win) => win.locator('[data-pane-id] [data-view="page"]');
 
-test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, never an OS window", () => {
+test.describe("R3 popups — an approved popup is an unfocused Progress Ledger tab, never an OS window", () => {
   let app;
   let win;
   let origin;
@@ -346,7 +346,7 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
     await expect.poll(async () => (await snapshot(app)).pages.length).toBe(1);
 
     // Three popups from the SAME page load. The first two are within budget and
-    // become CareerFlow tabs; the third is refused.
+    // become Progress Ledger tabs; the third is refused.
     for (let i = 0; i < 3; i += 1) {
       const opened = await runInPage(app, 'window.__open("/landed");');
       expect(opened.ok, `popup ${i + 1} could not be driven`).toBe(true);
@@ -381,7 +381,7 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
    *
    * Chromium itself stops some popup schemes before Electron's handler is
    * consulted. Measured on this host by driving each one from real page
-   * content: `data:` and `careerflow:` DO reach `setWindowOpenHandler`, while
+   * content: `data:` and `progressLedger:` DO reach `setWindowOpenHandler`, while
    * `file:` and `view-source:` are stopped inside Chromium and produce no
    * Electron event at all.
    *
@@ -412,13 +412,13 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
     );
     expect(dataRefusal.reason, "the refusal states why").toBe("blocked-scheme");
 
-    // --- careerflow: reaches the handler and is refused. ---
-    await navigateTo(win, `${origin.origin}/probe?program=open-careerflow`);
+    // --- progressLedger: reaches the handler and is refused. ---
+    await navigateTo(win, `${origin.origin}/probe?program=open-progressledger`);
     await expect
       .poll(
         async () =>
           (await events(win)).filter(
-            (e) => e.at === "window-open" && e.scheme === "careerflow:",
+            (e) => e.at === "window-open" && e.scheme === "progressLedger:",
           ).length,
         { timeout: 20_000 },
       )
@@ -455,7 +455,7 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
     await navigateTo(win, `${origin.origin}/probe`);
     await expect(win.locator('[data-testid="browser-title"]')).toHaveText("R3 Popup Probe");
 
-    // https: is on the allow-list, so it is re-decided into a CareerFlow tab —
+    // https: is on the allow-list, so it is re-decided into a Progress Ledger tab —
     // which is the whole point of the budget: external links stay INSIDE the
     // product rather than launching the user's system browser.
     const opened = await runInPage(app, 'window.__open("https://example.com/");');
@@ -529,7 +529,7 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
     // Two more pages through the app's own bridge, taking us to the cap.
     for (let i = 0; i < 2; i += 1) {
       await win.evaluate(
-        (url) => window.careerflow.browser.createPage(1, url),
+        (url) => window.progressLedger.browser.createPage(1, url),
         `${origin.origin}/landed`,
       );
     }
@@ -552,15 +552,15 @@ test.describe("R3 popups — an approved popup is an unfocused CareerFlow tab, n
     // The app is still alive and still governed.
     expect((await snapshot(app)).pages.length, "no page was created").toBe(4);
     expect(await browserWindowCount(app), "no OS window").toBe(1);
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   });
 
   test("Donut is completely absent and the popup policy still works", async () => {
     expect(existsSync(ABSENT_DONUT_DIR), "the Donut settings dir must not exist").toBe(false);
     const donut = await app.evaluate(() => ({
-      stub: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+      stub: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
       recorder: globalThis.__cfDonutE2E ?? null,
-      settingsDir: process.env.CAREERFLOW_DONUT_SETTINGS_DIR ?? null,
+      settingsDir: process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR ?? null,
     }));
     expect(donut.stub, "the Donut E2E stub must not be in play").toBe(null);
     expect(donut.recorder, "no Donut collaboration was installed").toBe(null);

@@ -14,7 +14,7 @@ import OnboardingTour from "../src/features/project-mode/components/OnboardingTo
 import ProjectModePanel from "../src/features/project-mode/components/ProjectModePanel.svelte";
 import { projectModeStore } from "../src/features/project-mode/stores/projectMode.svelte.js";
 
-const TOUR_KEY = "careerflow_project_mode_tour_complete";
+const TOUR_KEY = "progressledger_v2_project_mode_tour_complete";
 
 afterEach(() => {
   cleanup();

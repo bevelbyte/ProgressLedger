@@ -9,7 +9,7 @@ export const noteService = {
    * @returns {Promise<object>} The resource details
    */
   async get(profileId, resourceId) {
-    return await window.careerflow.resources.get({ profileId, id: resourceId });
+    return await window.progressLedger.resources.get({ profileId, id: resourceId });
   },
 
   /**
@@ -21,7 +21,7 @@ export const noteService = {
    * @returns {Promise<void>}
    */
   async updateNote(profileId, resourceId, title, content) {
-    return await window.careerflow.resources.updateNote(profileId, resourceId, title, content);
+    return await window.progressLedger.resources.updateNote(profileId, resourceId, title, content);
   },
 
   /**
@@ -33,6 +33,6 @@ export const noteService = {
    * @returns {Promise<void>}
    */
   async addNote(profileId, subjectId, title, content) {
-    return await window.careerflow.resources.addNote(profileId, subjectId, title, content);
+    return await window.progressLedger.resources.addNote(profileId, subjectId, title, content);
   }
 };

@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { Audit, _resetForTests, _setStateForTests, _INTERNAL } from "../src/services/audit/index.js";
 
 function makeTempDir() {
-  return mkdtempSync(join(tmpdir(), "careerflow-audit-"));
+  return mkdtempSync(join(tmpdir(), "progressledger-audit-"));
 }
 
 async function withTempDir(fn) {

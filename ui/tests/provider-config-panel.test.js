@@ -14,7 +14,7 @@
 //   - a successful save clears the warning and forwards POSITIONALLY
 //   - the renderer never holds/echoes the stored API key
 //
-// The IPC namespace is mocked on window.careerflow.projectMode, mirroring the
+// The IPC namespace is mocked on window.progressLedger.projectMode, mirroring the
 // shape shipped by shell/src/preload.cjs + shell/src/ipc/project-mode.js.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
@@ -45,7 +45,7 @@ function setupIpc({ getImpl, setImpl, clearImpl } = {}) {
     setImpl || vi.fn().mockResolvedValue({ ok: true, config: { endpoint: "https://example.invalid/v1", model: "example-model", hasKey: true } });
   const clearProviderConfig = clearImpl || vi.fn().mockResolvedValue({ ok: true });
 
-  window.careerflow = { projectMode: { getProviderConfig, setProviderConfig, clearProviderConfig } };
+  window.progressLedger = { projectMode: { getProviderConfig, setProviderConfig, clearProviderConfig } };
 
   // Simulate an active project so the $effect fires.
   projectModeStore.activeProjectId = 7;
@@ -61,7 +61,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   projectModeStore.activeProjectId = null;
 });
 

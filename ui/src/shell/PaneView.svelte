@@ -18,7 +18,6 @@
   import { MistakeLedger } from "../features/mistakes";
   import { RecallDeck } from "../features/recall-deck";
   import { Dashboard } from "../features/dashboard";
-  import BrowserPanel from "../features/browser/index.js";
   import { StudySessions } from "../features/study-sessions";
   import { CgpaPlanner } from "../features/cgpa";
   import { LabTracker } from "../features/labs";
@@ -120,10 +119,6 @@
 {:else if view === "settings"}
   <div class="view-container">
     <SettingsHub {profiles} {activeProfile} onRestored={onBackupRestored} />
-  </div>
-{:else if view === "browser"}
-  <div class="view-container wide">
-    <BrowserPanel />
   </div>
 {:else if view === "project"}
   <div class="view-container flush">

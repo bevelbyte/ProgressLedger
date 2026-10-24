@@ -17,7 +17,7 @@ export const profileStore = $state({
 // change and validated against the freshly loaded list on mount. Without
 // this, every reload dropped the working context and disabled all
 // profile-gated navigation until the user re-picked a profile.
-const LAST_PROFILE_KEY = "careerflow_last_active_profile_id";
+const LAST_PROFILE_KEY = "progressledger_v2_last_active_profile_id";
 
 function readPersistedProfileId(profiles) {
   try {

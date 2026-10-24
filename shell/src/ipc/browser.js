@@ -1,5 +1,5 @@
 import { safeHandle } from "../security/safe-handle.js";
-// CareerFlow embedded-browser IPC — Phase 1 of the approved D2-D6 plan.
+// Progress Ledger embedded-browser IPC — Phase 1 of the approved D2-D6 plan.
 //
 // SECURITY MODEL. The renderer supplies ONLY an opaque page id (`bp-N`), a URL
 // string and integers. There is no IPC parameter for a partition, a path, a
@@ -25,9 +25,9 @@ let hostRef = null;
 
 export function getBrowserHost(ctx) {
   if (hostRef) return hostRef;
-  const e2eNavigationTimeout = Number(process.env.CAREERFLOW_E2E_BROWSER_NAVIGATION_TIMEOUT_MS);
+  const e2eNavigationTimeout = Number(process.env.PROGRESSLEDGER_V2_E2E_BROWSER_NAVIGATION_TIMEOUT_MS);
   const navigationTimeoutMs =
-    process.env.CAREERFLOW_E2E === "1" &&
+    process.env.PROGRESSLEDGER_V2_E2E === "1" &&
     Number.isInteger(e2eNavigationTimeout) &&
     e2eNavigationTimeout >= 100 &&
     e2eNavigationTimeout <= 60_000
@@ -78,7 +78,7 @@ function readString(payload, key) {
 export function register(ctx) {
   const host = getBrowserHost(ctx);
 
-  // Ownership gate: a browser partition belongs to a real CareerFlow profile.
+  // Ownership gate: a browser partition belongs to a real Progress Ledger profile.
   // The partition is derived from the id (services/browser/policy.js) AFTER this
   // check, so an unknown id can never mint a partition.
   function profileExists(profileId) {
@@ -157,7 +157,7 @@ export function register(ctx) {
 
   // Real-Electron test seam, same pattern as the Donut E2E recorder: the
   // snapshot is main-process-only and is never exposed to the preload bridge.
-  if (process.env.CAREERFLOW_E2E === "1") {
+  if (process.env.PROGRESSLEDGER_V2_E2E === "1") {
     globalThis.__cfBrowserE2E = host;
   }
 }

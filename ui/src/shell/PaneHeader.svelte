@@ -11,7 +11,7 @@
   // "what have I open, and what do I close", and nothing else.
   //
   // The trail arrows are route-level back/forward for THIS pane only — the
-  // reference shows them right after the pane number (`CareerFlow-Frontend-Lab
+  // reference shows them right after the pane number (`Progress Ledger-Frontend-Lab
   // /src/shell/PaneShell.tsx` → `.pane__trail`), and they step the trail the
   // workspace model already records on every activation (G11: the write-only
   // half is gone because this control is its consumer).
@@ -52,7 +52,7 @@ let {
   onModeChange = () => {},
   onTrailBack = () => {},
   onTrailForward = () => {},
-  /** Open a new CareerFlow browser page in this pane (D2-D6 plan, Phase 1). */
+  /** Open a new Progress Ledger browser page in this pane (D2-D6 plan, Phase 1). */
   onNewPage = () => {},
   /** Native WebContentsView must be hidden while this menu overlays the pane. */
   onNewTabMenuOpenChange = () => {},
@@ -76,6 +76,18 @@ const DOT_TITLES = {
 function dotFor(tab) {
   return tab.entity == null ? null : (dots?.[tab.entity] ?? null);
 }
+
+// Keep the active tab visible. The strip scrolls horizontally with hidden
+// scrollbars, so without this an active tab can sit half-clipped at the
+// strip's edge (reference screenshots: the "Goal" tab cut off at the right
+// edge of the Study tab strip). `nearest` never scrolls a fully-visible tab.
+$effect(() => {
+  const id = active;
+  if (id == null) return;
+  const el = document.querySelector(`[data-pane-tab="${id}"]`);
+  // jsdom (unit tests) has no scrollIntoView; skip there, never throw.
+  if (typeof el?.scrollIntoView === "function") el.scrollIntoView({ block: "nearest", inline: "nearest" });
+});
 
 function onKeydown(event, index) {
   // Left/Right move between tabs, Home/End jump to the ends. The strip is a

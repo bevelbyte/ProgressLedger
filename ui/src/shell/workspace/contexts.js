@@ -1,5 +1,5 @@
 /**
- * Default contexts — CareerFlow's own working domains.
+ * Default contexts — Progress Ledger's own working domains.
  *
  * The Lab seeded contexts from its simulated research world (Desk / Research /
  * Algorithms / Thesis / Operator). Main has no such world, so the seeds here

@@ -61,19 +61,19 @@
     }
   }
 
-  let clickLogging = $state(localStorage.getItem("careerflow_click_logging") === "true");
+  let clickLogging = $state(localStorage.getItem("progressledger_v2_click_logging") === "true");
 
   function toggleClickLogging() {
     clickLogging = !clickLogging;
-    localStorage.setItem("careerflow_click_logging", String(clickLogging));
+    localStorage.setItem("progressledger_v2_click_logging", String(clickLogging));
     toast.info(clickLogging ? "Click logging enabled. Button clicks will log to the console." : "Click logging disabled.");
   }
 
-  let debugMode = $state(localStorage.getItem("careerflow_debug_mode") === "true");
+  let debugMode = $state(localStorage.getItem("progressledger_v2_debug_mode") === "true");
 
   function toggleDebugMode() {
     debugMode = !debugMode;
-    localStorage.setItem("careerflow_debug_mode", String(debugMode));
+    localStorage.setItem("progressledger_v2_debug_mode", String(debugMode));
     toast.info(debugMode ? "Debug Mode enabled. Persistent logging activated." : "Debug Mode disabled.");
   }
 

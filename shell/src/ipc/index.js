@@ -19,10 +19,8 @@ import { register as registerCloud } from "./cloud.js";
 import { register as registerSync } from "./sync.js";
 import { register as registerDiagnostics } from "./diagnostics.js";
 import { register as registerUpdates } from "./updates.js";
-import { register as registerDonut } from "./donut.js";
-import { register as registerBrowserManager } from "./browser-manager.js";
+import { register as registerSystem } from "./system.js";
 import { register as registerFocusSignals } from "./focus-signals.js";
-import { register as registerBrowserWorkspace } from "./browser-workspace.js";
 import { register as registerProjectTools } from "./project-tools.js";
 import { register as registerProjectMode } from "./project-mode.js";
 import { register as registerSkillsPluginsMcp } from "./skills-plugins-mcp.js";
@@ -39,7 +37,7 @@ import { register as registerResearch } from "./research.js";
 
 /**
  * IPC registrars. Each module exports register(ctx) where ctx = {
- *   core    – the loaded @careerflow/core native addon,
+ *   core    – the loaded @progress-ledger/core native addon,
  *   win     – () => BrowserWindow (may be null),
  *   notify  – (channel, payload) => webContents.send guarded on window existence,
  * }.
@@ -81,10 +79,8 @@ export function registerAllIpc(ctx) {
   registerSync(ctx);
   registerDiagnostics(ctx);
   registerUpdates(ctx);
-  registerDonut(ctx);
-  registerBrowserManager(ctx);
+  registerSystem(ctx);
   registerFocusSignals(ctx);
-  registerBrowserWorkspace(ctx);
   registerProjectTools(ctx);
   registerProjectMode(ctx);
   registerSkillsPluginsMcp(ctx);
@@ -96,7 +92,7 @@ export function registerAllIpc(ctx) {
   registerSubAgentDiffIpc(ctx);
   registerAudit(ctx);
   registerGoals(ctx);
-  // The CareerFlow-owned embedded browser (D2-D6 plan, Phase 1). Registered
+  // The Progress Ledger-owned embedded browser (D2-D6 plan, Phase 1). Registered
   // last on purpose: it is the newest surface and shares nothing with any
   // earlier registrar.
   registerBrowser(ctx);

@@ -5,7 +5,7 @@
 // silently once already:
 //
 //   1. The status bar renders the native `ping()` response verbatim.
-//      20 E2E specs gate on the text `CareerFlow core online`. Paraphrasing it
+//      20 E2E specs gate on the text `Progress Ledger core online`. Paraphrasing it
 //      to a friendlier word ("core ok") fails every one of them at the
 //      readiness step, long before the test's actual subject is reached.
 //   2. The nav rail exposes every route label verbatim, with `Project` matched
@@ -43,9 +43,9 @@ import { __resetOperator, operator, applyOperatorEvent } from "../src/shell/oper
 // catch. `runtime.isE2E` in particular must stay a boolean.
 // ---------------------------------------------------------------------------
 
-const PING = "CareerFlow core online";
+const PING = "Progress Ledger core online";
 
-function makeCareerflow(overrides = {}) {
+function makeProgressLedger(overrides = {}) {
   const resolved = (value) => async () => value;
   const base = {
     ping: async () => PING,
@@ -107,19 +107,19 @@ function makeCareerflow(overrides = {}) {
     update: { check: resolved({ state: "idle" }), onStatus: () => () => {} },
     projectMode: { onEvent: () => () => {} },
   };
-  window.careerflow = { ...base, ...overrides };
-  return window.careerflow;
+  window.progressLedger = { ...base, ...overrides };
+  return window.progressLedger;
 }
 
 beforeEach(() => {
   __resetOperator();
-  localStorage.setItem("careerflow_onboarding_complete", "true");
-  makeCareerflow();
+  localStorage.setItem("progressledger_v2_onboarding_complete", "true");
+  makeProgressLedger();
 });
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ describe("view registry", () => {
   // and rendering disagree and the app develops dead ends.
   const ALLOWED_VIEWS = new Set([
     "home", "cgpa", "tree", "labs", "projects", "flashcards", "mistakes",
-    "formulas", "browser", "research-ledger", "deadlines", "sessions", "profiles", "project",
+    "formulas", "research-ledger", "deadlines", "sessions", "profiles", "project",
     "goals", "career", "settings",
   ]);
 

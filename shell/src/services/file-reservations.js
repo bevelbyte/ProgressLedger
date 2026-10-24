@@ -8,7 +8,7 @@
 // IMPORTANT: this is a SIDECAR database (`<userData>/file_reservations.sqlite`).
 // It is opened by the main process only and NEVER touches the core `pm_*`
 // schema. If you are looking for the canonical DB, that lives in
-// `<workspace>/careerflow.db` and is owned by the Rust NAPI core.
+// `<workspace>/progress-ledger-v2.db` and is owned by the Rust NAPI core.
 //
 // Concurrency model: acquire() uses an immediate SQLite transaction. Two
 // callers contending for the same path race, and exactly one wins. The other

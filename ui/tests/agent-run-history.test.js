@@ -38,14 +38,14 @@ const FAILED = {
 
 function setupIpc({ runs = [] } = {}) {
   const listRecentAgentRuns = vi.fn().mockResolvedValue(runs);
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: { listRecentAgentRuns },
   };
   return { listRecentAgentRuns };
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 afterEach(() => {

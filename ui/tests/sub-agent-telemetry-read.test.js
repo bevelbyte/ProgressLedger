@@ -10,11 +10,11 @@
 //
 //   SubAgentActivity.svelte
 //     -> projectModeService.listSubagentRuns(profileId, parentAgentId, limit)
-//       -> window.careerflow.projectMode.listSubagentRuns  (preload.cjs)
+//       -> window.progressLedger.projectMode.listSubagentRuns  (preload.cjs)
 //         -> ipcRenderer.invoke("agent:list-subagent-runs", ...)
 //           -> callPm("pmListSubagentRuns", [...])
 //
-// We stub at the `window.careerflow.projectMode` boundary (the same
+// We stub at the `window.progressLedger.projectMode` boundary (the same
 // seam every other project-mode UI test uses) and assert on the exact
 // argument tuple that preload forwards to the channel, so a regression
 // in either the service wrapper or the binding tuple is caught here.
@@ -77,14 +77,14 @@ const INFLIGHT = makeRun({
 
 function setupIpc({ runs = [], impl = null } = {}) {
   const listSubagentRuns = impl ? impl : vi.fn().mockResolvedValue(runs);
-  window.careerflow = { projectMode: { listSubagentRuns } };
+  window.progressLedger = { projectMode: { listSubagentRuns } };
   return { listSubagentRuns };
 }
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW));
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 afterEach(() => {

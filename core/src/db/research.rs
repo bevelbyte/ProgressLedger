@@ -1,5 +1,5 @@
-//! Durable Research sources and kept passages for CareerFlow-owned browser pages.
-//! Deliberately separate from subject-attached academic resources and Donut shortcuts.
+//! Durable Research sources and kept passages for Progress Ledger-owned browser pages.
+//! Deliberately separate from subject-attached academic resources.
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

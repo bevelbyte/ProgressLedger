@@ -2,7 +2,7 @@
  * Onboarding state management (Svelte 5 runes)
  */
 
-const STORAGE_KEY = 'careerflow_onboarding_complete';
+const STORAGE_KEY = 'progressledger_v2_onboarding_complete';
 
 // First run is three steps (docs/DESIGN-ATLAS.md §5.7). It used to be six:
 // four of those six asked for nothing and explained panels the user had not
@@ -24,7 +24,7 @@ export const onboarding = $state({
  */
 export function shouldShowOnboarding() {
   if (typeof window === 'undefined') return false;
-  if (window.careerflow?.runtime?.isE2E === true) return false;
+  if (window.progressLedger?.runtime?.isE2E === true) return false;
   return !localStorage.getItem(STORAGE_KEY);
 }
 

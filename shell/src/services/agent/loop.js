@@ -21,7 +21,7 @@
 //
 // Persistence: every state transition and every transcript message is
 // persisted via the Rust NAPI surface (`pm_*`). The loop is therefore
-// resumable across CareerFlow restarts — at minimum, the user can
+// resumable across Progress Ledger restarts — at minimum, the user can
 // inspect the last completed run from the SQLite store.
 
 import { createMockProvider, createOpenAiProvider } from "./provider.js";
@@ -883,7 +883,7 @@ ${projectIntelBlock}`
           // pickNextStep returned null. This happens when:
           //   - the plan has no currently-ready steps (a dep is
           //     `running` left over from a crash — common after a
-          //     CareerFlow restart), OR
+          //     Progress Ledger restart), OR
           //   - the model has already acted on every ready step this
           //     outer-loop iteration (the seen-set is non-empty).
           //
@@ -1272,7 +1272,7 @@ ${projectIntelBlock}`
 }
 
 /**
- * Resume a previously-paused (or CareerFlow-restarted) agent.
+ * Resume a previously-paused (or Progress Ledger-restarted) agent.
  *
  * Refuses early if:
  *   - the agent row is missing (`not-found`)
@@ -1512,7 +1512,7 @@ async function appendToolResult(core, profileId, agentId, callId, name, result) 
 
 function buildSystemPrompt(project, profileId, projectId) {
   const lines = [
-    "You are a Project Mode agent in CareerFlow.",
+    "You are a Project Mode agent in Progress Ledger.",
     `Project: ${project.name}`,
     project.description ? `Description: ${project.description}` : "",
     `Project root: ${project.root_path}`,

@@ -1,6 +1,6 @@
 ﻿//! Integration tests for the Academic Focus signal aggregator.
 //!
-//! These tests exercise `careerflow_core::db::focus_signals` directly
+//! These tests exercise `progress_ledger_core::db::focus_signals` directly
 //! against a real SQLite database. The lib function uses a global pool
 //! that is initialised by `init_db`, so each test writes a temp DB and
 //! initialises the pool with `init_db(path)` â€” the production code path
@@ -18,7 +18,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use careerflow_core::db::focus_signals::get_focus_signals;
+use progress_ledger_core::db::focus_signals::get_focus_signals;
 use rusqlite::{params, Connection};
 
 // -------- DB plumbing (mirrors the in-process initialiser used at runtime) --
@@ -27,7 +27,7 @@ fn tmp_db_path(name: &str) -> PathBuf {
     // Include the test process id so concurrent cargo invocations cannot share
     // the same SQLite file and race while replaying migrations.
     let dir = std::env::temp_dir().join(format!(
-        "careerflow-focus-test-{name}-{}",
+        "progressledger-focus-test-{name}-{}",
         std::process::id()
     ));
     let _ = fs::remove_dir_all(&dir);
@@ -526,7 +526,7 @@ fn get_focus_signals_function_exports_match() {
     let f: fn(
         i32,
     ) -> Result<
-        careerflow_core::db::focus_signals::FocusSignals,
+        progress_ledger_core::db::focus_signals::FocusSignals,
         napi::bindgen_prelude::Error,
     > = get_focus_signals;
     let _ = f;

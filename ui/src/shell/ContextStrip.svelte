@@ -3,7 +3,7 @@
    * Context strip — the workspace's top row.
    *
    * Adapted from the Space Bunny v2 context strip
-   * (`CareerFlow-Frontend-Lab/v1/shots/regression-v2z/01-desk.png`): a row of
+   * (`Progress Ledger-Frontend-Lab/v1/shots/regression-v2z/01-desk.png`): a row of
    * named working contexts, each carrying a live count, plus the arrangement and
    * split controls that reshape the stage. It answers "which body of work am I
    * in, and what is open in it" in one line.

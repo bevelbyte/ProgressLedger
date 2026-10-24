@@ -1,11 +1,11 @@
 -- Migration 008: CGPA domain becomes SQLite-authoritative (schema version 8).
 --
 -- The legacy CGPA Planner stored an entire degree/semester/subject/marks tree in
--- localStorage["careerflow_degree_data_<profileId>"] and computed "SGPA" as
+-- localStorage["progressledger_v2_degree_data_<profileId>"] and computed "SGPA" as
 -- percentage/10 with no credits. This migration makes the `courses` table the
 -- single source of truth for credit-weighted CGPA:
 --   * courses gains marks (obtained/max) so grade points can be DERIVED from a
---     configurable per-profile grade scale, per CareerFlow's authoritative model
+--     configurable per-profile grade scale, per Progress Ledger's authoritative model
 --     (marks -> percentage -> grade point -> credit x GP -> SGPA -> CGPA).
 --   * grade_scales / grade_bands store each profile's percentage->grade-point
 --     mapping. Not assumed to be 10-point; any number of bands is allowed.

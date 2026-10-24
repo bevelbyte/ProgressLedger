@@ -7,10 +7,10 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const core = require("../core/careerflow_core.win32-x64-msvc.node");
+const core = require("../core/progress_ledger_core.win32-x64-msvc.node");
 
 const childRun = process.env.CF_RESEARCH_SMOKE_CHILD === "1";
-const dir = process.env.CF_RESEARCH_SMOKE_DIR || mkdtempSync(join(tmpdir(), "careerflow-research-contract-"));
+const dir = process.env.CF_RESEARCH_SMOKE_DIR || mkdtempSync(join(tmpdir(), "progressledger-research-contract-"));
 if (!childRun) {
   const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
     stdio: "inherit",

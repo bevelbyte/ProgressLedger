@@ -1,11 +1,11 @@
-// CareerFlow-owned embedded browser host — the ONLY place a WebContentsView is
+// Progress Ledger-owned embedded browser host — the ONLY place a WebContentsView is
 // created. Phase 1 of the approved D2-D6 plan.
 //
 // WHAT THIS IS. A `WebContentsView` added to the existing main BrowserWindow's
 // `contentView`, owned and driven entirely by the main process. It is NOT a
 // BrowserView (deprecated), NOT a `<webview>` tag (that would live inside the
 // privileged app renderer), NOT an iframe, NOT a second window, and emphatically
-// NOT a Donut/Wayfern window hosted as CareerFlow content. Donut is not imported,
+// NOT a Donut/Wayfern window hosted as Progress Ledger content. Donut is not imported,
 // referenced or required anywhere in this module: the embedded browser must work
 // with Donut stopped, unavailable, unauthenticated or absent from the machine.
 //
@@ -57,7 +57,7 @@ export const DEFAULT_NAVIGATION_TIMEOUT_MS = 30_000;
  * inheriting.
  *
  * `preload` is ABSENT ON PURPOSE. A browser page gets no bridge at all, so there
- * is no `window.careerflow`, no ipcRenderer and no Node surface for page content
+ * is no `window.progressLedger`, no ipcRenderer and no Node surface for page content
  * to reach — the page sees the ordinary web platform and nothing else.
  */
 function webPreferencesFor(partition) {
@@ -418,7 +418,7 @@ export function createBrowserHost(deps = {}) {
    * that is merely loaded, or that lives in a background tab, is denied.
    *
    * Honest limitation, recorded rather than papered over: this is a proxy for
-   * "focused pane". CareerFlow's shell decides which PANE is focused, and it
+   * "focused pane". Progress Ledger's shell decides which PANE is focused, and it
    * does not report that to main today; what main can see is which page is on
    * screen. Since only the focused pane's active tab declares its page visible,
    * the two agree for every state the product can currently reach. If a later

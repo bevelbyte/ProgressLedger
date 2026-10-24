@@ -3,10 +3,10 @@
 // Launches the REAL Electron application, seeds REAL data through the app''s own
 // preload bridge, walks every rail destination, and writes screenshots to
 // shots/redesign-<round>/ so they can be compared directly against
-// CareerFlow-Frontend-Lab/v1/shots.
+// Progress Ledger-Frontend-Lab/v1/shots.
 //
 // Nothing is stubbed: every row in every screenshot came out of SQLite through
-// window.careerflow.
+// window.progressLedger.
 import { _electron as electron } from "@playwright/test";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,7 +18,7 @@ const OUT = ""; // flat files directly in logs/
 
 const app = await electron.launch({
   args: [process.cwd(), `--user-data-dir=${mkdtempSync(join(tmpdir(), "cf-redesign-"))}`],
-  env: { ...process.env, CAREERFLOW_E2E: "1" },
+  env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
 });
 const win = await app.firstWindow();
 await win.waitForLoadState("domcontentloaded");
@@ -37,7 +37,7 @@ await shot("00-profiles");
 // IDs are re-read from the tree after each write rather than trusted from the
 // return value, because the IPC layer returns different shapes per call.
 const seeded = await win.evaluate(async () => {
-  const cf = window.careerflow;
+  const cf = window.progressLedger;
   const created = await cf.profiles.add("Ada Lovelace", "ada-lovelace");
   const p = created?.profile || created;
   const pid = p?.id ?? p?.profileId;

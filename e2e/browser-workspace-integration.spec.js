@@ -80,11 +80,11 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-p2-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -101,17 +101,17 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win };
 }
 
-/** Seed one CareerFlow profile and select it through the app's own UI. */
+/** Seed one Progress Ledger profile and select it through the app's own UI. */
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("Browser Phase Two", "browser-phase-two");
+    const created = await window.progressLedger.profiles.add("Browser Phase Two", "browser-phase-two");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -119,7 +119,7 @@ async function seedAndSelectProfile(win) {
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
   const card = win.locator("button.profile-main").first();

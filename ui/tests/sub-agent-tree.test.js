@@ -5,7 +5,7 @@
 //   - renders child agents returned from projectMode.getChildren
 //   - renders an empty-state row when getChildren returns []
 //
-// The IPC namespace is mocked via window.careerflow.projectMode. We
+// The IPC namespace is mocked via window.progressLedger.projectMode. We
 // only stub `getChildren` (and a minimal `getAgent`) since the tree
 // component does not need the full suite.
 
@@ -46,7 +46,7 @@ function setupIpc({ children = [], getAgent = null } = {}) {
     updated_at: "2026-08-30T09:30:00Z",
     parent_agent_id: null,
   };
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       getChildren,
       getAgent: vi.fn().mockResolvedValue(getAgent || fallbackAgent),

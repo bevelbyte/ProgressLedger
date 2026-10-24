@@ -82,7 +82,7 @@ function slowToolProvider() {
 
 // ---------------------------------------------------------------------------
 // Fake cores. `style: "napi"` emits camelCase rows exactly like the real
-// @careerflow/core (see core/index.d.ts); `style: "snake"` emits the
+// @progress-ledger/core (see core/index.d.ts); `style: "snake"` emits the
 // classic snake_case shape used by the older test fakes.
 // ---------------------------------------------------------------------------
 

@@ -7,7 +7,7 @@
 //   - selecting the already-active provider does NOT call setDefaultProvider
 //   - a load error shows the fallback message
 //
-// The IPC namespace is mocked on window.careerflow.projectMode, mirroring the
+// The IPC namespace is mocked on window.progressLedger.projectMode, mirroring the
 // shape shipped by shell/src/preload.cjs + shell/src/ipc/project-mode.js.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
@@ -27,7 +27,7 @@ function setupIpc({
     ? setDefaultProviderImpl
     : vi.fn().mockResolvedValue({ ok: true });
 
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: { getDefaultProvider, setDefaultProvider },
   };
 
@@ -49,7 +49,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 describe("DefaultProviderPicker", () => {
@@ -98,7 +98,7 @@ describe("DefaultProviderPicker", () => {
   });
 
   it("shows a fallback message when the namespace is unavailable", async () => {
-    // Leave window.careerflow undefined so the service call rejects.
+    // Leave window.progressLedger undefined so the service call rejects.
     projectModeStore.activeProjectId = 1;
     render(DefaultProviderPicker, { props: { profileId: 1 } });
     await vi.advanceTimersByTimeAsync(0);

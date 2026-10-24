@@ -1,7 +1,7 @@
 // SkillInventory — UI tests.
 //
 // Coverage:
-//   - renders one row per skill returned by careerflow.extensions.listSkills()
+//   - renders one row per skill returned by progressLedger.extensions.listSkills()
 //   - trigger chips + scope pills render per row (project/global)
 //   - search input filters across id / name / description / trigger (case-insensitive)
 //   - click a row → calls previewSkill(id) → shows the SKILL.md preview
@@ -9,8 +9,8 @@
 //   - missing extensions namespace shows the "not available in this build" error
 //   - empty registry + non-ok IPC both surface the empty-state cell
 //
-// The IPC namespace is mocked via window.careerflow.extensions. Tests reset
-// window.careerflow between cases for hermetic isolation.
+// The IPC namespace is mocked via window.progressLedger.extensions. Tests reset
+// window.progressLedger between cases for hermetic isolation.
 
 import { render, screen, waitFor, cleanup, fireEvent, within } from "@testing-library/svelte";
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -62,7 +62,7 @@ function setupIpc({
 } = {}) {
   if (noNamespace) {
     // Simulate a build where the extensions namespace is absent.
-    window.careerflow = {};
+    window.progressLedger = {};
     return { list: null, preview: null, setEnabled: null };
   }
   const list = vi.fn(listImpl || (async () => ({ ok: true, skills })));
@@ -81,13 +81,13 @@ function setupIpc({
     ? vi.fn(setEnabledImpl || (async () => ({ ok: true })))
     : null;
   if (setEnabled) extensions.setSkillEnabled = setEnabled;
-  window.careerflow = { extensions };
+  window.progressLedger = { extensions };
   return { list, preview, setEnabled };
 }
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------

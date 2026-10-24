@@ -80,7 +80,7 @@ test("the panel actually calls the index API, so the hint is not a dead promise"
   // ...and it is wired to the real API rather than a local no-op.
   assert.match(
     PANEL,
-    /window\.careerflow\.projectIntel\s*\.\s*index\s*\(/,
+    /window\.progressLedger\.projectIntel\s*\.\s*index\s*\(/,
     "the Index project control must call projectIntel.index",
   );
   // The hint that depends on it names it, so the instruction is followable.

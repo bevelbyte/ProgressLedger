@@ -6,7 +6,7 @@
  * is NO scoring system and NO new data: every classification is derived from a
  * local-calendar date comparison the user can understand.
  *
- * Date semantics are LOCAL-calendar (matching the rest of CareerFlow, which uses
+ * Date semantics are LOCAL-calendar (matching the rest of Progress Ledger, which uses
  * SQLite date('now','localtime')). We compare YYYY-MM-DD day strings, not UTC
  * instants, so "overdue"/"today"/"soon" respect the user's midnight boundary.
  */

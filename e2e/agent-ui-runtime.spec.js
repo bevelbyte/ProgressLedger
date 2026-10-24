@@ -80,9 +80,9 @@ async function launchIsolated(userDataDir) {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: "1",
-      CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-      CAREERFLOW_E2E_USER_DATA: userDataDir,
+      PROGRESSLEDGER_V2_E2E: "1",
+      PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+      PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     },
     timeout: 60_000,
   });
@@ -111,7 +111,7 @@ async function seedProject(win, { userDataDir, endpoint, projectRootPath }) {
   // selectProfile() schedules a 500ms view-flip to Subjects after profile
   // activation — wait it out before navigating elsewhere.
   await win.waitForTimeout(900);
-  const profileId = await win.evaluate(() => window.careerflow.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))));
+  const profileId = await win.evaluate(() => window.progressLedger.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))));
   expect(profileId).toBeGreaterThan(0);
 
   // Project + agent + credential through the REAL IPC (same as a real
@@ -119,12 +119,12 @@ async function seedProject(win, { userDataDir, endpoint, projectRootPath }) {
   // view mount). fs_write resolves paths against the project root, so
   // the seeded project must own the tmp root.
   const created = await win.evaluate(([pid, rootPath]) =>
-    window.careerflow.projectMode.createProject({ profileId: pid, name: "UI Runtime", description: "gate j", rootPath, configJson: "{}" }),
+    window.progressLedger.projectMode.createProject({ profileId: pid, name: "UI Runtime", description: "gate j", rootPath, configJson: "{}" }),
     [profileId, projectRootPath]);
   const projectId = typeof created === "number" ? created : (created && created.id);
   expect(projectId).toBeGreaterThan(0);
   const agentRes = await win.evaluate(([pid, prid, obj]) =>
-    window.careerflow.projectMode.createAgent(pid, prid, obj), [profileId, projectId, OBJECTIVE]);
+    window.progressLedger.projectMode.createAgent(pid, prid, obj), [profileId, projectId, OBJECTIVE]);
   const seededAgentId = typeof agentRes === "number" ? agentRes : (agentRes && agentRes.id);
   expect(seededAgentId).toBeGreaterThan(0);
 
@@ -153,7 +153,7 @@ async function seedProject(win, { userDataDir, endpoint, projectRootPath }) {
 // List agent ids for a project through the same IPC the UI uses.
 async function listAgentIds(win, profileId, projectId) {
   const rows = await win.evaluate(([pid, prid]) =>
-    window.careerflow.projectMode.listAgents(pid, prid), [profileId, projectId]);
+    window.progressLedger.projectMode.listAgents(pid, prid), [profileId, projectId]);
   const list = Array.isArray(rows) ? rows : (rows && rows.agents) || [];
   return list.map((a) => a.id).filter((n) => typeof n === "number");
 }
@@ -163,7 +163,7 @@ async function waitForAgentTerminal(win, profileId, agentId) {
   const start = Date.now();
   for (;;) {
     const row = await win.evaluate(async ([pid, aid]) => {
-      const a = await window.careerflow.projectMode.getAgent(pid, aid);
+      const a = await window.progressLedger.projectMode.getAgent(pid, aid);
       return a && (a.agent || a);
     }, [profileId, agentId]).catch(() => null);
     if (row && ["completed", "failed", "cancelled"].includes(row.state)) return row;
@@ -178,13 +178,13 @@ async function createGoalAndLink(win, profileId, projectId, agentId, objective) 
   // through the REAL goal:create / goal:link-agent IPC. `objective` is
   // passed as an arg — page.evaluate cannot see closure variables.
   const goalRes = await win.evaluate(async ([pid, prid, aid, obj]) => {
-    const create = await window.careerflow.goals.create({
+    const create = await window.progressLedger.goals.create({
       profileId: pid, projectId: prid, title: "Gate J", objective: obj,
       kind: "code_change", requireVerification: true,
     });
     const goalId = typeof create === "number" ? create : (create && (create.id ?? (create.ok && create.id)));
     if (!goalId) return { error: create };
-    const link = await window.careerflow.goals.linkAgent(pid, goalId, aid);
+    const link = await window.progressLedger.goals.linkAgent(pid, goalId, aid);
     return { goalId, link };
   }, [profileId, projectId, agentId, objective]);
   expect(goalRes.error).toBeUndefined();

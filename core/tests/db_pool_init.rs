@@ -12,7 +12,7 @@
 //! We mirror the production pool construction (file + same init closure
 //! shape) and assert that a connection the pool yields reports
 //! `foreign_keys = 1`. We do not exercise the private static pool inside
-//! `careerflow_core` because it is wired up at runtime by `init_db` (which
+//! `progress_ledger_core` because it is wired up at runtime by `init_db` (which
 //! needs NAPI + a real disk path); the contract under test is the manager
 //! configuration, not the static lifetime.
 

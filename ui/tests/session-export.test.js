@@ -1,7 +1,7 @@
 // Session export — UI tests.
 //
 // Coverage:
-//   - The window.careerflow.projectMode.exportSession IPC bridge is invoked
+//   - The window.progressLedger.projectMode.exportSession IPC bridge is invoked
 //     with the expected { profileId, agentId } payload and returns the
 //     session envelope to the caller.
 //   - The downloaded JSON contains the expected session shape: agent
@@ -46,7 +46,7 @@ const MOCK_SESSION = {
 
 beforeEach(() => {
   // Mock the IPC bridge that the preload script exposes.
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       exportSession: vi.fn().mockResolvedValue({ ok: true, session: MOCK_SESSION }),
     },
@@ -63,17 +63,17 @@ afterEach(() => {
 
 describe("exportSession IPC bridge", () => {
   it("calls exportSession with the { profileId, agentId } payload", async () => {
-    const result = await window.careerflow.projectMode.exportSession(7, 42);
-    expect(window.careerflow.projectMode.exportSession).toHaveBeenCalledWith(7, 42);
+    const result = await window.progressLedger.projectMode.exportSession(7, 42);
+    expect(window.progressLedger.projectMode.exportSession).toHaveBeenCalledWith(7, 42);
     expect(result.ok).toBe(true);
   });
 
   it("returns ok:false with an error string when the agent is not found", async () => {
-    window.careerflow.projectMode.exportSession.mockResolvedValueOnce({
+    window.progressLedger.projectMode.exportSession.mockResolvedValueOnce({
       ok: false,
       error: "agent-not-found",
     });
-    const result = await window.careerflow.projectMode.exportSession(1, 9999);
+    const result = await window.progressLedger.projectMode.exportSession(1, 9999);
     expect(result.ok).toBe(false);
     expect(result.error).toBe("agent-not-found");
   });

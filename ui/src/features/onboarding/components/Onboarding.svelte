@@ -4,7 +4,7 @@
   // The previous flow was a six-slide tutorial carousel: Welcome → Create
   // Profile → Academic Tree → Research Links → Knowledge Engine → Ready. Only
   // one of those six slides asked for anything, and it was the second one, so a
-  // brand-new user's first interaction with CareerFlow was to click "Next"
+  // brand-new user's first interaction with Progress Ledger was to click "Next"
   // through four marketing panels — *before* the product had done anything for
   // them — and then be told it was "Ready!" while sitting in an empty workspace.
   //
@@ -93,7 +93,7 @@
     profileError = "";
 
     try {
-      const profile = await window.careerflow.profiles.add(name, slug);
+      const profile = await window.progressLedger.profiles.add(name, slug);
       markProfileCreated(profile.id);
 
       // The rest of the app re-reads profiles on this event.
@@ -132,7 +132,7 @@
     class="onboarding-overlay"
     role="dialog"
     aria-modal="true"
-    aria-label="Welcome to CareerFlow"
+    aria-label="Welcome to Progress Ledger"
   >
     <div class="welcome">
       <ol class="rail" aria-label="Setup progress">
@@ -153,7 +153,7 @@
           <section class="step" aria-labelledby="ob-title">
             <h2 id="ob-title" class="step-title">A career intelligence hub, on your machine.</h2>
             <p class="step-lede">
-              CareerFlow keeps your academic work, your career planning, your research and
+              Progress Ledger keeps your academic work, your career planning, your research and
               your agent runs in one local workspace. Nothing leaves this computer unless
               you connect something that sends it.
             </p>

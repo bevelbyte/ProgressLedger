@@ -82,7 +82,7 @@ test("will-navigate refuses every forbidden scheme and cancels the navigation", 
     "view-source:https://example.com/",
     "mailto:someone@example.com",
     "tel:+15551234567",
-    "careerflow://app/index.html",
+    "progressledger-v2://app/index.html",
     "about:config",
   ];
   for (const url of denied) {
@@ -221,7 +221,7 @@ test("the global backstop guard is the same allowlist the per-view gates use", (
     "data:text/html,x",
     "blob:https://x/y",
     "view-source:https://x",
-    "careerflow://app/index.html",
+    "progressledger-v2://app/index.html",
   ]) {
     const event = cancellableEvent();
     guard(event, url);
@@ -261,7 +261,7 @@ test("decidePopup refuses EVERY forbidden scheme regardless of budget", () => {
     "view-source:https://example.com/",
     "mailto:someone@example.invalid",
     "tel:+15551234567",
-    "careerflow://app/index.html",
+    "progressledger-v2://app/index.html",
     "not-a-url",
   ]) {
     const out = decidePopup(url, 0);
@@ -282,7 +282,7 @@ test("decidePopup enforces the budget and refuses the overflow", () => {
 
 test("the window-open hook runs on top of an UNCONDITIONAL denial", () => {
   // The security property is that `action` is always `deny`. The hook only lets
-  // main decide what ELSE to do (create a CareerFlow page); it can never turn
+  // main decide what ELSE to do (create a Progress Ledger page); it can never turn
   // the answer into an allowed OS window.
   const wc = fakeWebContents();
   installNavigationGuards(wc, {

@@ -6,7 +6,7 @@
   // and never asks for attention.
   //
   // CONTRACT: the core readout renders the native `ping()` response verbatim
-  // (`CareerFlow core online`). Every E2E spec in this repo waits on that exact
+  // (`Progress Ledger core online`). Every E2E spec in this repo waits on that exact
   // text as its "the app is up" gate, so the strip must never paraphrase it
   // into a friendlier word. It is also the honest thing to show: the strip
   // reports what the Rust core actually said, not a summary of it.
@@ -32,6 +32,10 @@
   const clock = $derived(
     now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   );
+
+  // Build ID from the vite `define` (ui/vite.config.js). Under vitest the
+  // global is not defined, so the typeof guard keeps unit tests on "dev".
+  const buildId = typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev";
 </script>
 
 <footer class="statusbar" aria-label="Status">
@@ -72,6 +76,8 @@
     <span class="sb-item"><span class="atl-label">Ctrl K</span> commands</span>
     <span class="sb-sep" aria-hidden="true"></span>
     <time class="sb-clock">{clock}</time>
+    <span class="sb-sep" aria-hidden="true"></span>
+    <span class="sb-item sb-build" title={buildId}>{buildId}</span>
   </div>
 </footer>
 
@@ -104,6 +110,9 @@
 
   .sb-right {
     justify-content: flex-end;
+    /* Never shrink below content: with min-width 0 the nowrap items
+       (CTRL K, clock) clipped at the bar's right edge on narrow windows. */
+    flex-shrink: 0;
   }
 
   .sb-item {
@@ -143,6 +152,15 @@
     width: 1px;
     height: 11px;
     background: var(--atlas-line-2);
+  }
+
+  /* Build ID: mono micro like the rest of the strip, truncated with the
+     full string on hover. */
+  .sb-build {
+    font-family: var(--font-mono);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
   }
 
   .sb-dot {

@@ -105,20 +105,18 @@
     }
   }
 
-  // Browser choice is infrastructure, not a user-facing setting: the main
-  // process picks Donut when available and falls back to the system browser.
+  // Links open in the system browser.
   let openingUrl = $state(null);
 
   async function openLink(url) {
     if (openingUrl !== null) return;
     openingUrl = url;
     try {
-      const res = await window.careerflow.donut.openSubjectLink(url, profileId);
+      const res = await window.progressLedger.system.openExternal(url);
       if (!res || res.opened !== true) {
         toast.error("Couldn't open this link.");
         return;
       }
-      if (res.provider === "donut") toast.success("Opened in Donut");
     } catch (e) {
       console.error("openSubjectLink failed:", e?.message ?? String(e));
       toast.error("Couldn't open this link.");
@@ -187,7 +185,7 @@
             <button
               type="button"
               class="link-title-btn"
-              title="Open in CareerFlow Browser"
+              title="Open in Progress Ledger Browser"
               onclick={() => openInEmbeddedBrowser(link.url)}
             >
               <span class="link-label">{link.label}</span>
@@ -197,14 +195,14 @@
           <div class="link-actions">
             <button
               class="icon-btn"
-              title="Open in CareerFlow Browser"
+              title="Open in Progress Ledger Browser"
               onclick={() => openInEmbeddedBrowser(link.url)}
             >
               <Globe size={14} />
             </button>
             <button
               class="icon-btn"
-              title="Open in external browser / Donut"
+              title="Open in external browser"
               disabled={openingUrl !== null}
               onclick={() => openLink(link.url)}
             >

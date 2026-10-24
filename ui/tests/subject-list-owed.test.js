@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import SubjectList from "../src/features/subjects/components/SubjectList.svelte";
 import { subjectStore } from "../src/features/subjects/stores/subject.svelte.js";
 
-// Local YYYY-MM-DD relative to now. CareerFlow's date semantics are
+// Local YYYY-MM-DD relative to now. Progress Ledger's date semantics are
 // local-calendar (see today.js), so this builds local strings -- never
 // toISOString(), which would shift the day in any timezone behind UTC.
 const localDay = (offset = 0) => {
@@ -35,8 +35,8 @@ const subject = (id, name, extra = {}) => ({
  * proxy, so a call the component is NOT supposed to make fails loudly instead of
  * resolving to undefined and quietly yielding a zero strip.
  */
-function stubCareerflow({ deadlines = [], cards = [], mistakes = [], fail = [] } = {}) {
-  window.careerflow = {
+function stubProgressLedger({ deadlines = [], cards = [], mistakes = [], fail = [] } = {}) {
+  window.progressLedger = {
     deadlines: {
       list: fail.includes("deadlines")
         ? async () => { throw new Error("deadline source down"); }
@@ -66,16 +66,16 @@ describe("SubjectList owed-here band", () => {
     subjectStore.tree = [];
     subjectStore.allSubjects = [subject(5, "Operating Systems"), subject(6, "Discrete Maths")];
     subjectStore.lastStudiedAt = {};
-    stubCareerflow();
+    stubProgressLedger();
   });
 
   afterEach(() => {
     cleanup();
-    delete window.careerflow;
+    delete window.progressLedger;
   });
 
   it("leads with real counts, not an inventory", async () => {
-    stubCareerflow({
+    stubProgressLedger({
       deadlines: [deadline(1, 5, -2), deadline(2, 5, 0), deadline(3, 6, 3)],
     });
     render(SubjectList, { props: { profileId: 7 } });
@@ -88,7 +88,7 @@ describe("SubjectList owed-here band", () => {
   });
 
   it("surfaces lateness as a badge and marks the row tone", async () => {
-    stubCareerflow({ deadlines: [deadline(1, 5, -2)] });
+    stubProgressLedger({ deadlines: [deadline(1, 5, -2)] });
     render(SubjectList, { props: { profileId: 7 } });
 
     // "1 late" legitimately appears twice -- once as the band-level badge and
@@ -105,7 +105,7 @@ describe("SubjectList owed-here band", () => {
   });
 
   it("does not claim a completed deadline is still owed", async () => {
-    stubCareerflow({ deadlines: [deadline(1, 5, -2, "2026-10-01 09:00:00")] });
+    stubProgressLedger({ deadlines: [deadline(1, 5, -2, "2026-10-01 09:00:00")] });
     render(SubjectList, { props: { profileId: 7 } });
 
     await waitFor(() => expect(screen.getByText("Owed here")).toBeInTheDocument());
@@ -127,7 +127,7 @@ describe("SubjectList owed-here band", () => {
   });
 
   it("falls back to a review count when only cards are due", async () => {
-    stubCareerflow({ cards: [{ id: 1, subjectId: 6, dueDate: localDay(0) }] });
+    stubProgressLedger({ cards: [{ id: 1, subjectId: 6, dueDate: localDay(0) }] });
     render(SubjectList, { props: { profileId: 7 } });
 
     await waitFor(() => expect(screen.getByText("1 to review")).toBeInTheDocument());
@@ -136,7 +136,7 @@ describe("SubjectList owed-here band", () => {
   });
 
   it("labels a partially-failed read as partial instead of silently under-reporting", async () => {
-    stubCareerflow({ deadlines: [deadline(1, 5, -2)], fail: ["cards"] });
+    stubProgressLedger({ deadlines: [deadline(1, 5, -2)], fail: ["cards"] });
     render(SubjectList, { props: { profileId: 7 } });
 
     // The deadline read still renders...

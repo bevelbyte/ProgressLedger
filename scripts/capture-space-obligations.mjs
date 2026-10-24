@@ -52,12 +52,12 @@ if (build.status !== 0) {
   process.exit(1);
 }
 const app = await electron.launch({
-  args: [projectRoot, "--careerflow-e2e"],
-  env: { ...process.env, CAREERFLOW_E2E: "1" },
+  args: [projectRoot, "--progressledger-v2-e2e"],
+  env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
 });
 const win = await app.firstWindow();
 await win.waitForLoadState("domcontentloaded");
-await win.getByText(/CareerFlow core online/i).waitFor({ timeout: 20000 });
+await win.getByText(/Progress Ledger core online/i).waitFor({ timeout: 20000 });
 console.log("core online");
 await win.setViewportSize({ width: 1600, height: 950 });
 
@@ -73,7 +73,7 @@ const DAYS = {
 };
 
 const seed = await win.evaluate(async ({ profileName, D }) => {
-  const cf = window.careerflow;
+  const cf = window.progressLedger;
   const out = { steps: [] };
   try {
     // `profiles.add` returns the CREATED PROFILE OBJECT, not a bare id. Passing
@@ -159,7 +159,7 @@ if (seed.ok) {
   // did not actually switch, the capture below would show a different profile's
   // data and quietly "prove" nothing about the obligation strip.
   const seen = await win.evaluate(async (pid) => {
-    const tree = await window.careerflow.academic.tree(pid).catch(() => null);
+    const tree = await window.progressLedger.academic.tree(pid).catch(() => null);
     const tracks = tree?.tracks ?? (Array.isArray(tree) ? tree : []);
     const names = [];
     for (const t of tracks) {
@@ -169,7 +169,7 @@ if (seed.ok) {
         }
       }
     }
-    const all = await window.careerflow.profiles.list().catch(() => null);
+    const all = await window.progressLedger.profiles.list().catch(() => null);
     return {
       names,
       profiles: (Array.isArray(all) ? all : (all?.profiles ?? [])).map((p) => p.id + ":" + p.name),
@@ -207,7 +207,7 @@ if (seed.ok) {
   await win.screenshot({ path: join(outDir, "02-space-owed-narrow.png") });
 
   try {
-    await win.evaluate(async (pid) => { await window.careerflow.profiles.remove(pid); }, seed.pid);
+    await win.evaluate(async (pid) => { await window.progressLedger.profiles.remove(pid); }, seed.pid);
     console.log("cleanup: profile removed");
   } catch (e) {
     console.log("cleanup FAILED -- profile " + PROFILE + " may remain: " + e.message);
@@ -219,7 +219,7 @@ if (seed.ok) {
   // any cf-obl- leftovers it can still see. Only the probe's own prefix is
   // touched -- no real profile is ever a candidate.
   const swept = await win.evaluate(async () => {
-    const cf = window.careerflow;
+    const cf = window.progressLedger;
     const all = await cf.profiles.list().catch(() => null);
     const list = Array.isArray(all) ? all : (all?.profiles ?? []);
     const stale = list.filter((p) => typeof p.name === "string" && p.name.startsWith("cf-obl-"));

@@ -2,7 +2,7 @@ import { join, dirname } from "node:path";
 import { existsSync, renameSync } from "node:fs";
 import { mkdir, readdir, stat, rm, appendFile } from "node:fs/promises";
 
-const LOG_FILE = "careerflow.log";
+const LOG_FILE = "progress-ledger-v2.log";
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 const LOG_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -111,7 +111,7 @@ export async function rotateAndPruneLogs() {
       const info = await stat(logFilePath);
       if (info.size > MAX_LOG_BYTES) {
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-        renameSync(logFilePath, join(logsDir, `careerflow-${stamp}.log`));
+        renameSync(logFilePath, join(logsDir, `progressledger-${stamp}.log`));
       }
     }
 
@@ -119,7 +119,7 @@ export async function rotateAndPruneLogs() {
       const files = await readdir(logsDir);
       const now = Date.now();
       for (const file of files) {
-        if (!file.startsWith("careerflow-") || !file.endsWith(".log")) continue;
+        if (!file.startsWith("progressledger-") || !file.endsWith(".log")) continue;
         const filePath = join(logsDir, file);
         const fileStat = await stat(filePath);
         if (now - fileStat.mtimeMs > LOG_TTL_MS) {

@@ -12,7 +12,7 @@
  *   loop that exhausts the stack and kills the vitest worker
  *   ("Worker exited unexpectedly" from tinypool).
  *
- *   Production is NOT affected: `window.careerflow.goals.list` is
+ *   Production is NOT affected: `window.progressLedger.goals.list` is
  *   `ipcRenderer.invoke(...)` — an always-async promise, so the
  *   store is never read synchronously during the effect body.
  *
@@ -91,7 +91,7 @@ function setupIpc(goals = []) {
   // which every overlay in the product legitimately needs (Modal, the keyboard
   // reference, the command palette) — so a wholesale swap turned a dialog or
   // key-handling regression into a harness error rather than a real failure.
-  globalThis.window.careerflow = {
+  globalThis.window.progressLedger = {
     goals: {
         list: vi.fn(async () => {
           await Promise.resolve();
@@ -180,7 +180,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     expect(document.querySelector('[data-testid="goal-list-finished"]')).toBeFalsy();
   });
 
-  it("3. create goal invokes careerflow.goals.create with the form payload", async () => {
+  it("3. create goal invokes progressLedger.goals.create with the form payload", async () => {
     setupIpc();
     render(GoalsPanel, { profileId: 1, projectId: 1 });
     await tick();
@@ -196,8 +196,8 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     const form = document.querySelector('[data-testid="goal-create-form"]');
     await fireEvent.submit(form);
     await tick();
-    expect(window.careerflow.goals.create).toHaveBeenCalled();
-    const payload = window.careerflow.goals.create.mock.calls[0][0];
+    expect(window.progressLedger.goals.create).toHaveBeenCalled();
+    const payload = window.progressLedger.goals.create.mock.calls[0][0];
     expect(payload.title).toBe("Fix the parser");
     expect(payload.objective).toBe("Make the parser handle CRLF");
     expect(payload.projectId).toBe(1);
@@ -223,7 +223,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     expect(finishedList.textContent).toContain("Broken thing");
   });
 
-  it("5. start goal invokes careerflow.goals.start and reflects running state", async () => {
+  it("5. start goal invokes progressLedger.goals.start and reflects running state", async () => {
     setupIpc([makeGoal({ id: 7, state: "created" })]);
     render(GoalsPanel, { profileId: 1, projectId: 1 });
     await tick();
@@ -249,7 +249,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     expect(row).toBeTruthy();
   });
 
-  it("7. cancellation invokes careerflow.goals.cancel after explicit confirmation", async () => {
+  it("7. cancellation invokes progressLedger.goals.cancel after explicit confirmation", async () => {
     setupIpc([makeGoal({ id: 9, state: "running" })]);
     render(GoalsPanel, { profileId: 1, projectId: 1 });
     await tick();
@@ -300,10 +300,10 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     expect(toastState.confirm).toBeTruthy();
     expect(toastState.confirm.title).toMatch(/Delete this goal/i);
     // The remove IPC is only reached after the commit.
-    expect(window.careerflow.goals.remove).not.toHaveBeenCalled();
+    expect(window.progressLedger.goals.remove).not.toHaveBeenCalled();
     toastState.confirm.resolve(true);
     await tick();
-    expect(window.careerflow.goals.remove).toHaveBeenCalledWith(1, 31);
+    expect(window.progressLedger.goals.remove).toHaveBeenCalledWith(1, 31);
   });
 
   it("8. completed state renders in the finished section with no actions", async () => {
@@ -344,7 +344,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     await fireEvent.click(rowBtn);
     await tick();
     // Selecting a goal asks the IPC layer for its timeline events.
-    expect(window.careerflow.goals.listEvents).toHaveBeenCalledWith(1, 13, 100);
+    expect(window.progressLedger.goals.listEvents).toHaveBeenCalledWith(1, 13, 100);
   });
 
   it("11. progress is derived from the linked agent snapshot (not invented)", async () => {
@@ -362,7 +362,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
       makeGoal({ id: 14, state: "running", linkedAgentId: 42, planStepCount: 4 }),
     ]);
     // The store loads agent snapshots from projectMode.getAgent; wire it.
-    globalThis.window.careerflow.projectMode = {
+    globalThis.window.progressLedger.projectMode = {
       getAgent: async () => ({
         id: 42,
         state: "executing_tool",
@@ -392,7 +392,7 @@ describe("GoalsPanel — orchestration/dashboard view", () => {
     setupIpc([makeGoal({ id: 15, state: "created" })]);
     render(GoalsPanel, { profileId: 1, projectId: 1 });
     await tick();
-    expect(window.careerflow.goals.reconcile).toHaveBeenCalledWith(1);
-    expect(window.careerflow.goals.list).toHaveBeenCalled();
+    expect(window.progressLedger.goals.reconcile).toHaveBeenCalledWith(1);
+    expect(window.progressLedger.goals.list).toHaveBeenCalled();
   });
 });

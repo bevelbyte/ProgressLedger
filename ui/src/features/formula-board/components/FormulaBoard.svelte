@@ -244,6 +244,11 @@
       <p>Save this subject's key equations in LaTeX and they render here.</p>
       <button class="cf-btn" onclick={() => openModal()}>Add the first formula</button>
     </div>
+  {:else if !loading}
+    <div class="cf-empty boxed">
+      <h3>No subject selected</h3>
+      <p>Choose a subject above to see its formulas.</p>
+    </div>
   {/if}
 </section>
 

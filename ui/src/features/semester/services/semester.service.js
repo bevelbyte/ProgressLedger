@@ -4,6 +4,6 @@
  */
 export const semesterService = {
   getOverview(profileId, semesterId) {
-    return window.careerflow.resources.semesterOverview({ profileId, semesterId });
+    return window.progressLedger.resources.semesterOverview({ profileId, semesterId });
   },
 };

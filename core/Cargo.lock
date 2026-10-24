@@ -84,24 +84,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
-name = "careerflow_core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "napi",
- "napi-build",
- "napi-derive",
- "pdf-extract",
- "r2d2",
- "r2d2_sqlite",
- "rusqlite",
- "serde_json",
- "url",
- "windows-sys",
- "zip",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -800,6 +782,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "progress_ledger_core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "pdf-extract",
+ "r2d2",
+ "r2d2_sqlite",
+ "rusqlite",
+ "serde_json",
+ "url",
+ "windows-sys",
+ "zip",
 ]
 
 [[package]]

@@ -17,28 +17,28 @@ test("study sessions persist across restart and feed stats + streak", async () =
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   // ---- Run 1: build a subject, log two sessions today ----
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const setup = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Session Student", `sess-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add("Session Student", `sess-${Date.now()}`);
     const pid = p.id;
-    const trackId = await window.careerflow.academic.addTrack(pid, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(pid, semId, "Subjects");
-    const subjectId = await window.careerflow.academic.addSubject(pid, msId, "Algorithms", null);
+    const trackId = await window.progressLedger.academic.addTrack(pid, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(pid, semId, "Subjects");
+    const subjectId = await window.progressLedger.academic.addSubject(pid, msId, "Algorithms", null);
 
-    await window.careerflow.sessions.add(pid, subjectId, 45, null, null, "focus");
-    await window.careerflow.sessions.add(pid, subjectId, 30, null, null, "");
+    await window.progressLedger.sessions.add(pid, subjectId, 45, null, null, "focus");
+    await window.progressLedger.sessions.add(pid, subjectId, 30, null, null, "");
 
-    const stats = await window.careerflow.sessions.stats(pid);
-    const dash = await window.careerflow.dashboard.stats(pid);
+    const stats = await window.progressLedger.sessions.stats(pid);
+    const dash = await window.progressLedger.dashboard.stats(pid);
     return { pid, stats, streak: dash.currentStreak };
   });
 
@@ -54,13 +54,13 @@ test("study sessions persist across restart and feed stats + streak", async () =
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const reloaded = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const list = await window.careerflow.sessions.list(pid, 50);
-    const stats = await window.careerflow.sessions.stats(pid);
+    const list = await window.progressLedger.sessions.list(pid, 50);
+    const stats = await window.progressLedger.sessions.stats(pid);
     return { count: list.length, total: stats.totalMinutes, first: list[0] };
   });
 

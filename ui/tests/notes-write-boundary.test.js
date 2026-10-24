@@ -58,7 +58,7 @@ const SUBJECT_ID = 7;
 
 function installIpcMock() {
   const calls = { get: [], addNote: [], updateNote: [] };
-  window.careerflow = {
+  window.progressLedger = {
     resources: {
       get: vi.fn((payload) => {
         calls.get.push(payload);
@@ -100,13 +100,13 @@ const ACADEMIC_TREE = [
 ];
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   clearToasts();
 });
 
 afterEach(() => {
   cleanup();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   clearToasts();
   vi.restoreAllMocks();
 });

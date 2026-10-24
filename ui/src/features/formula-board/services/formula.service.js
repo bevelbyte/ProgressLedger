@@ -12,7 +12,7 @@ export const formulaService = {
     if (profileId == null) {
       return [];
     }
-    return await window.careerflow.academic.tree(profileId);
+    return await window.progressLedger.academic.tree(profileId);
   },
 
   /**
@@ -22,7 +22,7 @@ export const formulaService = {
    * @returns {Promise<Array>} List of formulas
    */
   async list(profileId, subjectId, category) {
-    return await window.careerflow.formulas.list(profileId, subjectId, category);
+    return await window.progressLedger.formulas.list(profileId, subjectId, category);
   },
 
   /**
@@ -35,7 +35,7 @@ export const formulaService = {
    * @returns {Promise<void>}
    */
   async add(profileId, subjectId, title, latexContent, category) {
-    return await window.careerflow.formulas.add(profileId, subjectId, title, latexContent, category);
+    return await window.progressLedger.formulas.add(profileId, subjectId, title, latexContent, category);
   },
 
   /**
@@ -48,7 +48,7 @@ export const formulaService = {
    * @returns {Promise<void>}
    */
   async update(profileId, formulaId, title, latexContent, category) {
-    return await window.careerflow.formulas.update(profileId, formulaId, title, latexContent, category);
+    return await window.progressLedger.formulas.update(profileId, formulaId, title, latexContent, category);
   },
 
   /**
@@ -58,6 +58,6 @@ export const formulaService = {
    * @returns {Promise<void>}
    */
   async remove(profileId, formulaId) {
-    return await window.careerflow.formulas.remove(profileId, formulaId);
+    return await window.progressLedger.formulas.remove(profileId, formulaId);
   }
 };

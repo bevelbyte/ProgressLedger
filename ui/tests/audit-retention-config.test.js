@@ -7,7 +7,7 @@
 //   - a successful save writes a "Saved at HH:MM:SS" status line
 //   - every audit call carries the caller's profileId as ownership proof (SF-3)
 //
-// The IPC namespace is mocked on window.careerflow.audit, mirroring the
+// The IPC namespace is mocked on window.progressLedger.audit, mirroring the
 // shape shipped by shell/src/preload.cjs + shell/src/ipc/audit.js.
 
 import { render, screen, cleanup, waitFor, fireEvent } from "@testing-library/svelte";
@@ -18,7 +18,7 @@ import AuditRetentionConfig from "../src/features/project-mode/components/AuditR
 const TIME_RE = /\d{2}:\d{2}:\d{2}/;
 const PROFILE_ID = 7;
 
-/** Install a mocked window.careerflow.audit namespace. */
+/** Install a mocked window.progressLedger.audit namespace. */
 function setupAudit({ retention = { days: 30, count: 50_000 }, setRetentionImpl } = {}) {
   const getRetention = vi.fn().mockResolvedValue({ ok: true, retention });
   const setRetention = setRetentionImpl
@@ -27,12 +27,12 @@ function setupAudit({ retention = { days: 30, count: 50_000 }, setRetentionImpl 
         ok: true,
         retention: { days: payload.days, count: payload.count },
       }));
-  window.careerflow = { audit: { getRetention, setRetention } };
+  window.progressLedger = { audit: { getRetention, setRetention } };
   return { getRetention, setRetention };
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 afterEach(() => {
@@ -111,7 +111,7 @@ describe("AuditRetentionConfig", () => {
   });
 
   it("degrades gracefully when the audit namespace is unavailable", async () => {
-    // window.careerflow is left undefined by beforeEach() on purpose.
+    // window.progressLedger is left undefined by beforeEach() on purpose.
     render(AuditRetentionConfig, { props: { profileId: PROFILE_ID } });
     await screen.findByTestId("audit-retention-config");
     // The panel still renders its inputs; the failure is surfaced inline.

@@ -56,7 +56,7 @@ function makeBrowserBridge(overrides = {}) {
     onEvent: vi.fn(() => () => {}),
   };
   const bridge = { ...base, ...overrides };
-  window.careerflow = { ...(window.careerflow ?? {}), browser: bridge };
+  window.progressLedger = { ...(window.progressLedger ?? {}), browser: bridge };
   return bridge;
 }
 
@@ -84,7 +84,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ describe("browser mirror", () => {
   });
 
   it("fails soft when the preload bridge is absent", async () => {
-    delete window.careerflow;
+    delete window.progressLedger;
     expect((await refresh()).reason).toBe("bridge-unavailable");
     expect((await openPage({ profileId: 1, url: "https://x.test/" })).reason).toBe("bridge-unavailable");
   });
@@ -187,8 +187,8 @@ describe("browser surface", () => {
     expect(screen.getByTestId("browser-address")).toBeTruthy();
     expect(screen.getByText("No page in this tab")).toBeTruthy();
     // Nothing is sent for a tab that has no page: there is nothing to place.
-    expect(window.careerflow.browser.setBounds).not.toHaveBeenCalled();
-    expect(window.careerflow.browser.setVisible).not.toHaveBeenCalled();
+    expect(window.progressLedger.browser.setBounds).not.toHaveBeenCalled();
+    expect(window.progressLedger.browser.setVisible).not.toHaveBeenCalled();
   });
 
   it("creates a page from the empty state and reports the id back to the workspace tab", async () => {

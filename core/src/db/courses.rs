@@ -65,7 +65,7 @@ pub struct CgpaResult {
 // Grade scale
 // ---------------------------------------------------------------------------
 
-/// CareerFlow's fallback scale when a profile has not defined one. Example
+/// Progress Ledger's fallback scale when a profile has not defined one. Example
 /// 10-point Indian scheme; profiles from other institutions can overwrite it
 /// via `set_grade_scale`. This is NOT treated as universal — it is only the
 /// seed a user can edit.

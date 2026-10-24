@@ -5,9 +5,9 @@
   // Skills are bundles of system-prompt fragments the agent opts into
   // (see shell/src/services/skills/). The Skills registry lives in the main
   // process; the renderer only sees the metadata exposed via
-  // `careerflow.extensions.listSkills()`, the raw SKILL.md text via
-  // `careerflow.extensions.previewSkill(id)`, and the enable toggle via
-  // `careerflow.extensions.setSkillEnabled(...)`.
+  // `progressLedger.extensions.listSkills()`, the raw SKILL.md text via
+  // `progressLedger.extensions.previewSkill(id)`, and the enable toggle via
+  // `progressLedger.extensions.setSkillEnabled(...)`.
   //
   // The enable toggle used to have NO caller anywhere in the renderer, which
   // made `skills:set-enabled` — the only state-mutating Skills channel, and the
@@ -41,7 +41,7 @@
 
   function extensionsApi() {
     const w = typeof window !== "undefined" ? window : undefined;
-    const ns = w && w.careerflow && w.careerflow.extensions;
+    const ns = w && w.progressLedger && w.progressLedger.extensions;
     return ns &&
       typeof ns.listSkills === "function" &&
       typeof ns.previewSkill === "function"

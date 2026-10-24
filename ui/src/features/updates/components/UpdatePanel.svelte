@@ -79,7 +79,7 @@
 <section class="update-panel">
   <header>
     <h2>Software Updates</h2>
-    <p class="subtitle">Keep CareerFlow up to date with the latest features and fixes</p>
+    <p class="subtitle">Keep Progress Ledger up to date with the latest features and fixes</p>
   </header>
 
   <UpdateCard 
@@ -94,7 +94,7 @@
   <div class="info-box">
     <h4>About Updates</h4>
     <ul>
-      <li>Updates are checked automatically when you start CareerFlow</li>
+      <li>Updates are checked automatically when you start Progress Ledger</li>
       <li>You can also check manually at any time</li>
       <li>Updates are downloaded in the background</li>
       <li>The app will restart to install updates (your data is safe)</li>

@@ -26,7 +26,7 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 // Locate the native core build. We use the .node binary that ships in
 // the repo for the test harness.
-const corePath = path.join(REPO_ROOT, "core", "careerflow_core.win32-x64-msvc.node");
+const corePath = path.join(REPO_ROOT, "core", "progress_ledger_core.win32-x64-msvc.node");
 assert.ok(fs.existsSync(corePath), `Native core not built: ${corePath}`);
 // ESM dynamic import of a CommonJS module — Node treats require() of a
 // .node file as CJS, but we can import the .node via createRequire.

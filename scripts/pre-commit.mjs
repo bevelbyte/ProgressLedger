@@ -8,7 +8,7 @@
  *   parity change never lands on main.
  *
  * Staged-file policy (skip a check when its glob is untouched):
- *   - core/src/<any>.rs, core/careerflow_core.<triple>.node, core/index.{js,d.ts}
+ *   - core/src/<any>.rs, core/progress_ledger_core.<triple>.node, core/index.{js,d.ts}
  *       → npm run check:napi
  *   - shell/<any>.js
  *       → npm run check:esm, npm run check:ipc
@@ -76,7 +76,7 @@ const checks = [];
 const touchesRustSurface = files.some(
   (f) =>
     f.startsWith("core/src/") && f.endsWith(".rs") ||
-    /^core\/careerflow_core\..*\.node$/.test(f) ||
+    /^core\/progress_ledger_core\..*\.node$/.test(f) ||
     /^core\/index\.(js|d\.ts)$/.test(f),
 );
 if (touchesRustSurface) {

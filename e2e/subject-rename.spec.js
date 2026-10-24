@@ -24,41 +24,41 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   // Seed Profile A with a fully-populated subject over real IPC. The course
   // row is deliberately legacy-shaped (no subject link) so we also prove the
   // mapper links it structurally on its first save.
   const seed = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Rename Ada", `rename-ada-${Date.now()}`);
-    const trackId = await window.careerflow.academic.addTrack(p.id, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(p.id, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(p.id, semId, "Subjects");
-    const subjectId = await window.careerflow.academic.addSubject(p.id, msId, "Algorithms", "CS301");
-    await window.careerflow.sessions.add(p.id, subjectId, 25);
-    await window.careerflow.cards.create(p.id, subjectId, "Q1", "A1");
-    await window.careerflow.mistakes.add(p.id, subjectId, "q", "conceptual", "a", "");
-    await window.careerflow.resources.addNote(p.id, subjectId, "Note", "body");
-    await window.careerflow.formulas.add(p.id, subjectId, "F", "x^2", "alg");
-    await window.careerflow.labs.add(p.id, subjectId, 1, "Exp");
-    await window.careerflow.deadlines.add(p.id, subjectId, new Date().toISOString().slice(0, 10), "exam", "Mid", "");
+    const p = await window.progressLedger.profiles.add("Rename Ada", `rename-ada-${Date.now()}`);
+    const trackId = await window.progressLedger.academic.addTrack(p.id, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(p.id, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(p.id, semId, "Subjects");
+    const subjectId = await window.progressLedger.academic.addSubject(p.id, msId, "Algorithms", "CS301");
+    await window.progressLedger.sessions.add(p.id, subjectId, 25);
+    await window.progressLedger.cards.create(p.id, subjectId, "Q1", "A1");
+    await window.progressLedger.mistakes.add(p.id, subjectId, "q", "conceptual", "a", "");
+    await window.progressLedger.resources.addNote(p.id, subjectId, "Note", "body");
+    await window.progressLedger.formulas.add(p.id, subjectId, "F", "x^2", "alg");
+    await window.progressLedger.labs.add(p.id, subjectId, 1, "Exp");
+    await window.progressLedger.deadlines.add(p.id, subjectId, new Date().toISOString().slice(0, 10), "exam", "Mid", "");
     // Legacy-shaped graded course (pre-014 style: no structural link yet).
-    await window.careerflow.courses.add({
+    await window.progressLedger.courses.add({
       profileId: p.id, semesterLabel: "Semester 1", courseName: "Algorithms",
       credits: 4, marksObtained: 88, maxMarks: 100, isHypothetical: false,
     });
-    const goalId = await window.careerflow.career.addGoal({ profileId: p.id, title: "Backend Engineer", isPrimary: true });
-    const milestoneId = await window.careerflow.career.addMilestone({ profileId: p.id, goalId, title: "Learn SQL" });
-    await window.careerflow.career.setMilestoneSubject(p.id, milestoneId, subjectId);
+    const goalId = await window.progressLedger.career.addGoal({ profileId: p.id, title: "Backend Engineer", isPrimary: true });
+    const milestoneId = await window.progressLedger.career.addMilestone({ profileId: p.id, goalId, title: "Learn SQL" });
+    await window.progressLedger.career.setMilestoneSubject(p.id, milestoneId, subjectId);
     return { pid: p.id, subjectId, goalId, milestoneId };
   });
 
@@ -74,7 +74,7 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   const card = win.locator(".profile-card", { hasText: "Rename Ada" });
   await expect(card).toBeVisible();
   await card.click();
@@ -91,18 +91,18 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
 
   // Everything survived under the SAME subject id — verified over real IPC.
   const afterRename = await win.evaluate(async ({ pid, subjectId, goalId }) => {
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const subs = tree[0].semesters[0].milestones[0].subjects;
-    const courses = await window.careerflow.courses.list(pid, null);
-    const sessions = (await window.careerflow.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
-    const cards = (await window.careerflow.cards.all(pid)).filter((c) => c.subjectId === subjectId);
-    const mistakes = await window.careerflow.mistakes.list({ profileId: pid, subjectId });
-    const resources = await window.careerflow.resources.list({ profileId: pid, subjectId });
-    const formulas = await window.careerflow.formulas.list(pid, subjectId, null);
-    const labs = await window.careerflow.labs.list(pid, subjectId);
-    const deadlines = (await window.careerflow.deadlines.list(pid)).filter((d) => d.subjectId === subjectId);
-    const milestones = await window.careerflow.career.milestones(pid, goalId);
-    const overview = await window.careerflow.resources.overview({ profileId: pid, subjectId });
+    const courses = await window.progressLedger.courses.list(pid, null);
+    const sessions = (await window.progressLedger.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
+    const cards = (await window.progressLedger.cards.all(pid)).filter((c) => c.subjectId === subjectId);
+    const mistakes = await window.progressLedger.mistakes.list({ profileId: pid, subjectId });
+    const resources = await window.progressLedger.resources.list({ profileId: pid, subjectId });
+    const formulas = await window.progressLedger.formulas.list(pid, subjectId, null);
+    const labs = await window.progressLedger.labs.list(pid, subjectId);
+    const deadlines = (await window.progressLedger.deadlines.list(pid)).filter((d) => d.subjectId === subjectId);
+    const milestones = await window.progressLedger.career.milestones(pid, goalId);
+    const overview = await window.progressLedger.resources.overview({ profileId: pid, subjectId });
     return {
       subjectCount: subs.length,
       subject: subs[0],
@@ -147,7 +147,7 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   const card2 = win.locator(".profile-card", { hasText: "Rename Ada" });
   await expect(card2).toBeVisible();
   await card2.click();
@@ -156,11 +156,11 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
   await expect(panel.getByText("Distributed Systems")).toBeVisible();
 
   const afterRestart = await win.evaluate(async ({ pid, subjectId, goalId }) => {
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const subs = tree[0].semesters[0].milestones[0].subjects;
-    const sessions = (await window.careerflow.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
-    const milestones = await window.careerflow.career.milestones(pid, goalId);
-    const courses = await window.careerflow.courses.list(pid, null);
+    const sessions = (await window.progressLedger.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
+    const milestones = await window.progressLedger.career.milestones(pid, goalId);
+    const courses = await window.progressLedger.courses.list(pid, null);
     return {
       id: subs[0]?.id, name: subs[0]?.name, count: subs.length,
       sessions: sessions.length,
@@ -178,21 +178,21 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
   // PROFILE ISOLATION: B's identically-named subject is untouched by A's
   // rename, and A's course can never be re-pointed at B's subject.
   const isolation = await win.evaluate(async ({ pid, subjectId, courseId }) => {
-    const b = await window.careerflow.profiles.add("Rename Bea", `rename-bea-${Date.now()}`);
-    const trackId = await window.careerflow.academic.addTrack(b.id, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(b.id, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(b.id, semId, "Subjects");
-    const bSubjectId = await window.careerflow.academic.addSubject(b.id, msId, "Algorithms", "CS999");
+    const b = await window.progressLedger.profiles.add("Rename Bea", `rename-bea-${Date.now()}`);
+    const trackId = await window.progressLedger.academic.addTrack(b.id, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(b.id, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(b.id, semId, "Subjects");
+    const bSubjectId = await window.progressLedger.academic.addSubject(b.id, msId, "Algorithms", "CS999");
     let crossProfileRejected = false;
     try {
-      await window.careerflow.courses.update({
+      await window.progressLedger.courses.update({
         profileId: pid, courseId, courseName: "Algorithms", credits: 4,
         marksObtained: 0, maxMarks: 100, subjectId: bSubjectId,
       });
     } catch (e) {
       crossProfileRejected = /different profile/i.test(String(e?.message ?? e));
     }
-    const bSubs = (await window.careerflow.academic.tree(b.id))[0].semesters[0].milestones[0].subjects;
+    const bSubs = (await window.progressLedger.academic.tree(b.id))[0].semesters[0].milestones[0].subjects;
     return { crossProfileRejected, bSubject: bSubs[0], bPid: b.id, bSubjectId };
   }, { ...seed, courseId: afterRename.course.id });
   expect(isolation.crossProfileRejected).toBe(true);
@@ -210,11 +210,11 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
   await win.waitForTimeout(600); // confirm dialog -> delete -> persist
 
   const afterDelete = await win.evaluate(async ({ pid, subjectId, goalId }) => {
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const subs = tree[0].semesters[0].milestones[0].subjects;
-    const sessions = (await window.careerflow.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
-    const courses = await window.careerflow.courses.list(pid, null);
-    const milestones = await window.careerflow.career.milestones(pid, goalId);
+    const sessions = (await window.progressLedger.sessions.list(pid, 500)).filter((s) => s.subjectId === subjectId);
+    const courses = await window.progressLedger.courses.list(pid, null);
+    const milestones = await window.progressLedger.career.milestones(pid, goalId);
     const link = milestones.find((m) => m.title === "Learn SQL");
     return {
       count: subs.length,
@@ -230,7 +230,7 @@ test("renaming a subject in the Degree Planner preserves its id and every depend
 
   // Bea's data is completely unaffected by A's delete/rename cycle.
   const bAfter = await win.evaluate(async ({ bPid }) => {
-    const subs = (await window.careerflow.academic.tree(bPid))[0].semesters[0].milestones[0].subjects;
+    const subs = (await window.progressLedger.academic.tree(bPid))[0].semesters[0].milestones[0].subjects;
     return { count: subs.length, name: subs[0]?.name };
   }, isolation);
   expect(bAfter).toEqual({ count: 1, name: "Algorithms" });

@@ -85,7 +85,7 @@ async function confirmBroadProjectRoot(ctx, canonicalPath, name) {
     defaultId: 0,
     cancelId: 0,
     title: "Confirm broad project root",
-    message: `Allow CareerFlow to use this folder as a project root?`,
+    message: `Allow Progress Ledger to use this folder as a project root?`,
     detail:
       `"${canonicalPath}"${typeof name === "string" && name.trim() ? ` (project "${name.trim()}")` : ""} `
       + "is a very broad location. Any agent working in this project will be able to read and modify "
@@ -550,7 +550,7 @@ export function register(registerCtx) {
   // ----- Resumable agents (read-only) -----
   //
   // Returns the most-recent non-terminal agent for the profile (i.e. an
-  // agent that was running or paused when CareerFlow was last closed).
+  // agent that was running or paused when Progress Ledger was last closed).
   // The renderer asks "is there a previous run I should offer to
   // resume?" and shows the ResumeBanner on top of Project Mode when the
   // IPC returns a row. We piggyback on the existing `pmListRecentAgentRuns`

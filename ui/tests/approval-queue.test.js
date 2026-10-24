@@ -10,7 +10,7 @@
 // The component reads from `projectModeStore.pendingApprovals` (reactive
 // Svelte 5 store), so tests populate the store directly via
 // `pushApprovalRequest` and assert on the rendered DOM. The IPC namespace
-// is mocked on window.careerflow.projectMode.
+// is mocked on window.progressLedger.projectMode.
 
 import { render, screen, cleanup, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -27,7 +27,7 @@ function setupIpc() {
   const denyCall = vi.fn().mockResolvedValue({ ok: true, deleted: true });
   const listPendingApprovals = vi.fn().mockResolvedValue({ ok: true, approvals: [], count: 0 });
 
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       approveCall,
       denyCall,
@@ -47,7 +47,7 @@ function resetStore() {
 
 describe("ApprovalQueue — empty state", () => {
   beforeEach(resetStore);
-  afterEach(() => { cleanup(); window.careerflow = undefined; });
+  afterEach(() => { cleanup(); window.progressLedger = undefined; });
 
   it("renders the empty state when there are no pending approvals", async () => {
     setupIpc();
@@ -68,7 +68,7 @@ describe("ApprovalQueue — empty state", () => {
 
 describe("ApprovalQueue — rendering", () => {
   beforeEach(resetStore);
-  afterEach(() => { cleanup(); window.careerflow = undefined; });
+  afterEach(() => { cleanup(); window.progressLedger = undefined; });
 
   it("renders each pending approval with tool name, permission and truncated args", async () => {
     setupIpc();
@@ -141,7 +141,7 @@ describe("ApprovalQueue — rendering", () => {
 
 describe("ApprovalQueue — arguments boundary", () => {
   beforeEach(resetStore);
-  afterEach(() => { cleanup(); window.careerflow = undefined; });
+  afterEach(() => { cleanup(); window.progressLedger = undefined; });
 
   // Regression guard for a real defect: this component used to render a
   // "Show arguments" disclosure whose collapsed state was the hardcoded string
@@ -213,7 +213,7 @@ describe("ApprovalQueue — arguments boundary", () => {
 
 describe("ApprovalQueue — approve", () => {
   beforeEach(resetStore);
-  afterEach(() => { cleanup(); window.careerflow = undefined; });
+  afterEach(() => { cleanup(); window.progressLedger = undefined; });
 
   it("removes the item from the queue and calls approveCall IPC when Approve is clicked", async () => {
     const { approveCall } = setupIpc();
@@ -268,7 +268,7 @@ describe("ApprovalQueue — approve", () => {
 
 describe("ApprovalQueue — deny", () => {
   beforeEach(resetStore);
-  afterEach(() => { cleanup(); window.careerflow = undefined; });
+  afterEach(() => { cleanup(); window.progressLedger = undefined; });
 
   it("removes the item from the queue and calls denyCall IPC when Deny is clicked", async () => {
     const { denyCall } = setupIpc();

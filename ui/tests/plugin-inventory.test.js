@@ -1,7 +1,7 @@
 // PluginInventory — UI tests.
 //
 // Coverage:
-//   - renders one row per plugin from window.careerflow.extensions.listPlugins()
+//   - renders one row per plugin from window.progressLedger.extensions.listPlugins()
 //   - enabled toggle button reflects plugin.enabled state
 //   - clicking toggle calls enablePlugin / disablePlugin and updates state
 //   - reload button calls reloadPlugin
@@ -9,8 +9,8 @@
 //   - click row expands manifest preview
 //   - empty / failure states render correctly
 //
-// The IPC namespace is mocked via window.careerflow.extensions. Tests
-// reset window.careerflow between cases for hermetic isolation.
+// The IPC namespace is mocked via window.progressLedger.extensions. Tests
+// reset window.progressLedger between cases for hermetic isolation.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -59,7 +59,7 @@ function setupIpc({
   const disable = vi.fn(disableImpl || (async (id) => ({ ok: true })));
   const reload = vi.fn(reloadImpl || (async (id) => ({ ok: true, plugin: plugins.find((p) => p.id === id) })));
 
-  window.careerflow = {
+  window.progressLedger = {
     extensions: { listPlugins: list, enablePlugin: enable, disablePlugin: disable, reloadPlugin: reload },
   };
   return { list, enable, disable, reload };
@@ -67,7 +67,7 @@ function setupIpc({
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------

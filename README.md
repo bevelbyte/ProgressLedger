@@ -1,11 +1,11 @@
-# CareerFlow
+# Progress Ledger
 
 Local-first desktop workspace for students: academic planning, study science,
 knowledge management, and (later) career tracking — in one offline-capable app.
 
 **Stack:** Electron (shell) · Svelte 5 + Vite (UI) · Rust/napi-rs (core) · SQLite + FTS5.
 
-This repository is the cleaned-up successor of `CareerFlow-Opus`. It preserves
+This repository is the cleaned-up successor of `Progress Ledger-Opus`. It preserves
 that project's working engineering (SQLite schema & migrations, SM-2 engine,
 profile portability, PDF/FTS5 knowledge search, feature-based Svelte UI) while
 fixing the architectural failures that stalled it — see "What changed" below.
@@ -13,7 +13,7 @@ fixing the architectural failures that stalled it — see "What changed" below.
 ## Layout
 
 ```
-core/     Rust napi addon (@careerflow/core)
+core/     Rust napi addon (@progress-ledger/core)
   src/db/           domain modules (academic, resources, cards, deadlines,
                     mistakes, courses, lab_tracker, projects, formula_board,
                     subject_links) over a shared r2d2 SQLite pool
@@ -23,7 +23,7 @@ core/     Rust napi addon (@careerflow/core)
   src/errors.rs     coded JSON error envelope shared with the UI
   tests/            migration/cascade/search integration suites
 
-shell/    Electron main process (@careerflow/shell)
+shell/    Electron main process (@progress-ledger/shell)
   src/main.js       thin entry: window, workspace init, DB init, IPC wiring
   src/workspace.js  workspace dir validation, locking, path resolution
   src/ipc/*.js      one registrar per channel family; EVERY preload channel
@@ -31,9 +31,9 @@ shell/    Electron main process (@careerflow/shell)
   src/services/     logger, backup settings, WebDAV client, local vault,
                     sync automation runner, diagnostics, bundle inspection
   src/preload.cjs   the single typed surface exposed to the renderer as
-                    window.careerflow.* (context-isolated)
+                    window.progressLedger.* (context-isolated)
 
-ui/       Svelte 5 frontend (@careerflow/ui)
+ui/       Svelte 5 frontend (@progress-ledger/ui)
   src/features/<name>/   components/ + services/ (+ stores where needed),
                          public API via index.js barrel
   src/shared/            toasts, error-envelope parser, onboarding store
@@ -72,7 +72,7 @@ per-suite commands, CI flow, and common failure modes.
 
 1. **IPC parity.** A channel in `preload.cjs` without an `ipcMain.handle` is a
    silent runtime failure — `npm run check:ipc` fails the build instead.
-2. **One data path.** Renderer → service → `window.careerflow.*` → Rust core →
+2. **One data path.** Renderer → service → `window.progressLedger.*` → Rust core →
    SQLite. No business logic in Electron main; main only bridges OS concerns
    (dialogs, files, credentials, updater).
 3. **Domain math lives in Rust** (`sm2.rs`, SGPA/deadline-pace functions), pure
@@ -82,7 +82,7 @@ per-suite commands, CI flow, and common failure modes.
 5. **Schema changes = new migration file**, never edit old ones; keep
    `PRAGMA user_version` semantics intact so existing databases upgrade in place.
 
-## What changed vs CareerFlow-Opus
+## What changed vs Progress Ledger-Opus
 
 - Electron `main.js` (1,337 lines, all handlers inline) split into `ipc/` and
   `services/` modules with the same behavior.
@@ -103,7 +103,7 @@ per-suite commands, CI flow, and common failure modes.
 
 ## Data locations
 
-Per-user **workspace directory** (chosen at first run): `careerflow.db`,
+Per-user **workspace directory** (chosen at first run): `progress-ledger-v2.db`,
 `attachments/<profile_id>/<resource>.pdf`, `Logs/`, `Temp/`,
 `backup-settings.json`. `.cfprofile` bundles are portable ZIPs of one profile's
 rows plus its attachments.

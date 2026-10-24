@@ -54,17 +54,17 @@ const SAMPLE_EVENTS = [
   },
 ];
 
-/** Install a mocked window.careerflow.audit namespace. */
+/** Install a mocked window.progressLedger.audit namespace. */
 function setupAudit({ events = SAMPLE_EVENTS, listEventsImpl } = {}) {
   const listEvents = listEventsImpl
     ? listEventsImpl
     : vi.fn().mockResolvedValue({ ok: true, events });
-  window.careerflow = { audit: { listEvents } };
+  window.progressLedger = { audit: { listEvents } };
   return { listEvents };
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 afterEach(() => {
@@ -188,7 +188,7 @@ describe("ShellHistoryFilter", () => {
   });
 
   it("degrades gracefully when the audit namespace is unavailable", async () => {
-    // window.careerflow is left undefined by beforeEach() on purpose.
+    // window.progressLedger is left undefined by beforeEach() on purpose.
     render(ShellHistoryFilter, { profileId: 1 });
 
     await screen.findByTestId("shell-history-error");

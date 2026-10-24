@@ -8,7 +8,7 @@
   // disable retention entirely. We mirror the same checks here so the user
   // gets a friendly inline error instead of a silent server-side clamp.
   //
-  // Channels (shell/src/preload.cjs -> window.careerflow.audit):
+  // Channels (shell/src/preload.cjs -> window.progressLedger.audit):
   //   getRetention({profileId})            -> { ok: true, retention: { days, count } }
   //   setRetention({profileId,days,count}) -> { ok: true, retention: { days, count } }
   //
@@ -50,7 +50,7 @@
 
   function auditApi() {
     const w = typeof window !== "undefined" ? window : undefined;
-    const ns = w && w.careerflow && w.careerflow.audit;
+    const ns = w && w.progressLedger && w.progressLedger.audit;
     return ns && typeof ns.getRetention === "function" && typeof ns.setRetention === "function"
       ? ns
       : null;

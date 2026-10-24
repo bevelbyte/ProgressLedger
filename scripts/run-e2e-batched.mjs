@@ -20,7 +20,7 @@
 // and adds cleanup.
 //
 // Usage:  node scripts/run-e2e-batched.mjs [--batch 10] [spec ...]
-// Env:    CAREERFLOW_E2E_REAL_DONUT=1 is honoured by playwright.config.js; the
+// Env:    PROGRESSLEDGER_V2_E2E_REAL_DONUT=1 is honoured by playwright.config.js; the
 //         destructive real-Donut specs are excluded unless it is set.
 
 import { spawn, spawnSync } from "node:child_process";

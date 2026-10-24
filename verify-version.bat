@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================================
-echo   CareerFlow -- Verify Version Integrity
+echo   Progress Ledger -- Verify Version Integrity
 echo ============================================================
 echo.
 

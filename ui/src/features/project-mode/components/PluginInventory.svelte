@@ -3,10 +3,10 @@
   //
   // Plugins are folders on disk (<userData>/plugins/<id>/) with a plugin.json
   // manifest. The Plugins registry lives in the main process; the renderer
-  // queries metadata via `careerflow.extensions.listPlugins()` and toggles
-  // enable/disable via `careerflow.extensions.enablePlugin()` /
-  // `careerflow.extensions.disablePlugin()`. Hot-reload is available via
-  // `careerflow.extensions.reloadPlugin()`.
+  // queries metadata via `progressLedger.extensions.listPlugins()` and toggles
+  // enable/disable via `progressLedger.extensions.enablePlugin()` /
+  // `progressLedger.extensions.disablePlugin()`. Hot-reload is available via
+  // `progressLedger.extensions.reloadPlugin()`.
   //
   // Columns: id | name | version | enabled (toggle) | capabilities (chips)
   // Click a row to expand the manifest details below the table.
@@ -28,7 +28,7 @@
 
   function extensionsApi() {
     const w = typeof window !== "undefined" ? window : undefined;
-    const ns = w && w.careerflow && w.careerflow.extensions;
+    const ns = w && w.progressLedger && w.progressLedger.extensions;
     return ns &&
       typeof ns.listPlugins === "function" &&
       typeof ns.reloadPlugin === "function" &&

@@ -88,7 +88,7 @@
       <header class="kbd-head">
         <div>
           <h2 id="kbd-title">Keyboard</h2>
-          <p class="kbd-sub">Every chord below works from anywhere in CareerFlow.</p>
+          <p class="kbd-sub">Every chord below works from anywhere in Progress Ledger.</p>
         </div>
         <button type="button" class="cf-btn ghost sm" onclick={onClose} aria-label="Close keyboard reference" title="Close (Esc)">
           <X size={13} strokeWidth={2} aria-hidden="true" />

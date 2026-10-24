@@ -20,7 +20,7 @@ const MOCK_MESSAGES = [
 ];
 
 function mockListMessagesPaginated(resolver) {
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listMessagesPaginated: vi.fn().mockImplementation(resolver),
     },

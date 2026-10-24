@@ -14,7 +14,7 @@ const projectRoot = join(__dirname, "..");
  *  - changing the scale changes a subsequent CGPA calculation,
  *  - existing courses are untouched,
  *  - an invalid scale is rejected by the Rust layer.
- * Driven through the real IPC surface (window.careerflow.courses.*) so it
+ * Driven through the real IPC surface (window.progressLedger.courses.*) so it
  * exercises the same path the Settings UI uses.
  */
 test("grade scale persists, drives CGPA, and rejects invalid input", async () => {
@@ -22,19 +22,19 @@ test("grade scale persists, drives CGPA, and rejects invalid input", async () =>
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   // ---- Run 1: profile + one 60% course, then install a custom scale ----
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const setup = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Scale Student", `scale-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add("Scale Student", `scale-${Date.now()}`);
     const pid = p.id;
-    await window.careerflow.courses.add({
+    await window.progressLedger.courses.add({
       profileId: pid,
       semesterLabel: "Semester 1",
       courseName: "Physics",
@@ -45,8 +45,8 @@ test("grade scale persists, drives CGPA, and rejects invalid input", async () =>
       maxMarks: 100,
       isHypothetical: false,
     });
-    const defaultScale = await window.careerflow.courses.getDefaultGradeScale();
-    const cgpaDefault = await window.careerflow.courses.cgpa(pid);
+    const defaultScale = await window.progressLedger.courses.getDefaultGradeScale();
+    const cgpaDefault = await window.progressLedger.courses.cgpa(pid);
     return { pid, defaultLen: defaultScale.length, cgpaDefault: cgpaDefault.cgpa };
   });
 
@@ -57,7 +57,7 @@ test("grade scale persists, drives CGPA, and rejects invalid input", async () =>
   // Invalid scale (duplicate threshold, no 0 floor) must be rejected by Rust.
   const invalid = await win.evaluate(async (pid) => {
     try {
-      await window.careerflow.courses.setGradeScale(pid, [
+      await window.progressLedger.courses.setGradeScale(pid, [
         { minPercent: 50, gradePoint: 6, label: "B" },
         { minPercent: 50, gradePoint: 5, label: "C" },
       ]);
@@ -70,13 +70,13 @@ test("grade scale persists, drives CGPA, and rejects invalid input", async () =>
 
   // Install a custom valid scale where 60% now earns 8 instead of 7.
   await win.evaluate(async (pid) => {
-    await window.careerflow.courses.setGradeScale(pid, [
+    await window.progressLedger.courses.setGradeScale(pid, [
       { minPercent: 60, gradePoint: 8, label: "High" },
       { minPercent: 0, gradePoint: 4, label: "Base" },
     ]);
   }, setup.pid);
 
-  const afterCustom = await win.evaluate((pid) => window.careerflow.courses.cgpa(pid), setup.pid);
+  const afterCustom = await win.evaluate((pid) => window.progressLedger.courses.cgpa(pid), setup.pid);
   expect(afterCustom.cgpa).toBeCloseTo(8.0, 5);
   await app.close();
 
@@ -84,14 +84,14 @@ test("grade scale persists, drives CGPA, and rejects invalid input", async () =>
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const reloaded = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const scale = await window.careerflow.courses.getGradeScale(pid);
-    const courses = await window.careerflow.courses.list(pid, null);
-    const cgpa = await window.careerflow.courses.cgpa(pid);
+    const scale = await window.progressLedger.courses.getGradeScale(pid);
+    const courses = await window.progressLedger.courses.list(pid, null);
+    const cgpa = await window.progressLedger.courses.cgpa(pid);
     return { scale, courses, cgpa: cgpa.cgpa };
   });
 

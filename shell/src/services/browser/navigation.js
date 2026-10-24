@@ -50,7 +50,7 @@ export const NAVIGATION_GATES = Object.freeze([
  * @param {{onBlocked?: Function, onWindowOpen?: (details: object) => boolean}} [deps]
  *   `onWindowOpen` is an OPTIONAL decision hook that runs on top of the
  *   unconditional denial. The embedded browser uses it to re-decide an http(s)
- *   popup inside budget into a new unfocused CareerFlow page. It returns TRUE
+ *   popup inside budget into a new unfocused Progress Ledger page. It returns TRUE
  *   when it has reported the outcome itself — including when REFUSING it — so
  *   that its own, more specific reason reaches the UI. Anything else (a hook
  *   that returned nothing, or one that THREW) leaves this module to report the
@@ -102,7 +102,7 @@ export function installNavigationGuards(wc, { onBlocked, onWindowOpen } = {}) {
       //
       // The caller may supply its own decision on top of that denial — the
       // embedded browser does, to re-decide an http(s) URL inside budget into a
-      // new unfocused CareerFlow page. It returns TRUE when it has reported the
+      // new unfocused Progress Ledger page. It returns TRUE when it has reported the
       // outcome itself; anything else (including a hook that THREW) means this
       // module reports the refusal, because a refusal nobody can see is
       // indistinguishable from a hang.
@@ -135,7 +135,7 @@ export function installNavigationGuards(wc, { onBlocked, onWindowOpen } = {}) {
  *
  * What main does INSTEAD is decide for itself, and this pure function is that
  * decision: an http(s) URL, within a per-page-load budget, is re-decided into a
- * NEW CareerFlow browser tab (created by the caller, unfocused). Everything else
+ * NEW Progress Ledger browser tab (created by the caller, unfocused). Everything else
  * is refused.
  *
  * The budget is consumed whether or not anyone looks at the result, because a
@@ -148,7 +148,7 @@ export function installNavigationGuards(wc, { onBlocked, onWindowOpen } = {}) {
  * per-page counter — has exactly one thing to consult.
  */
 
-/** How many popups one page load may turn into CareerFlow tabs. */
+/** How many popups one page load may turn into Progress Ledger tabs. */
 export const POPUP_BUDGET_PER_LOAD = 2;
 
 /**
@@ -175,7 +175,7 @@ export function decidePopup(url, budgetUsed = 0) {
  * webContents nobody wired — and it gets the same allowlist anyway.
  *
  * It is narrow ON PURPOSE. It must never see the app's own renderer, which is
- * privileged and navigates to `file:`/`careerflow:` app surfaces by design.
+ * privileged and navigates to `file:`/`progressLedger:` app surfaces by design.
  * main.js excludes those explicitly before installing this.
  */
 export function makeWillNavigateGuard(onBlocked) {

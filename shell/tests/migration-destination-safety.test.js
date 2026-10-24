@@ -53,10 +53,10 @@ test("isDestinationOccupied returns true for a file path (not directory)", () =>
   }
 });
 
-test("TEST A — occupied database destination: isDestinationOccupied detects existing careerflow.db", () => {
+test("TEST A — occupied database destination: isDestinationOccupied detects existing progress-ledger-v2.db", () => {
   const dir = makeTempDir("cf-db-target-");
   try {
-    writeFileSync(join(dir, "careerflow.db"), "SQLITE_HEADER_SENTINEL_BYTES");
+    writeFileSync(join(dir, "progress-ledger-v2.db"), "SQLITE_HEADER_SENTINEL_BYTES");
     assert.equal(isDestinationOccupied(dir), true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -171,12 +171,12 @@ async function simulateMigrationHandler({
 
   mkdirSync(targetPath, { recursive: true });
 
-  const legacyDbPath = join(legacyUserDataPath, "careerflow.db");
+  const legacyDbPath = join(legacyUserDataPath, "progress-ledger-v2.db");
   const hasLegacyData = exists(legacyDbPath);
 
   if (hasLegacyData) {
     checkpointDbFn(legacyDbPath);
-    const targetDbPath = join(targetPath, "careerflow.db");
+    const targetDbPath = join(targetPath, "progress-ledger-v2.db");
     await cp(legacyDbPath, targetDbPath);
 
     const verifyRes = verifyDbFn(targetDbPath);
@@ -229,12 +229,12 @@ test("TEST A (workflow) — occupied database destination: migration rejected an
   const destDir = makeTempDir("cf-dest-");
   try {
     // Setup source with legacy DB
-    const sourceDbPath = join(sourceDir, "careerflow.db");
+    const sourceDbPath = join(sourceDir, "progress-ledger-v2.db");
     const sourceDbContent = "ORIGINAL_SOURCE_DATABASE_CONTENT_BYTES_12345";
     writeFileSync(sourceDbPath, sourceDbContent);
 
     // Setup destination with sentinel DB
-    const destDbPath = join(destDir, "careerflow.db");
+    const destDbPath = join(destDir, "progress-ledger-v2.db");
     const destSentinelContent = "PREEXISTING_TARGET_DATABASE_SENTINEL_98765";
     writeFileSync(destDbPath, destSentinelContent);
 
@@ -277,7 +277,7 @@ test("TEST B (workflow) — occupied attachment destination: migration rejected 
   const destDir = makeTempDir("cf-dest-");
   try {
     // Source data
-    const sourceDbPath = join(sourceDir, "careerflow.db");
+    const sourceDbPath = join(sourceDir, "progress-ledger-v2.db");
     writeFileSync(sourceDbPath, "SOURCE_DB");
     const sourceAttach = join(sourceDir, "attachments");
     mkdirSync(sourceAttach, { recursive: true });
@@ -304,7 +304,7 @@ test("TEST B (workflow) — occupied attachment destination: migration rejected 
 
     assert.deepEqual(result, { ok: false, reason: "destination-occupied" });
     assert.equal(readFileSync(destSentinelAttach, "utf8"), destSentinelBytes);
-    assert.equal(existsSync(join(destDir, "careerflow.db")), false);
+    assert.equal(existsSync(join(destDir, "progress-ledger-v2.db")), false);
     assert.equal(existsSync(join(destDir, "workspace.json")), false);
     assert.equal(checkpointCalled, false);
     assert.equal(activated, false);
@@ -319,7 +319,7 @@ test("TEST C (workflow) — occupied workspace metadata: migration rejected and 
   const sourceDir = makeTempDir("cf-src-");
   const destDir = makeTempDir("cf-dest-");
   try {
-    const sourceDbPath = join(sourceDir, "careerflow.db");
+    const sourceDbPath = join(sourceDir, "progress-ledger-v2.db");
     writeFileSync(sourceDbPath, "SOURCE_DB");
 
     // Destination already has workspace.json
@@ -343,7 +343,7 @@ test("TEST C (workflow) — occupied workspace metadata: migration rejected and 
 
     assert.deepEqual(result, { ok: false, reason: "destination-occupied" });
     assert.equal(readFileSync(wsJsonPath, "utf8"), preexistingWsContent);
-    assert.equal(existsSync(join(destDir, "careerflow.db")), false);
+    assert.equal(existsSync(join(destDir, "progress-ledger-v2.db")), false);
     assert.equal(activated, false);
     assert.equal(existsSync(`${sourceDbPath}.migrated`), false);
   } finally {
@@ -357,7 +357,7 @@ test("TEST D (workflow) — genuinely empty destination permits successful migra
   const destDir = makeTempDir("cf-dest-");
   try {
     // Setup source with legacy DB and attachments
-    const sourceDbPath = join(sourceDir, "careerflow.db");
+    const sourceDbPath = join(sourceDir, "progress-ledger-v2.db");
     const sourceDbContent = "REAL_SOURCE_SQLITE_DATA";
     writeFileSync(sourceDbPath, sourceDbContent);
 
@@ -384,7 +384,7 @@ test("TEST D (workflow) — genuinely empty destination permits successful migra
     assert.equal(checkpointCalled, true);
 
     // 3. Destination DB has source content
-    const destDbPath = join(destDir, "careerflow.db");
+    const destDbPath = join(destDir, "progress-ledger-v2.db");
     assert.equal(readFileSync(destDbPath, "utf8"), sourceDbContent);
 
     // 4. Destination attachments copied

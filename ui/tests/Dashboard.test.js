@@ -17,7 +17,7 @@ const fixture = {
 };
 
 beforeEach(() => {
-  window.careerflow = {
+  window.progressLedger = {
     dashboard: { stats: vi.fn().mockResolvedValue(fixture) },
     mistakes: { stats: vi.fn().mockResolvedValue({ totalMistakes: 0, top3Types: [] }) },
     deadlines: { list: vi.fn().mockResolvedValue([]) },
@@ -46,11 +46,11 @@ describe("Dashboard overview", () => {
     expect(screen.getByText("Resources")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(window.careerflow.dashboard.stats).toHaveBeenCalledWith(1);
-      expect(window.careerflow.mistakes.stats).toHaveBeenCalledWith(1);
-      expect(window.careerflow.deadlines.list).toHaveBeenCalledWith(1);
-      expect(window.careerflow.cards.stats).toHaveBeenCalledWith(1);
-      expect(window.careerflow.sessions.stats).toHaveBeenCalledWith(1);
+      expect(window.progressLedger.dashboard.stats).toHaveBeenCalledWith(1);
+      expect(window.progressLedger.mistakes.stats).toHaveBeenCalledWith(1);
+      expect(window.progressLedger.deadlines.list).toHaveBeenCalledWith(1);
+      expect(window.progressLedger.cards.stats).toHaveBeenCalledWith(1);
+      expect(window.progressLedger.sessions.stats).toHaveBeenCalledWith(1);
     });
   });
 
@@ -65,7 +65,7 @@ describe("Dashboard overview", () => {
   // and no `{#if}` branch matched at all — the user saw the app chrome and no
   // content, with no error and no way to retry.
   it("reports a failed overview read instead of rendering a blank Desk", async () => {
-    window.careerflow.dashboard.stats = vi.fn().mockRejectedValue(new Error("boom"));
+    window.progressLedger.dashboard.stats = vi.fn().mockRejectedValue(new Error("boom"));
 
     render(Dashboard, {
       props: {
@@ -86,7 +86,7 @@ describe("Dashboard overview", () => {
     const stats = vi.fn()
       .mockRejectedValueOnce(new Error("boom"))
       .mockResolvedValue(fixture);
-    window.careerflow.dashboard.stats = stats;
+    window.progressLedger.dashboard.stats = stats;
 
     render(Dashboard, {
       props: {
@@ -107,7 +107,7 @@ describe("Dashboard overview", () => {
     // Two future-dated exams: one active, one completed. Only the active one
     // should appear in "Upcoming Exams".
     const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-    window.careerflow.deadlines.list = vi.fn().mockResolvedValue([
+    window.progressLedger.deadlines.list = vi.fn().mockResolvedValue([
       { id: 1, subjectId: 1, subjectName: "Maths", deadlineDate: future, category: "exam", title: "Active Exam", notes: "", completedAt: null },
       { id: 2, subjectId: 1, subjectName: "Maths", deadlineDate: future, category: "exam", title: "Completed Exam", notes: "", completedAt: "2026-01-01 09:00:00" },
     ]);
@@ -129,10 +129,10 @@ describe("Dashboard overview", () => {
     const onNavigate = vi.fn();
     const projectEvent = vi.fn();
     window.addEventListener("cf:open-project", projectEvent);
-    window.careerflow.career.goals = vi.fn().mockResolvedValue([
+    window.progressLedger.career.goals = vi.fn().mockResolvedValue([
       { id: 9, title: "Backend Engineer", status: "active", isPrimary: true },
     ]);
-    window.careerflow.career.milestones = vi.fn().mockResolvedValue([
+    window.progressLedger.career.milestones = vi.fn().mockResolvedValue([
       { id: 10, title: "Build API", completedAt: null, linkedProjectId: 42, linkedProjectName: "API Project" },
     ]);
     try {
@@ -179,9 +179,9 @@ const agendaDeadlines = [
 
 describe("Dashboard Today band", () => {
   function mount(extra = {}, { minutesToday = 20, deadlines = agendaDeadlines } = {}) {
-    window.careerflow.deadlines.list = vi.fn().mockResolvedValue(deadlines);
-    window.careerflow.cards.stats = vi.fn().mockResolvedValue({ dueToday: 4, reviewedToday: 0, totalCards: 9, streak: 0 });
-    window.careerflow.sessions.stats = vi.fn().mockResolvedValue({
+    window.progressLedger.deadlines.list = vi.fn().mockResolvedValue(deadlines);
+    window.progressLedger.cards.stats = vi.fn().mockResolvedValue({ dueToday: 4, reviewedToday: 0, totalCards: 9, streak: 0 });
+    window.progressLedger.sessions.stats = vi.fn().mockResolvedValue({
       totalSessions: minutesToday > 0 ? 1 : 0,
       totalMinutes: minutesToday,
       minutesToday,

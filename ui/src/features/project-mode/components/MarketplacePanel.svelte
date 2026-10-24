@@ -1,7 +1,7 @@
 <script>
   // MarketplacePanel — browse, install, enable/disable/uninstall/update
   // marketplace items (extensions, plugins, skills, etc.) backed by the
-  // shell's `Marketplace` service via the `careerflow.marketplace.*`
+  // shell's `Marketplace` service via the `progressLedger.marketplace.*`
   // preload bridge.
   //
   // The renderer never sees the on-disk install path of a git clone —
@@ -48,7 +48,7 @@
   async function refresh() {
     loading = true;
     try {
-      const res = await window.careerflow.marketplace.list();
+      const res = await window.progressLedger.marketplace.list();
       items = res && res.ok ? res.items : [];
     } catch (e) {
       reportError(e, "Could not load marketplace");
@@ -82,7 +82,7 @@
   function enable(item) {
     return runOnItem(
       item.id,
-      () => window.careerflow.marketplace.enable(item.id),
+      () => window.progressLedger.marketplace.enable(item.id),
       `Enabled “${item.name}”`,
     );
   }
@@ -90,7 +90,7 @@
   function disable(item) {
     return runOnItem(
       item.id,
-      () => window.careerflow.marketplace.disable(item.id),
+      () => window.progressLedger.marketplace.disable(item.id),
       `Disabled “${item.name}”`,
     );
   }
@@ -99,7 +99,7 @@
     if (!confirm(`Uninstall “${item.name}”? This removes its files from disk.`)) return;
     return runOnItem(
       item.id,
-      () => window.careerflow.marketplace.uninstall(item.id),
+      () => window.progressLedger.marketplace.uninstall(item.id),
       `Uninstalled “${item.name}”`,
     );
   }
@@ -107,7 +107,7 @@
   function update(item) {
     return runOnItem(
       item.id,
-      () => window.careerflow.marketplace.update(item.id),
+      () => window.progressLedger.marketplace.update(item.id),
       `Updated “${item.name}”`,
     );
   }
@@ -120,7 +120,7 @@
     }
     installing = true;
     try {
-      const res = await window.careerflow.marketplace.installLocal(p);
+      const res = await window.progressLedger.marketplace.installLocal(p);
       if (res && res.ok) {
         toast.success(`Installed “${res.id}”`);
         localPath = "";
@@ -143,7 +143,7 @@
     }
     installing = true;
     try {
-      const res = await window.careerflow.marketplace.installGit(u, gitRef.trim() || "HEAD");
+      const res = await window.progressLedger.marketplace.installGit(u, gitRef.trim() || "HEAD");
       if (res && res.ok) {
         toast.success(`Installed “${res.id}” (v${res.version})`);
         gitUrl = "";

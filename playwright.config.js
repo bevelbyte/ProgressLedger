@@ -3,17 +3,17 @@ import { defineConfig } from "@playwright/test";
 //
 // POST-MIGRATION NOTE
 // The DBI-era real-Donut group (which spawned DonutBrowser-Unlocked.exe via
-// CareerFlow-Start-Donut.bat, deleted runtime.json files and force-killed
-// workspace processes) is gone with the Donut ownership layer. CareerFlow no
-// longer launches Donut; remaining specs use the CAREERFLOW_E2E_DONUT_STUB
+// Progress Ledger-Start-Donut.bat, deleted runtime.json files and force-killed
+// workspace processes) is gone with the Donut ownership layer. Progress Ledger no
+// longer launches Donut; remaining specs use the PROGRESSLEDGER_V2_E2E_DONUT_STUB
 // seam (hermetic) or read-only contract checks.
 //
 // The DevTools security-evidence probe (raw unauthenticated WebSocket
 // handshake, documented BLOCKED finding) lives in
 // e2e/devtools-auth-boundary-evidence.spec.js and is opt-in:
-//   CAREERFLOW_E2E_DEVTOOLS_EVIDENCE=1 npx playwright test e2e/devtools-auth-boundary-evidence.spec.js
+//   PROGRESSLEDGER_V2_E2E_DEVTOOLS_EVIDENCE=1 npx playwright test e2e/devtools-auth-boundary-evidence.spec.js
 
-const allowDevtoolsEvidence = process.env.CAREERFLOW_E2E_DEVTOOLS_EVIDENCE === "1";
+const allowDevtoolsEvidence = process.env.PROGRESSLEDGER_V2_E2E_DEVTOOLS_EVIDENCE === "1";
 
 const EVIDENCE_SPECS = ["devtools-auth-boundary-evidence.spec.js"];
 

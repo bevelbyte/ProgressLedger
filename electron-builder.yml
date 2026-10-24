@@ -1,6 +1,6 @@
-appId: com.careerflow.app
-productName: CareerFlow
-copyright: "Copyright © 2026 CareerFlow"
+appId: app.progressledger.v2
+productName: Progress Ledger v2
+copyright: "Copyright © 2026 Progress Ledger"
 
 directories:
   output: release
@@ -38,11 +38,11 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: CareerFlow
-  uninstallDisplayName: CareerFlow
+  shortcutName: Progress Ledger v2
+  uninstallDisplayName: Progress Ledger v2
 
 publish:
   provider: github
   owner: your-github-username
-  repo: CareerFlow
+  repo: ProgressLedger
   releaseType: release

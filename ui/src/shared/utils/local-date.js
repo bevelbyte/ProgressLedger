@@ -1,7 +1,7 @@
 /**
  * Local-calendar date/time helpers.
  *
- * CareerFlow's storage convention is LOCAL calendar strings
+ * Progress Ledger's storage convention is LOCAL calendar strings
  * ("YYYY-MM-DD" / "YYYY-MM-DD HH:MM:SS"). Never feed these `toISOString()` —
  * that is a UTC instant and silently shifts late-evening rows to another day
  * (the midnight bug class this guards against).

@@ -34,7 +34,7 @@ function note(s) {
 }
 
 // The app serves the BUILT bundle (shell/src/main.js loads ui/dist/index.html
-// behind careerflow://app). Screenshotting without rebuilding first silently
+// behind progressledger-v2://app). Screenshotting without rebuilding first silently
 // captures the previous iteration, which is how a "fix" appears to have had no
 // effect. So the harness builds, and fails loudly rather than lying.
 note("building ui/dist (the app serves the built bundle)...");
@@ -52,7 +52,7 @@ note("build ok");
 
 const app = await electron.launch({
   args: [projectRoot],
-  env: { ...process.env, CAREERFLOW_E2E: "1" },
+  env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
 });
 
 const win = await app.firstWindow();
@@ -60,7 +60,7 @@ await win.waitForLoadState("domcontentloaded");
 
 // The core readout is the app's own "I am up" gate, same as the E2E suite.
 try {
-  await win.getByText(/CareerFlow core online/i).waitFor({ timeout: 20000 });
+  await win.getByText(/Progress Ledger core online/i).waitFor({ timeout: 20000 });
   note("core online: yes");
 } catch {
   note("core online: NO (core readout never appeared)");

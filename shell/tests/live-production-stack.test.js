@@ -1,7 +1,7 @@
 // Project Mode — LIVE production-stack acceptance (Phase 12).
 //
 // Env-gated exactly like provider-live.test.js / live-project-mode.test.js:
-//   CAREERFLOW_LIVE_TEST=1  CAREERFLOW_USER_DATA=<dir with pm-secrets.json>
+//   PROGRESSLEDGER_V2_LIVE_TEST=1  PROGRESSLEDGER_V2_USER_DATA=<dir with pm-secrets.json>
 //
 // DIFFERENCE from live-project-mode.test.js: that file runs the real
 // loop against the IN-MEMORY fake core. This file drives the REAL
@@ -22,7 +22,7 @@
 // The provider enforces ~429 rate limits; tests are spaced out and the
 // count is kept minimal (3 live runs).
 //
-// Run: CAREERFLOW_LIVE_TEST=1 CAREERFLOW_USER_DATA=<dir> node --test tests/live-production-stack.test.js
+// Run: PROGRESSLEDGER_V2_LIVE_TEST=1 PROGRESSLEDGER_V2_USER_DATA=<dir> node --test tests/live-production-stack.test.js
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -38,22 +38,22 @@ import { _resetForTests as resetToolRegistry } from "../src/services/project-too
 import { _setUserDataDir, _closeAll } from "../src/services/memory/index.js";
 
 const require = createRequire(import.meta.url);
-const core = require("@careerflow/core"); // the REAL compiled NAPI core
+const core = require("@progress-ledger/core"); // the REAL compiled NAPI core
 
 // ---------------------------------------------------------------------------
 // gate logic (identical convention to provider-live.test.js)
 // ---------------------------------------------------------------------------
 
-const ENABLED = process.env.CAREERFLOW_LIVE_TEST === "1";
+const ENABLED = process.env.PROGRESSLEDGER_V2_LIVE_TEST === "1";
 
 function resolveUserDataDir() {
-  if (process.env.CAREERFLOW_USER_DATA) return process.env.CAREERFLOW_USER_DATA;
+  if (process.env.PROGRESSLEDGER_V2_USER_DATA) return process.env.PROGRESSLEDGER_V2_USER_DATA;
   if (process.platform === "win32") {
     const appData = process.env.APPDATA || join(homedir(), "AppData", "Roaming");
-    return join(appData, "careerflow");
+    return join(appData, "progressledger");
   }
-  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", "careerflow");
-  return join(homedir(), ".careerflow", "data");
+  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", "progressledger");
+  return join(homedir(), ".progressledger", "data");
 }
 
 function findFirstCredential(userDataDir) {
@@ -75,7 +75,7 @@ function findFirstCredential(userDataDir) {
 
 const CREDENTIAL = findFirstCredential(resolveUserDataDir());
 const SKIP = !ENABLED || !CREDENTIAL;
-const skipReason = !ENABLED ? "CAREERFLOW_LIVE_TEST is not set to 1" : !CREDENTIAL ? "no usable credential in pm-secrets.json" : null;
+const skipReason = !ENABLED ? "PROGRESSLEDGER_V2_LIVE_TEST is not set to 1" : !CREDENTIAL ? "no usable credential in pm-secrets.json" : null;
 
 // ---------------------------------------------------------------------------
 // shared production-stack setup — ONE real SQLite DB for the whole file
@@ -88,7 +88,7 @@ let projectSeq = 0;
 
 async function setupOnce() {
   dbDir = mkdtempSync(join(tmpdir(), "cf-live-prod-"));
-  core.initDb(join(dbDir, "careerflow-live.db"));
+  core.initDb(join(dbDir, "progressledger-live.db"));
   const prof = core.addProfile("live-prod-acceptance", "live-prod-acceptance");
   profileId = prof.id;
   liveProvider = createOpenAiProvider({ endpoint: CREDENTIAL.endpoint, apiKey: CREDENTIAL.apiKey, model: CREDENTIAL.model });

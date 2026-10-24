@@ -12,11 +12,11 @@
 // That test drives the real startup handler and the real IPC handler MAP, but
 // it runs under bare `node --test` with injected dependencies. It therefore
 // cannot prove the thing that actually regressed: that the PACKAGED binary —
-// a different code path for the renderer (`careerflow://` instead of `file:`),
+// a different code path for the renderer (`progressledger-v2://` instead of `file:`),
 // a different userData resolution, and the real `app.whenReady` ordering —
 // initialises the marketplace. This spec closes exactly that gap.
 //
-// It launches `release/win-unpacked/CareerFlow.exe` (built by `npm run
+// It launches `release/win-unpacked/Progress Ledger.exe` (built by `npm run
 // dist:dir`) and drives the whole lifecycle through the REAL renderer
 // preload bridge, which is the only path a user can take.
 //
@@ -47,7 +47,7 @@ import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
-const PACKAGED_EXE = join(projectRoot, "release", "win-unpacked", "CareerFlow.exe");
+const PACKAGED_EXE = join(projectRoot, "release", "win-unpacked", "Progress Ledger.exe");
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -120,10 +120,10 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
         args: [`--user-data-dir=${userDataDir}`],
         env: {
           ...process.env,
-          CAREERFLOW_E2E: "1",
-          CAREERFLOW_E2E_USER_DATA: userDataDir,
-          CAREERFLOW_E2E_DONUT_STUB: "1",
-          CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+          PROGRESSLEDGER_V2_E2E: "1",
+          PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+          PROGRESSLEDGER_V2_E2E_DONUT_STUB: "1",
+          PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
         },
       });
 
@@ -139,13 +139,13 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       app = await launch();
       let win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30_000 });
       await dismissOnboarding(win);
 
       // ---- 1. STARTUP: the marketplace is live, not `no-root` -------------
       // `no-root` is the exact signature of the regression this spec guards:
       // the service was never configured in the real application.
-      const firstList = await win.evaluate(() => window.careerflow.marketplace.list());
+      const firstList = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(firstList, `marketplace:list must answer after packaged startup: ${JSON.stringify(firstList)}`)
         .toEqual({ ok: true, items: [] });
 
@@ -158,11 +158,11 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
         const out = [];
         for (const id of ids) {
           for (const call of [
-            () => window.careerflow.marketplace.uninstall(id),
-            () => window.careerflow.marketplace.update(id),
-            () => window.careerflow.marketplace.get(id),
-            () => window.careerflow.marketplace.enable(id),
-            () => window.careerflow.marketplace.disable(id),
+            () => window.progressLedger.marketplace.uninstall(id),
+            () => window.progressLedger.marketplace.update(id),
+            () => window.progressLedger.marketplace.get(id),
+            () => window.progressLedger.marketplace.enable(id),
+            () => window.progressLedger.marketplace.disable(id),
           ]) {
             out.push(await call());
           }
@@ -175,7 +175,7 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       }
 
       // ---- 3. INSTALL ------------------------------------------------------
-      const installed = await win.evaluate((p) => window.careerflow.marketplace.installLocal(p), sourceDir);
+      const installed = await win.evaluate((p) => window.progressLedger.marketplace.installLocal(p), sourceDir);
       expect(installed.ok, `install must succeed in the packaged app: ${JSON.stringify(installed)}`).toBe(true);
       expect(installed.id).toBe("packaged-plugin");
 
@@ -186,25 +186,25 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       expect(installedJson.toLowerCase()).not.toContain("token");
 
       // ---- 2/5. LIST + enable/disable -------------------------------------
-      const listed = await win.evaluate(() => window.careerflow.marketplace.list());
+      const listed = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(listed.ok).toBe(true);
       expect(listed.items.length).toBe(1);
       expect(listed.items[0].id).toBe("packaged-plugin");
       expect(listed.items[0].enabled).toBe(false);
       expect(JSON.stringify(listed)).not.toContain(sourceDir);
 
-      expect((await win.evaluate(() => window.careerflow.marketplace.enable("packaged-plugin"))).ok).toBe(true);
-      expect((await win.evaluate(() => window.careerflow.marketplace.get("packaged-plugin"))).item.enabled).toBe(true);
-      expect((await win.evaluate(() => window.careerflow.marketplace.disable("packaged-plugin"))).ok).toBe(true);
-      expect((await win.evaluate(() => window.careerflow.marketplace.get("packaged-plugin"))).item.enabled).toBe(false);
+      expect((await win.evaluate(() => window.progressLedger.marketplace.enable("packaged-plugin"))).ok).toBe(true);
+      expect((await win.evaluate(() => window.progressLedger.marketplace.get("packaged-plugin"))).item.enabled).toBe(true);
+      expect((await win.evaluate(() => window.progressLedger.marketplace.disable("packaged-plugin"))).ok).toBe(true);
+      expect((await win.evaluate(() => window.progressLedger.marketplace.get("packaged-plugin"))).item.enabled).toBe(false);
 
       // ---- 4. VALIDATE: a manifest-less source is refused, nothing lands ---
       const noManifestDir = join(sourceParent, "no-manifest");
       mkdirSync(noManifestDir, { recursive: true });
       writeFileSync(join(noManifestDir, "readme.txt"), "no manifest here", "utf8");
-      const refused = await win.evaluate((p) => window.careerflow.marketplace.installLocal(p), noManifestDir);
+      const refused = await win.evaluate((p) => window.progressLedger.marketplace.installLocal(p), noManifestDir);
       expect(refused.ok, `a manifest-less source must be refused: ${JSON.stringify(refused)}`).toBe(false);
-      const afterRefusal = await win.evaluate(() => window.careerflow.marketplace.list());
+      const afterRefusal = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(afterRefusal.items.length, "a refused install must not be registered").toBe(1);
 
       // ---- 6. UPDATE: re-read the on-disk manifest ------------------------
@@ -218,13 +218,13 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       writeFileSync(manifestPath, JSON.stringify({ ...manifest, version: "2.0.0" }, null, 2), "utf8");
 
-      expect((await win.evaluate(() => window.careerflow.marketplace.update("packaged-plugin"))).ok).toBe(true);
-      const bumped = await win.evaluate(() => window.careerflow.marketplace.get("packaged-plugin"));
+      expect((await win.evaluate(() => window.progressLedger.marketplace.update("packaged-plugin"))).ok).toBe(true);
+      const bumped = await win.evaluate(() => window.progressLedger.marketplace.get("packaged-plugin"));
       expect(bumped.item.version, "update must re-read the manifest from disk").toBe("2.0.0");
 
       // Leave it ENABLED across the restart so the enabled-flag assertion
       // below is a real round-trip rather than a coincidence of the default.
-      expect((await win.evaluate(() => window.careerflow.marketplace.enable("packaged-plugin"))).ok).toBe(true);
+      expect((await win.evaluate(() => window.progressLedger.marketplace.enable("packaged-plugin"))).ok).toBe(true);
 
       // And the same edit must be visible after the restart below, proving the
       // sidecar state and the on-disk manifest agree.
@@ -235,10 +235,10 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30_000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30_000 });
       await dismissOnboarding(win);
 
-      const afterRestart = await win.evaluate(() => window.careerflow.marketplace.list());
+      const afterRestart = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(afterRestart.ok, "marketplace must be live again after a packaged restart").toBe(true);
       expect(afterRestart.items.length, "the installed item must survive the restart").toBe(1);
       expect(afterRestart.items[0].id).toBe("packaged-plugin");
@@ -264,25 +264,25 @@ test.describe("Marketplace — real packaged production lifecycle", () => {
       // Corrupt only the manifest, leaving everything else valid.
       writeFileSync(join(badSlot, "plugin.json"), "{ not json at all", "utf8");
 
-      const before = await win.evaluate(() => window.careerflow.marketplace.get("packaged-plugin"));
-      const failedSwap = await win.evaluate((p) => window.careerflow.marketplace.installLocal(p), badSlot);
+      const before = await win.evaluate(() => window.progressLedger.marketplace.get("packaged-plugin"));
+      const failedSwap = await win.evaluate((p) => window.progressLedger.marketplace.installLocal(p), badSlot);
       expect(failedSwap.ok, `a malformed replacement must fail: ${JSON.stringify(failedSwap)}`).toBe(false);
 
-      const survived = await win.evaluate(() => window.careerflow.marketplace.get("packaged-plugin"));
+      const survived = await win.evaluate(() => window.progressLedger.marketplace.get("packaged-plugin"));
       expect(survived.ok, "the VALID installation must survive a failed replacement").toBe(true);
       expect(survived.item.name).toBe(before.item.name);
       expect(survived.item.version).toBe(before.item.version);
       expect(survived.item.enabled).toBe(before.item.enabled);
 
       // No staging residue may be left registered as an installed item.
-      const finalList = await win.evaluate(() => window.careerflow.marketplace.list());
+      const finalList = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(finalList.items.length, "a failed replacement must not add or lose items").toBe(1);
       expect(finalList.items.some((i) => i.id === "staging")).toBe(false);
 
       // ---- 7. REMOVE -------------------------------------------------------
-      const removed = await win.evaluate(() => window.careerflow.marketplace.uninstall("packaged-plugin"));
+      const removed = await win.evaluate(() => window.progressLedger.marketplace.uninstall("packaged-plugin"));
       expect(removed.ok).toBe(true);
-      const afterRemove = await win.evaluate(() => window.careerflow.marketplace.list());
+      const afterRemove = await win.evaluate(() => window.progressLedger.marketplace.list());
       expect(afterRemove.items.length).toBe(0);
     } finally {
       try { app && (await app.close()); } catch {}

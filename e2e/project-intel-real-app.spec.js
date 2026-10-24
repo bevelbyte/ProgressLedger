@@ -62,7 +62,7 @@ function makeProjectTree() {
   );
   writeFileSync(
     join(root, "src", "helper.js"),
-    'export const helper = () => "careerflow-e2e-marker";\n',
+    'export const helper = () => "progressledger-e2e-marker";\n',
   );
   writeFileSync(join(root, "README.md"), "# PI E2E\n");
   // node_modules must be skipped by the walker.
@@ -75,7 +75,7 @@ function makeProjectTree() {
 async function launchApp(userDataDir) {
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
@@ -86,7 +86,7 @@ async function addProfile(win, name) {
   // `profiles:add` resolves to the created row object (see the other project
   // mode specs, which read `profile.id`), not to a bare id.
   const created = await win.evaluate(
-    (n) => window.careerflow.profiles.add(n, `pi-e2e-${Date.now()}`),
+    (n) => window.progressLedger.profiles.add(n, `pi-e2e-${Date.now()}`),
     name,
   );
   return created && typeof created === "object" ? created.id : created;
@@ -95,7 +95,7 @@ async function addProfile(win, name) {
 async function createProject(win, profileId, root) {
   const created = await win.evaluate(
     ([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({
+      window.progressLedger.projectMode.createProject({
         profileId: pid,
         name: "PI E2E Project",
         description: "project intelligence real-app e2e",
@@ -129,7 +129,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
     // A project with no index must be refused rather than answering "no files",
     // otherwise a caller cannot tell "not indexed" from "genuinely empty".
     const before = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.stats(pid, projId),
+      ([pid, projId]) => window.progressLedger.projectIntel.stats(pid, projId),
       [profileId, projectId],
     );
     expect(
@@ -139,7 +139,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
 
     // ---- 2. INDEX through the production renderer API --------------------
     const indexed = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.index(pid, projId, "full"),
+      ([pid, projId]) => window.progressLedger.projectIntel.index(pid, projId, "full"),
       [profileId, projectId],
     );
     expect(
@@ -149,7 +149,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
 
     // ---- 3. READ BACK through the production service boundary ------------
     const listed = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.list(pid, projId, { max: 500 }),
+      ([pid, projId]) => window.progressLedger.projectIntel.list(pid, projId, { max: 500 }),
       [profileId, projectId],
     );
     expect(listed && listed.ok === true, `list failed: ${JSON.stringify(listed)}`);
@@ -198,7 +198,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
 
     // ---- 5. STATS reflect the real tree ----------------------------------
     const stats = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.stats(pid, projId),
+      ([pid, projId]) => window.progressLedger.projectIntel.stats(pid, projId),
       [profileId, projectId],
     );
     expect(stats && stats.ok === true, `stats failed: ${JSON.stringify(stats)}`);
@@ -208,7 +208,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
     // ---- 6. DEPENDENCY EDGE from the real source -------------------------
     const neighbours = await win.evaluate(
       ([pid, projId]) =>
-        window.careerflow.projectIntel.neighbors(pid, projId, "src/index.js", 1),
+        window.progressLedger.projectIntel.neighbors(pid, projId, "src/index.js", 1),
       [profileId, projectId],
     );
     expect(
@@ -220,7 +220,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
     const otherProfileId = await addProfile(win, "PI E2E Intruder");
     expect(typeof otherProfileId === "number").toBe(true);
     const crossRead = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.list(pid, projId, { max: 500 }),
+      ([pid, projId]) => window.progressLedger.projectIntel.list(pid, projId, { max: 500 }),
       [otherProfileId, projectId],
     );
     expect(
@@ -237,7 +237,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
     ({ app, win } = await launchApp(userDataDir));
 
     const afterRestart = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.list(pid, projId, { max: 500 }),
+      ([pid, projId]) => window.progressLedger.projectIntel.list(pid, projId, { max: 500 }),
       [profileId, projectId],
     );
     expect(
@@ -253,7 +253,7 @@ test("real app: Project Intelligence indexes, contains, isolates and survives a 
     // ---- 9. Ownership is STILL enforced after the restart ----------------
     // Authorization must not be "remembered" from the previous process.
     const crossAfterRestart = await win.evaluate(
-      ([pid, projId]) => window.careerflow.projectIntel.list(pid, projId, { max: 500 }),
+      ([pid, projId]) => window.progressLedger.projectIntel.list(pid, projId, { max: 500 }),
       [otherProfileId, projectId],
     );
     expect(

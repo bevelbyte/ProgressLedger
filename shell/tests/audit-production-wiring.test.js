@@ -30,7 +30,7 @@
 // approval-gated `fs_write` / `exec_run` — produced no record at all.
 //
 // KNOWN, DELIBERATELY NOT CLOSED HERE: marketplace mutations, provider
-// credential writes/clears, backup export/restore, and browser/Donut lifecycle
+// credential writes/clears, backup export/restore, and browser lifecycle
 // + navigation are still unaudited. Reported as a remaining gap in
 // _evidence_FINALVAL_remaining_gaps_20260926.txt, not claimed as covered.
 //

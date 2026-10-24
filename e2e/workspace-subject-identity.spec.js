@@ -42,15 +42,15 @@ const DEADLINE_B = "ML lab 3";
 async function launch() {
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${mkdtempSync(join(tmpdir(), "cf-subject-"))}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
   await win.setViewportSize({ width: 1600, height: 1000 });
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win };
 }
 
@@ -61,7 +61,7 @@ async function launch() {
 async function seed(win, { a, b, rowA, rowB }) {
   const seeded = await win.evaluate(
     async ({ aName, bName, dA, dB }) => {
-      const cf = window.careerflow;
+      const cf = window.progressLedger;
       const created = await cf.profiles.add("Ada Lovelace", "ada-lovelace");
       const p = created?.profile || created;
       const pid = p?.id ?? p?.profileId;
@@ -154,7 +154,7 @@ test("a Today item opens its subject in the owning context, identity on the tab"
 
     await win.reload();
     await win.waitForLoadState("domcontentloaded");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
     await openSeededProfile(win);
 
     // The Desk is a different working context; it has its own identity.
@@ -208,7 +208,7 @@ test("two panes hold two different subjects, and the deep link lands in the focu
 
     await win.reload();
     await win.waitForLoadState("domcontentloaded");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
     await openSeededProfile(win);
 
     // 1. Open subject A from the Desk, exactly as in the previous spec.

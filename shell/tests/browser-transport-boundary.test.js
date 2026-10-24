@@ -1,13 +1,14 @@
 // Anti-regression: the raw Chromium/CDP transport must stay gone.
 //
-// The Playwright-over-CDP migration removed CareerFlow's hand-rolled DevTools
+// The Playwright-over-CDP migration removed Progress Ledger's hand-rolled DevTools
 // transport (/json discovery, raw WebSocket, Target.* commands, fake /tabs REST
-// fallbacks). The dynamic behavior is pinned by cdp-session.test.js and
-// cdp-adapter.test.js; this file pins the STATIC shape those tests cannot see:
-// that the obsolete implementation never comes back anywhere in shell/src.
+// fallbacks). The dynamic tests for the transport (cdp-session.test.js and
+// cdp-adapter.test.js) are gone with the transport itself: Phase 2 removed
+// Donut/CDP entirely. This file pins the STATIC shape: that the obsolete
+// implementation never comes back anywhere in shell/src.
 //
-// Mirrors scripts/check-cdp-auth-boundary.mjs so a unit-test run fails without
-// the separate gate step.
+// The separate gate script (scripts/check-cdp-auth-boundary.mjs) was removed
+// with Donut; this file is now the sole guard, so a unit-test run fails on its own.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -74,7 +75,7 @@ test("no fake /tabs REST fallback remains against the Donut API", () => {
   assert.deepEqual(find(/\/v1\/profiles\/[^"']*\/tabs/), []);
 });
 
-test("Playwright is imported only by the provider-internal session module", () => {
+test("Playwright is imported nowhere in shell/src", () => {
   const importers = files
     .filter(
       (f) =>
@@ -83,7 +84,7 @@ test("Playwright is imported only by the provider-internal session module", () =
         /import\(["']playwright/.test(f.src),
     )
     .map((f) => f.rel);
-  assert.deepEqual(importers, ["shell/src/services/cdp-session.js"]);
+  assert.deepEqual(importers, []);
 });
 
 test("the renderer surface (preload.cjs) exposes no Playwright/CDP endpoint detail", () => {
@@ -107,9 +108,9 @@ test("the renderer surface (preload.cjs) exposes no Playwright/CDP endpoint deta
 // contain at least 4 files. That generic engine seam was deliberately REMOVED
 // from the architecture:
 //
-//   * CareerFlow's browser is its OWN embedded Electron browser (WebContentsView).
+//   * Progress Ledger's browser is its OWN embedded Electron browser (WebContentsView).
 //   * Donut is a separate, externally installed application — not a swappable
-//     browser engine inside CareerFlow.
+//     browser engine inside Progress Ledger.
 //   * There is no Brave and no generic "add any browser" system.
 //
 // Deleting the seam made this test fail on a stale structural precondition
@@ -122,9 +123,9 @@ test("the renderer surface (preload.cjs) exposes no Playwright/CDP endpoint deta
 //   1. The removed seam directory stays removed (so it cannot be reintroduced
 //      unnoticed).
 //   2. No renderer-facing module may name a CDP transport primitive or endpoint.
-//   3. The Donut transport stays confined to one main-process module, which must
-//      keep the bearer token and remote_debugging_port away from the renderer.
-test("no removed provider seam is present, and CDP transport detail stays main-process only", () => {
+//   3. No Donut transport module exists at all, and no renderer-facing
+//      module may name a transport primitive or endpoint.
+test("no removed provider seam is present, and no CDP transport detail exists anywhere", () => {
   const seamFiles = files.filter((f) => f.rel.includes("services/browser-provider/"));
   assert.equal(
     seamFiles.length,
@@ -152,7 +153,7 @@ test("no removed provider seam is present, and CDP transport detail stays main-p
   }
 
   // The Donut bearer token may legitimately be READ inside a main-process IPC
-  // module — that is how CareerFlow authenticates an official Donut request, and
+  // module — that is how Progress Ledger authenticates an official Donut request, and
   // `ipc/browser-manager.js` does exactly that (it never returns the token to
   // the renderer). What must never happen is a credential or debugging port
   // being handed BACK across the IPC boundary. So the contract is expressed on
@@ -165,12 +166,13 @@ test("no removed provider seam is present, and CDP transport detail stays main-p
     );
   }
 
-  // The transport still exists, in exactly one main-process module.
+  // The transport is gone entirely: Phase 2 removed Donut/CDP, so no module
+  // may own a Playwright/CDP transport and connectOverCDP must not appear.
   const transportOwners = files.filter((f) => f.rel.endsWith("services/cdp-session.js"));
   assert.equal(
     transportOwners.length,
-    1,
-    "the Playwright/CDP transport must exist in exactly one main-process module",
+    0,
+    "services/cdp-session.js must not exist: the Playwright/CDP transport was removed with Donut",
   );
-  assert.match(transportOwners[0].src, /connectOverCDP/);
+  assert.deepEqual(find(/connectOverCDP/), []);
 });

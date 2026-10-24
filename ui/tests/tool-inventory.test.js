@@ -1,7 +1,7 @@
 // ToolInventory — UI tests.
 //
 // Coverage:
-//   - renders one row per tool from window.careerflow.projectTools.list()
+//   - renders one row per tool from window.progressLedger.projectTools.list()
 //   - permission pills color-code the 5 permission classes
 //   - approval-required tools show the "approval" flag
 //   - search input filters by name and description (case-insensitive)
@@ -9,8 +9,8 @@
 //   - "Show schema" reveals the inputSchema JSON
 //   - empty / no-match states render correctly
 //
-// The IPC namespace is mocked via window.careerflow.projectTools. Tests
-// reset window.careerflow between cases for hermetic isolation.
+// The IPC namespace is mocked via window.progressLedger.projectTools. Tests
+// reset window.progressLedger between cases for hermetic isolation.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -73,7 +73,7 @@ function setupIpc({
   const list = vi.fn(
     listImpl || (async () => ({ ok: true, tools, approvalRequired, permissionInfo })),
   );
-  window.careerflow = {
+  window.progressLedger = {
     projectTools: { list, approve: vi.fn(), invoke: vi.fn() },
   };
   return { list };
@@ -81,7 +81,7 @@ function setupIpc({
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------

@@ -10,11 +10,11 @@ artifacts/
 core/target/
 .DS_Store
 
-# Safety guard: CareerFlow has ZERO dependency on Donut. The integration
+# Safety guard: Progress Ledger has ZERO dependency on Donut. The integration
 # experiment lives as a physically separate sibling project
 # (../DonutBrowser-Integration) and must never re-enter this tree.
 DonutBrowser-Integration/
-core/careerflow_core.*.node
+core/progress_ledger_core.*.node
 target/
 build/
 
@@ -35,4 +35,4 @@ versions/
 .unlazy/production/PLAN.md
 .unlazy/production/audit-summary.md
 
-# v2: project-intel is tracked (it was gitignored in CareerFlow and is required at runtime)
+# v2: project-intel is tracked (it was gitignored in Progress Ledger and is required at runtime)

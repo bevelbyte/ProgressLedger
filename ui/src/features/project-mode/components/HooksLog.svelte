@@ -39,7 +39,7 @@
       const filters = {};
       if (filterHook) filters.hookId = filterHook;
       if (filterEvent) filters.eventName = filterEvent;
-      const res = await window.careerflow.hooks.listExecutions(filters);
+      const res = await window.progressLedger.hooks.listExecutions(filters);
       executions = Array.isArray(res.executions) ? res.executions : [];
       emitter = res.emitter ?? null;
     } catch (e) {

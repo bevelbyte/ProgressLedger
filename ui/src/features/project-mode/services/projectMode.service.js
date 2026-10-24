@@ -1,10 +1,10 @@
 // Project Mode service: thin wrapper around the IPC namespace.
 //
-// All calls funnel through window.careerflow.projectMode. The renderer
+// All calls funnel through window.progressLedger.projectMode. The renderer
 // never sees the API key — `getProviderConfig` only returns
 // `{ endpoint, model, hasKey }`.
 
-const ns = () => window.careerflow && window.careerflow.projectMode;
+const ns = () => window.progressLedger && window.progressLedger.projectMode;
 
 function call(method, ...args) {
   const n = ns();
@@ -72,7 +72,7 @@ export const projectModeService = {
   listRecentAgentRuns: (profileId, limit) =>
     call("listRecentAgentRuns", profileId, limit),
   // Resumable previous run: most-recent non-terminal agent (running or
-  // paused when CareerFlow was last closed). Returns
+  // paused when Progress Ledger was last closed). Returns
   // `{ ok, agent | null }` — agent is null when nothing is resumable.
   listResumableAgent: (profileId, limit) =>
     call("listResumableAgent", profileId, limit),
@@ -112,11 +112,11 @@ export const projectModeService = {
 
   // Tool system (delegates through projectTools)
   listTools: () =>
-    window.careerflow.projectTools ? window.careerflow.projectTools.list() : Promise.resolve({ ok: false, tools: [] }),
+    window.progressLedger.projectTools ? window.progressLedger.projectTools.list() : Promise.resolve({ ok: false, tools: [] }),
   approveTool: (toolName, input) =>
-    window.careerflow.projectTools ? window.careerflow.projectTools.approve(toolName, input) : Promise.resolve({ ok: false }),
+    window.progressLedger.projectTools ? window.progressLedger.projectTools.approve(toolName, input) : Promise.resolve({ ok: false }),
   invokeTool: (toolName, input, options) =>
-    window.careerflow.projectTools ? window.careerflow.projectTools.invoke(toolName, input, options) : Promise.resolve({ ok: false }),
+    window.progressLedger.projectTools ? window.progressLedger.projectTools.invoke(toolName, input, options) : Promise.resolve({ ok: false }),
 
   // Plan template library. savePlanTemplate upserts on (profile_id, name);
   // listPlanTemplates returns newest-first; loadPlanTemplate accepts either

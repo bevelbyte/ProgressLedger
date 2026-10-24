@@ -1,13 +1,13 @@
 // MemoryViewer — UI tests.
 //
 // Coverage:
-//   - renders one row per entry returned by window.careerflow.memory.list()
+//   - renders one row per entry returned by window.progressLedger.memory.list()
 //   - search input filters rows by key/value/kind (case-insensitive)
 //   - scope filter narrows the list to the picked bucket (project / session / task)
 //   - clicking a row expands to reveal the full value
 //   - empty / no-match states render correctly
 //
-// The IPC namespace is mocked via window.careerflow.memory, mirroring the
+// The IPC namespace is mocked via window.progressLedger.memory, mirroring the
 // shape shipped by shell/src/preload.cjs + shell/src/ipc/memory.js.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
@@ -71,7 +71,7 @@ function setupIpc({ entries = SAMPLE_ENTRIES, listImpl = null } = {}) {
   const list = vi.fn(
     listImpl || (async () => ({ ok: true, result: entries })),
   );
-  window.careerflow = {
+  window.progressLedger = {
     memory: { list, projectList: vi.fn(), contextPacket: vi.fn(), projectSet: vi.fn() },
   };
   return { list };
@@ -79,7 +79,7 @@ function setupIpc({ entries = SAMPLE_ENTRIES, listImpl = null } = {}) {
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 // Goal Mode — LIVE acceptance tests against the real b.ai provider.
 //
-// Env-gated: set CAREERFLOW_LIVE_TEST=1 to run. Otherwise the suite is
+// Env-gated: set PROGRESSLEDGER_V2_LIVE_TEST=1 to run. Otherwise the suite is
 // skipped so this doesn't burn provider quota in CI.
 //
 // LIVE TEST A: Inspect-only goal
@@ -33,12 +33,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const requireCJS = createRequire(import.meta.url);
-const core = requireCJS(path.join(REPO_ROOT, "core", "careerflow_core.win32-x64-msvc.node"));
+const core = requireCJS(path.join(REPO_ROOT, "core", "progress_ledger_core.win32-x64-msvc.node"));
 
-const ENABLED = process.env.CAREERFLOW_LIVE_TEST === "1";
+const ENABLED = process.env.PROGRESSLEDGER_V2_LIVE_TEST === "1";
 
 if (!ENABLED) {
-  skip("Goal Mode LIVE tests skipped (set CAREERFLOW_LIVE_TEST=1 to enable)", () => {});
+  skip("Goal Mode LIVE tests skipped (set PROGRESSLEDGER_V2_LIVE_TEST=1 to enable)", () => {});
 }
 
 async function newWorkspace() {
@@ -95,10 +95,10 @@ async function getProviderKey(core, profileId, projectId) {
   const r = await core.pmGetDefaultProvider(profileId, projectId);
   // Provider credentials are stored under shell's credentials store, not
   // the NAPI. The live test harness (test/nightly provider tests) reads
-  // from `process.env.CAREERFLOW_PROVIDER_KEY`. We can't go through the
+  // from `process.env.PROGRESSLEDGER_V2_PROVIDER_KEY`. We can't go through the
   // credentials store here without booting Electron, so we just expect
   // the env var.
-  return process.env.CAREERFLOW_PROVIDER_KEY || "";
+  return process.env.PROGRESSLEDGER_V2_PROVIDER_KEY || "";
 }
 
 test("LIVE-A: research goal (no verify) completes against live provider", async (t) => {
@@ -108,16 +108,16 @@ test("LIVE-A: research goal (no verify) completes against live provider", async 
     // so the agent loop's `resolveDefaultProvider` picks it up.
     const key = await getProviderKey(core, profileId, projectId);
     if (!key) {
-      t.skip("CAREERFLOW_PROVIDER_KEY not set; skipping LIVE-A");
+      t.skip("PROGRESSLEDGER_V2_PROVIDER_KEY not set; skipping LIVE-A");
       return;
     }
     // Use the credentials store via NAPI: pm_set_default_provider only
     // accepts openai-compatible or mock; we need the api key too. For
     // the live test, we pass the key through the env-var path that
     // provider.js honors in test mode.
-    process.env.CAREERFLOW_LIVE_TEST_BASE = "https://api.b.ai/v1";
-    process.env.CAREERFLOW_LIVE_TEST_MODEL = "deepseek-v4-flash";
-    process.env.CAREERFLOW_LIVE_TEST_KEY = key;
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_BASE = "https://api.b.ai/v1";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_MODEL = "deepseek-v4-flash";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_KEY = key;
 
     const goalId = await core.pmCreateGoal(
       profileId,
@@ -149,12 +149,12 @@ test("LIVE-B: code_change goal with verification completes against live provider
   await withFreshWorkspace(async ({ profileId, projectId }) => {
     const key = await getProviderKey(core, profileId, projectId);
     if (!key) {
-      t.skip("CAREERFLOW_PROVIDER_KEY not set; skipping LIVE-B");
+      t.skip("PROGRESSLEDGER_V2_PROVIDER_KEY not set; skipping LIVE-B");
       return;
     }
-    process.env.CAREERFLOW_LIVE_TEST_BASE = "https://api.b.ai/v1";
-    process.env.CAREERFLOW_LIVE_TEST_MODEL = "deepseek-v4-flash";
-    process.env.CAREERFLOW_LIVE_TEST_KEY = key;
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_BASE = "https://api.b.ai/v1";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_MODEL = "deepseek-v4-flash";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_KEY = key;
 
     const goalId = await core.pmCreateGoal(
       profileId,
@@ -183,12 +183,12 @@ test("LIVE-C: parent + delegated researcher completes against live provider", as
   await withFreshWorkspace(async ({ profileId, projectId }) => {
     const key = await getProviderKey(core, profileId, projectId);
     if (!key) {
-      t.skip("CAREERFLOW_PROVIDER_KEY not set; skipping LIVE-C");
+      t.skip("PROGRESSLEDGER_V2_PROVIDER_KEY not set; skipping LIVE-C");
       return;
     }
-    process.env.CAREERFLOW_LIVE_TEST_BASE = "https://api.b.ai/v1";
-    process.env.CAREERFLOW_LIVE_TEST_MODEL = "deepseek-v4-flash";
-    process.env.CAREERFLOW_LIVE_TEST_KEY = key;
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_BASE = "https://api.b.ai/v1";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_MODEL = "deepseek-v4-flash";
+    process.env.PROGRESSLEDGER_V2_LIVE_TEST_KEY = key;
 
     const goalId = await core.pmCreateGoal(
       profileId,

@@ -7,7 +7,7 @@
 // `shots/w1/` is what the application actually does.
 //
 // Writes shots/w1/*.png for comparison against the Space Bunny reference in
-// CareerFlow-FrontendLab/v1/shots.
+// Progress Ledger-FrontendLab/v1/shots.
 import { _electron as electron } from "@playwright/test";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,7 +18,7 @@ mkdirSync(OUT, { recursive: true });
 
 const app = await electron.launch({
   args: [process.cwd(), `--user-data-dir=${mkdtempSync(join(tmpdir(), "cf-w1-"))}`],
-  env: { ...process.env, CAREERFLOW_E2E: "1" },
+  env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
 });
 const win = await app.firstWindow();
 await win.waitForLoadState("domcontentloaded");
@@ -36,7 +36,7 @@ await shot("00-launch-profiles");
 
 // ---- Seed real data so the Spine has real numbers ------------------------
 const seeded = await win.evaluate(async () => {
-  const cf = window.careerflow;
+  const cf = window.progressLedger;
   const created = await cf.profiles.add("Ada Lovelace", "ada-lovelace");
   const p = created?.profile || created;
   const pid = p?.id ?? p?.profileId;

@@ -3,24 +3,24 @@
  * scale. A grade scale is academic/profile configuration (it lives in Settings),
  * not a CGPA Planner concern; CGPA merely consumes the persisted scale.
  *
- * All calls route through window.careerflow.courses.* -> IPC -> Rust. The Rust
+ * All calls route through window.progressLedger.courses.* -> IPC -> Rust. The Rust
  * layer owns the authoritative validation (GradeScale::validate); the client
  * helper below mirrors those rules only for instant inline feedback, and the
  * real save is still validated in Rust and rejected there if invalid.
  */
 export const gradingService = {
   getScale(profileId) {
-    return window.careerflow.courses.getGradeScale(profileId);
+    return window.progressLedger.courses.getGradeScale(profileId);
   },
   getDefaultScale() {
-    return window.careerflow.courses.getDefaultGradeScale();
+    return window.progressLedger.courses.getDefaultGradeScale();
   },
   /** Server-side validation (authoritative). Returns { valid, error }. */
   validate(bands) {
-    return window.careerflow.courses.validateGradeScale(bands);
+    return window.progressLedger.courses.validateGradeScale(bands);
   },
   save(profileId, bands) {
-    return window.careerflow.courses.setGradeScale(profileId, bands);
+    return window.progressLedger.courses.setGradeScale(profileId, bands);
   },
 };
 

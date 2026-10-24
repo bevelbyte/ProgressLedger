@@ -2,7 +2,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-const app = await electron.launch({ args: [process.cwd(), `--user-data-dir=${mkdtempSync(join(tmpdir(),"cf-dense-"))}`], env: { ...process.env, CAREERFLOW_E2E: "1" } });
+const app = await electron.launch({ args: [process.cwd(), `--user-data-dir=${mkdtempSync(join(tmpdir(),"cf-dense-"))}`], env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" } });
 const win = await app.firstWindow();
 await win.waitForLoadState("domcontentloaded");
 await win.setViewportSize({ width: 1600, height: 1000 });
@@ -11,7 +11,7 @@ await win.waitForTimeout(3500);
 const shot = async (n) => { await win.waitForTimeout(900); await win.screenshot({ path: `logs/_dense-${n}.png` }); console.log("shot", n); };
 
 const seed = await win.evaluate(async () => {
-  const cf = window.careerflow;
+  const cf = window.progressLedger;
   await cf.profiles.add("Ada Lovelace", "ada-lovelace");
   const l = await cf.profiles.list();
   const pid = (l.profiles || l)[0].id;

@@ -18,7 +18,7 @@ const require = createRequire(import.meta.url);
 const core = require("../core/index.js");
 
 const dir = mkdtempSync(join(tmpdir(), "cf-perf-"));
-const db = join(dir, "careerflow.db");
+const db = join(dir, "progress-ledger-v2.db");
 const t = (label, fn) => {
   const start = process.hrtime.bigint();
   const out = fn();

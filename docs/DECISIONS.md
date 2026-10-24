@@ -147,3 +147,124 @@ navigation in 4 passes; Phase 3 finds it from code (host.js,
 BrowserSurface, workspace model). NO Phase 1 shot shows a real web page
 — recorded as NOT VERIFIED, not claimed.
 Date: 2026-10-24.
+
+## V2-17 — Rename map (Phase 2)
+Visible product name "Progress Ledger" everywhere. Runtime identity carries
+a "-v2" suffix wherever a collision with the live Progress Ledger install
+is possible (safety-critical, not cosmetic): npm root name
+progress-ledger, scopes @progress-ledger/core|shell|ui, Rust crate
+progress_ledger_core (node file progress_ledger_core.win32-x64-msvc.node),
+Electron appId app.progressledger.v2, installer productName/shortcutName/
+uninstallDisplayName "Progress Ledger v2" (the one place the visible name
+is not exactly "Progress Ledger", so NSIS cannot overwrite the live
+install dir; the user may overrule), userData dir progress-ledger-v2, DB
+file progress-ledger-v2.db, protocol progressledger-v2://, preload bridge
+window.progressLedger, env PROGRESSLEDGER_V2_*, localStorage keys
+progressledger_v2_*. Docs scoping: README.md + CAPABILITY-MATRIX.md
+renamed (living product docs); docs/** historical reports/gates,
+.agents/**, .unlazy/** left as CareerFlow history (renaming them would
+falsify the record). "cf" abbreviations (CSS classes like cf-kbd,
+cf:open-page event) left as-is — not user-visible. Rename ran as an
+ordered plain-string script: 338 files, 2378 replacements; post-rename
+git grep -i careerflow over shell/ui/core/e2e/scripts/config is clean.
+Two real bugs the rename exposed and fixed: preload exposed
+"progressledger" (lowercase) while the UI calls window.progressLedger,
+and main.js registered the bare "progressledger" protocol instead of
+"progressledger-v2". main.js userData now sets progress-ledger-v2 for
+normal runs, preserving the E2E/migration-test env override.
+Date: 2026-10-24.
+
+## V2-18 — Donut/CDP removal (Phase 2)
+Removed entirely: Donut services (donut, donut-manager, donut-mapping,
+donut-open, donut-transport, donut-credential), browser-workspace +
+browser-workspace-tools services, cdp-session + cdp-adapter, IPC
+donut/cdp/browser-manager/browser-workspace, BrowserManagerPanel +
+QuickActionsPanel + features/browser + features/browser-workspace +
+features/quick-actions + browser-workspace store, core browser_manager
+module + windows_host + native module + its tests, 17 shell Donut/CDP
+tests, 6 e2e Donut specs, 6 Donut scripts, docs/CDP-AUTH-BOUNDARY.md,
+docs/official-donut, scripts/phase7-classify.mjs (its subject is gone),
+and the Operator "browser" view from the registry, ALLOWED_VIEWS,
+PROFILE_GATED, PaneView and the shell-contracts allowlist (its only
+content was the Donut panel; Phase 3 re-adds a browser view wired to
+the new TypeScript browser). Kept and rewired: a new shell/src/ipc/
+system.js with system:open-external (http/https only) for SubjectLinks.
+Portability: the Donut browser-profile export + import sections of
+core/src/portability.rs are deleted (export manifest field included);
+the 015/016 browser_profiles/browser_shortcuts tables STAY as schema
+history (reuse-or-replace is Phase 3B decision V2-05); old bundles'
+browserProfiles sections are silently ignored on import, not an error.
+The agent browser_* refusal registry is deleted ENTIRELY: with no
+browser tools registered, an unknown-tool response (tool-not-found from
+the agent loop) is the honest behaviour, not a refusal message pointing
+at deleted features. The browser-transport-boundary guard is rewritten
+to assert absence (no Playwright import, no cdp-session.js, no
+connectOverCDP anywhere) instead of asserting the transport exists in
+one module. Lesson: git rm refuses files with unstaged modifications
+without -f (the first delete job silently deleted nothing); the
+force-delete used git rm -q -f --ignore-unmatch, scoped to the named
+list only. Two cleanup-script bugs found by their logs: a save() that
+compared mutated text to itself (wrote nothing) and an import-section
+search that found an earlier Ok(ImportOutcome block instead of the one
+after the section. Deleted test files: browser-product-loop (read the
+deleted handler), research-console (rendered the deleted panel),
+browser-workspace (deleted store); adapted: agent-loop, browser-tools-
+approval (Donut cases removed, general approval tests kept),
+audit-production-wiring + first-run (comments only),
+project-intel-ui-wiring (regex used the pre-rename lowercase bridge
+name; escaped-dot form is why the rename script missed it).
+Date: 2026-10-24.
+
+## V2-19 — Phase 2 product fixes: fonts, build ID, logo, B6
+Fonts bundled, nothing fetched at runtime: Inter Variable latin
+(normal + italic) copied from @fontsource-variable/inter as installed
+in the Progress Ledger repo (OFL-1.1) — latin only, because the UI is
+English and other scripts fall back to the system stack; Cascadia Mono
+Regular copied from C:\Windows\Fonts (OFL-1.1) after confirming it is
+present there (JetBrains Mono is not installed, so it was not
+downloaded). The mono stack now lists the bundled Cascadia Mono first.
+These are asset files, not new packages: no npm/cargo package was added
+in Phase 2. Build ID: ui/vite.config.js defines __BUILD_ID__ as "<git
+short hash> <ISO build time>" (fallback "dev"); StatusBar shows it in
+the right group (mono micro, ellipsis, full string on hover via
+title); the component guards with typeof so vitest renders "dev".
+Logo: an original SVG mark (ui/src/assets/logo.svg) — an amber ledger
+plate with three entry lines, drawn for v2, not copied — replaces the
+CSS-diamond brand-mark in TitleBar. B6 fixes applied: Flashcards empty
+deck now says "No cards yet" (not "All caught up!"); Labs empty state
+says "No labs yet"; Formula Board shows "No subject selected" when no
+subject is chosen (the old chain had no final else, so the area was
+blank); the toast stack now sits above the 26px status bar
+(bottom: calc(var(--shell-status-h) + 16px)) instead of covering it;
+the status-bar right group never shrinks below its content
+(flex-shrink: 0); the hover wash is raised from 0.032 to 0.05 (still
+below the 0.06 selected wash); the pane tab strip scrolls the active
+tab into view so it cannot sit half-clipped at the edge (the "Goal"
+tab in the screenshots). Two B6 items are NOT fixed blind and are
+carried into Phase 5 round 1 with explicit reproduction steps: the
+Degree/semester header overlap + Semester 7 row clip (no faulty rule
+found statically in CgpaPlanner/SubjectList) and the sidebar highlight
+lag after a tab switch (the rail is prop-driven and every store path
+from tab click to focus looks synchronous; reproduce live before
+touching navigation state).
+Date: 2026-10-24.
+
+## V2-20 — Rename repair: plain-string rules break identifiers
+The rename script's plain-string rules broke identifiers in two shapes,
+found only when vitest collection failed on 5 UI files (the app build
+passed because it never parses test-only modules): "CareerFlow" ->
+"Progress Ledger" (with a space) inside identifiers (makeCareerflow ->
+makeProgress Ledger, a parse error) and "careerflow" ->
+"progressledger-v2" (with a hyphen) in identifier positions
+(window.careerflow -> window.progressledger-v2, and the object key
+`careerflow:` -> `progressledger-v2:`). The repair script joins the
+space inside identifiers (ProgressLedger) and uses the camelCase bridge
+name (progressLedger) in identifier positions, repo-wide across
+js/cjs/mjs/svelte/rs/ts (excluding node_modules/dist/target/out), and
+deliberately leaves the protocol string "progressledger-v2://" alone
+(the key rule skips a colon followed by //). Lesson for any future
+bulk rename: never apply a display-name rule (with a space) or a
+hyphenated-name rule to identifier positions; scan for the broken
+shapes across the whole tree, not just the files a failing test names
+(the same breakage could sit in e2e specs no unit run parses).
+Date: 2026-10-24.

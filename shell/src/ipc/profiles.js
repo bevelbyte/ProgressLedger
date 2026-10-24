@@ -1,6 +1,5 @@
 import { safeHandle } from "../security/safe-handle.js";
 import { ipcMain, dialog } from "electron";
-import { donutMapper, clearBrowserBindingsForCfProfile } from "../services/donut-mapping.js";
 import { Audit } from "../services/audit/index.js";
 
 export function register({ core, win }) {
@@ -41,23 +40,6 @@ export function register({ core, win }) {
       durationMs: null,
       detail: null,
     });
-    // Lifecycle hook: a Donut mapping must not outlive its CareerFlow
-    // profile, and neither may its browser-profile bindings. The CFâ†’Donut
-    // identity is dropped from the mapping store AND every bfc-<localId>
-    // entry whose owner column matches this cf profile is purged from the
-    // browser-binding store. Best-effort â€” never masks the deletion result
-    // (these are machine-local caches; orphaned entries are inert but we'd
-    // rather not leave them around).
-    try {
-      await donutMapper.clearMapping(id);
-    } catch {
-      // mapping store issues must not fail profile deletion
-    }
-    try {
-      await clearBrowserBindingsForCfProfile(id);
-    } catch {
-      // binding store issues must not fail profile deletion
-    }
     return result;
   });
 
@@ -65,7 +47,7 @@ export function register({ core, win }) {
     const res = await dialog.showSaveDialog(win(), {
       title: "Export Profile Bundle",
       defaultPath: `${slug || "profile"}.cfprofile`,
-      filters: [{ name: "CareerFlow Profile", extensions: ["cfprofile"] }],
+      filters: [{ name: "Progress Ledger Profile", extensions: ["cfprofile"] }],
     });
     if (res.canceled || !res.filePath) return { exported: false };
     const path = await core.exportProfile(profileId, res.filePath);
@@ -76,7 +58,7 @@ export function register({ core, win }) {
     const res = await dialog.showOpenDialog(win(), {
       title: "Import Profile Bundle",
       properties: ["openFile"],
-      filters: [{ name: "CareerFlow Profile", extensions: ["cfprofile", "zip"] }],
+      filters: [{ name: "Progress Ledger Profile", extensions: ["cfprofile", "zip"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return { imported: false };
     const profile = await core.importProfile(res.filePaths[0]);

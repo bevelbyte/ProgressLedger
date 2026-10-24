@@ -1,7 +1,7 @@
 // Browser navigation policy — Phase 1 of the approved D2-D6 plan.
 //
 // These tests are the ones that must be able to fail WITHOUT launching Electron:
-// which URLs a CareerFlow browser page may load, which partition a profile owns,
+// which URLs a Progress Ledger browser page may load, which partition a profile owns,
 // and what a renderer-declared rectangle is allowed to become. The scheme
 // allowlist in particular is a security decision, so it is asserted against the
 // refusals (negative-first) rather than only against the happy path.
@@ -42,7 +42,7 @@ test("normalizeTarget refuses every non-web scheme with a stated reason", () => 
     ["file:///C:/Windows/win.ini", "blocked-scheme"],
     ["javascript:alert(1)", "blocked-scheme"],
     ["data:text/html,<h1>x</h1>", "blocked-scheme"],
-    ["careerflow://app/index.html", "blocked-scheme"],
+    ["progressledger-v2://app/index.html", "blocked-scheme"],
     ["mailto:a@b.c", "blocked-scheme"],
     ["view-source:https://x.test", "blocked-scheme"],
     ["", "empty-url"],
@@ -69,7 +69,7 @@ test("isAllowedUrl is the navigation gate and agrees with normalizeTarget on ref
     "file:///etc/passwd",
     "data:text/html,x",
     "javascript:void(0)",
-    "careerflow://app/index.html",
+    "progressledger-v2://app/index.html",
     "blob:https://example.com/abc",
     "about:config",
   ]) {

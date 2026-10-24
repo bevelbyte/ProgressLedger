@@ -1,7 +1,7 @@
 // Browser permission policy — PURE decision, no electron import.
 //
 // R2 of the browser security plan. This module answers the ONE question the
-// permission handlers must never delegate to a page: "may this CareerFlow
+// permission handlers must never delegate to a page: "may this Progress Ledger
 // browser page hold this capability?" Keeping it pure (no electron import)
 // follows the repo convention (`browser/policy.js`, `ui/.../workspace/model.js`)
 // so a reviewer can assert the deny-by-default table in plain Node, and so the
@@ -17,7 +17,7 @@
 /** The capabilities a browser page may always hold. Bounded by design. */
 const ALLOWED_EXACT = Object.freeze([
   // The "copy" affordance every page has. It cannot read the clipboard, so it
-  // leaks nothing CareerFlow's user did not explicitly copy out of the page.
+  // leaks nothing Progress Ledger's user did not explicitly copy out of the page.
   "clipboard-sanitized-write",
 ]);
 

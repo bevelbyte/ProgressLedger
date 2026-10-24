@@ -20,6 +20,7 @@
     CircleDot,
   } from "lucide-svelte";
   import { operatorSummary } from "./operator.svelte.js";
+import logoUrl from "../assets/logo.svg";
 
   let {
     profiles = [],
@@ -29,8 +30,6 @@
     railCollapsed = false,
     onToggleRail = () => {},
     onOpenPalette = () => {},
-    quickOpen = false,
-    onToggleQuick = () => {},
     onOpenConsole = () => {},
     onShowTutorial = () => {},
   } = $props();
@@ -74,8 +73,8 @@
       <PanelLeft size={16} strokeWidth={1.6} />
     </button>
     <span class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-name">CareerFlow</span>
+      <img class="brand-mark" src={logoUrl} alt="" aria-hidden="true" />
+      <span class="brand-name">Progress Ledger</span>
     </span>
   </div>
 
@@ -165,16 +164,6 @@
     <div class="tb-utils">
       <button
         type="button"
-        class="duck-sidebar-toggle right-sidebar-toggle"
-        onclick={onToggleQuick}
-        aria-pressed={quickOpen}
-        aria-label="Toggle Quick Actions"
-        title="Quick Actions"
-      >
-        <PanelRight size={16} strokeWidth={1.6} />
-      </button>
-      <button
-        type="button"
         class="tb-icon"
         onclick={onShowTutorial}
         aria-label="Show tutorial"
@@ -220,14 +209,12 @@
     padding-left: 2px;
   }
 
-  /* A small geometric mark: a rotated square (the "atlas" plate) in signal. */
+  /* The v2 mark (ui/src/assets/logo.svg): an amber ledger plate. */
   .brand-mark {
-    width: 9px;
-    height: 9px;
-    border-radius: var(--radius-xs);
-    background: var(--atlas-signal);
-    transform: rotate(45deg);
-    box-shadow: 0 0 0 3px var(--atlas-signal-softer);
+    display: block;
+    flex: none;
+    width: 18px;
+    height: 18px;
   }
 
   .brand-name {

@@ -61,7 +61,7 @@ function resetToMemory() {
 
 /** Clean temp dir with automatic teardown. */
 async function withTempDir(fn) {
-  const dir = mkdtempSync(join(tmpdir(), "careerflow-gate17-"));
+  const dir = mkdtempSync(join(tmpdir(), "progressledger-gate17-"));
   try {
     return await fn(dir);
   } finally {
@@ -305,7 +305,7 @@ testFn("6) re-running the same agent appends to (does not corrupt) the audit his
 
     // Run 2 against the SAME JSONL: the ring reloads from disk and the
     // new run is appended, not merged. This is the "restart / resume"
-    // path — CareerFlow reuses the same audit-log.jsonl across
+    // path — Progress Ledger reuses the same audit-log.jsonl across
     // restarts, so a post-mortem can read both runs.
     await Audit.start(filePath);
     Audit.log({ event: "agent.start", profileId: PROFILE_ID, projectId: PROJECT_ID, agentId: PARENT_AGENT_ID, tool: null, input_summary: "agent run=2", result: null, durationMs: null, detail: null });

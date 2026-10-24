@@ -14,15 +14,15 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const native = join(root, "core", "careerflow_core.win32-x64-msvc.node");
+const native = join(root, "core", "progress_ledger_core.win32-x64-msvc.node");
 if (process.platform !== "win32" || process.arch !== "x64") {
   console.log(`native-loader-check SKIP: Windows x64 required (${process.platform}/${process.arch})`);
   process.exit(0);
 }
 if (!existsSync(native)) throw new Error(`native addon missing: ${native}`);
 
-const temp = mkdtempSync(join(tmpdir(), "careerflow-native-loader-"));
-const copy = join(temp, "careerflow_core.win32-x64-msvc.node");
+const temp = mkdtempSync(join(tmpdir(), "progressledger-native-loader-"));
+const copy = join(temp, "progress_ledger_core.win32-x64-msvc.node");
 const oldName = Buffer.from("VCRUNTIME140.dll", "ascii");
 const missingName = Buffer.from("VCRUNTIME14X.dll", "ascii");
 try {

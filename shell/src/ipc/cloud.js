@@ -91,7 +91,7 @@ export function register({ core }) {
     const settings = await readBackupSettings();
     if (!settings.cloud?.url) throw new Error("Connect a WebDAV cloud vault first.");
     assertValidRemoteName(remoteName);
-    const dir = await mkdtemp(join(resolveTempDir(), "careerflow-cloud-inspect-"));
+    const dir = await mkdtemp(join(resolveTempDir(), "progressledger-cloud-inspect-"));
     const localPath = join(dir, basename(remoteName));
     try {
       const res = await webdavFetch(settings.cloud, webdavFileUrl(settings.cloud.url, remoteName));
@@ -107,7 +107,7 @@ export function register({ core }) {
     const settings = await readBackupSettings();
     if (!settings.cloud?.url) throw new Error("Connect a WebDAV cloud vault first.");
     assertValidRemoteName(remoteName);
-    const dir = await mkdtemp(join(resolveTempDir(), "careerflow-cloud-restore-"));
+    const dir = await mkdtemp(join(resolveTempDir(), "progressledger-cloud-restore-"));
     const localPath = join(dir, basename(remoteName));
     try {
       const res = await webdavFetch(settings.cloud, webdavFileUrl(settings.cloud.url, remoteName));

@@ -1,16 +1,16 @@
 -- Migration 015: Donut Browser Manager (schema version 15).
 --
--- CareerFlow-managed browser profiles: durable metadata for isolated Donut
+-- Progress Ledger-managed browser profiles: durable metadata for isolated Donut
 -- browser identities the user manages through the Browser tab.
 --
 -- Ownership model:
 --   * browser_profiles.cf_profile_id -> profiles.id (ON DELETE CASCADE):
---     deleting a CareerFlow profile removes its managed browser profiles and,
+--     deleting a Progress Ledger profile removes its managed browser profiles and,
 --     through the cascade below, their shortcuts. The machine-local binding
 --     to the actual Donut profile UUID deliberately lives OUTSIDE the database
 --     (workspace-level donut-bindings.json) so it is never exported as
 --     portable data and never survives as a dangling pointer in backups.
---   * local_id is CareerFlow-generated (UUID) and stable across machines;
+--   * local_id is Progress Ledger-generated (UUID) and stable across machines;
 --     the Donut UUID is resolved lazily at open time by the main process.
 
 CREATE TABLE browser_profiles (

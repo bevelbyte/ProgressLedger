@@ -33,8 +33,8 @@ test("verifyIpcSender: http://127.0.0.1:5173 (vite dev) is allowed", () => {
   assert.deepEqual(verifyIpcSender(event), { ok: true });
 });
 
-test("verifyIpcSender: the app-owned careerflow:// origin is allowed", () => {
-  const event = mkEvent("careerflow://app/index.html");
+test("verifyIpcSender: the app-owned progressledger-v2:// origin is allowed", () => {
+  const event = mkEvent("progressledger-v2://app/index.html");
   assert.deepEqual(verifyIpcSender(event), { ok: true });
 });
 
@@ -53,7 +53,7 @@ test("verifyIpcSender: http://evil.com origin is rejected", () => {
 test("verifyIpcSender: evil host sharing a trusted URL prefix is rejected", () => {
   assert.equal(verifyIpcSender(mkEvent("http://localhost:51730/")).ok, false);
   assert.equal(verifyIpcSender(mkEvent("http://localhost:5173.evil.example/")).ok, false);
-  assert.equal(verifyIpcSender(mkEvent("app://careerflow.evil.example/")).ok, false);
+  assert.equal(verifyIpcSender(mkEvent("app://progressledger.evil.example/")).ok, false);
 });
 
 test("verifyIpcSender: event with no senderFrame is rejected", () => {
@@ -93,7 +93,7 @@ test("verifyIpcSender: skipForTests:true tolerates missing senderFrame", () => {
 });
 
 test("verifyIpcSender: allowList override rejects default-allowed origins", () => {
-  const event = mkEvent("app://careerflow/index.html");
+  const event = mkEvent("app://progressledger/index.html");
   const verdict = verifyIpcSender(event, { allowList: ["app://custom"] });
   assert.equal(verdict.ok, false);
   assert.equal(verdict.reason, "unknown-origin");
@@ -128,8 +128,8 @@ test("verifyIpcSender: empty allowList falls back to default", () => {
 test("DEFAULT_IPC_ALLOW_LIST contains only active renderer origins", () => {
   assert.ok(Array.isArray(DEFAULT_IPC_ALLOW_LIST));
   assert.equal(DEFAULT_IPC_ALLOW_LIST.length, 3);
-  assert.equal(DEFAULT_IPC_ALLOW_LIST.includes("app://careerflow"), false);
-  assert.ok(DEFAULT_IPC_ALLOW_LIST.includes("careerflow://app"));
+  assert.equal(DEFAULT_IPC_ALLOW_LIST.includes("app://progressledger"), false);
+  assert.ok(DEFAULT_IPC_ALLOW_LIST.includes("progressledger-v2://app"));
   assert.ok(DEFAULT_IPC_ALLOW_LIST.includes("http://localhost:5173"));
   assert.ok(DEFAULT_IPC_ALLOW_LIST.includes("http://127.0.0.1:5173"));
 });

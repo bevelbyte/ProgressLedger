@@ -4,18 +4,18 @@
 
 export const updateService = {
   async check() {
-    return await window.careerflow.update.check();
+    return await window.progressLedger.update.check();
   },
 
   async download() {
-    return await window.careerflow.update.download();
+    return await window.progressLedger.update.download();
   },
 
   async install() {
-    return await window.careerflow.update.install();
+    return await window.progressLedger.update.install();
   },
 
   onStatus(callback) {
-    return window.careerflow.update.onStatus(callback);
+    return window.progressLedger.update.onStatus(callback);
   }
 };

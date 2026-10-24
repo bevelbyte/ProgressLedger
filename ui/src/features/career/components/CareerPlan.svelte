@@ -64,9 +64,9 @@
       const active = keep ?? primaryGoal(g);
       selectedGoalId = active ? active.id : null;
       milestones = active ? await careerService.listMilestones(pid, active.id) : [];
-      projectList = await window.careerflow.projects.list(pid);
+      projectList = await window.progressLedger.projects.list(pid);
       // Load academic tree for subject picker
-      const tree = await window.careerflow.academic.tree(pid);
+      const tree = await window.progressLedger.academic.tree(pid);
       const subjects = [];
       for (const track of tree) {
         for (const sem of track.semesters) {

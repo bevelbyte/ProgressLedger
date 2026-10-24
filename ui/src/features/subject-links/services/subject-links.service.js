@@ -9,7 +9,7 @@ export const subjectLinksService = {
    * @returns {Promise<Array>} List of links
    */
   async list(profileId, subjectId) {
-    return await window.careerflow.links.list(profileId, subjectId);
+    return await window.progressLedger.links.list(profileId, subjectId);
   },
 
   /**
@@ -21,7 +21,7 @@ export const subjectLinksService = {
    * @returns {Promise<void>}
    */
   async add(profileId, subjectId, label, url) {
-    return await window.careerflow.links.add(profileId, subjectId, label, url);
+    return await window.progressLedger.links.add(profileId, subjectId, label, url);
   },
 
   /**
@@ -33,7 +33,7 @@ export const subjectLinksService = {
    * @returns {Promise<void>}
    */
   async update(profileId, linkId, label, url) {
-    return await window.careerflow.links.update(profileId, linkId, label, url);
+    return await window.progressLedger.links.update(profileId, linkId, label, url);
   },
 
   /**
@@ -43,10 +43,10 @@ export const subjectLinksService = {
    * @returns {Promise<void>}
    */
   async remove(profileId, linkId) {
-    return await window.careerflow.links.remove(profileId, linkId);
+    return await window.progressLedger.links.remove(profileId, linkId);
   },
 
   async setPrimary(profileId, subjectId, linkId) {
-    return await window.careerflow.links.setPrimary(profileId, subjectId, linkId);
+    return await window.progressLedger.links.setPrimary(profileId, subjectId, linkId);
   }
 };

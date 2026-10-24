@@ -1,6 +1,6 @@
 //! Subject Workspace overview: one aggregated read for a single subject.
 //!
-//! The Subject is CareerFlow's central entity. This assembles, in one call,
+//! The Subject is Progress Ledger's central entity. This assembles, in one call,
 //! the data scattered across features so the UI can render a connected
 //! workspace without fanning out to many services:
 //!   * academic placement (track / semester / status)

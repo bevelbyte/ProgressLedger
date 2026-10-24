@@ -308,7 +308,7 @@ mod tests {
             nonce
         ));
         std::fs::create_dir_all(&dir).expect("create temp dir");
-        let db = dir.join("careerflow.sqlite");
+        let db = dir.join("progressledger.sqlite");
         init_db(db.to_string_lossy().to_string()).expect("init db");
 
         let owner = add_profile("Owner".into(), format!("owner-{}", n))

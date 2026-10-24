@@ -12,7 +12,7 @@ use crate::errors::{coded, codes};
 use crate::validate::{required_text, valid_id, MAX_BLOB};
 
 fn today_date() -> String {
-    if std::env::var_os("CAREERFLOW_E2E").is_some() {
+    if std::env::var_os("PROGRESSLEDGER_V2_E2E").is_some() {
         chrono::Utc::now()
             .date_naive()
             .format("%Y-%m-%d")

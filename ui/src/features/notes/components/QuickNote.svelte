@@ -37,10 +37,13 @@
       content = "";
       saving = false;
       subjectId = allSubjects[0]?.id ?? null;
-      // Focus the title input after a tick
-      setTimeout(() => {
+      // Focus the title input after a tick. The cleanup clears the timer
+      // if the modal closes or unmounts first, so it never fires into a
+      // torn-down DOM (vitest flagged exactly that as an unhandled error).
+      const timer = setTimeout(() => {
         document.querySelector(".quick-note-modal input")?.focus();
       }, 50);
+      return () => clearTimeout(timer);
     }
   });
 

@@ -1,4 +1,4 @@
--- CareerFlow-owned embedded-browser Research ledger. Separate from academic resources.
+-- Progress Ledger-owned embedded-browser Research ledger. Separate from academic resources.
 CREATE TABLE IF NOT EXISTS research_sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     profile_id INTEGER NOT NULL,

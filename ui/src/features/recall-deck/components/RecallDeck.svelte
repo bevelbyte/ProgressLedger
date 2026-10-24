@@ -218,8 +218,12 @@
       <div class="no-cards">          <div class="celebration" aria-hidden="true">
             <PartyPopper size={28} strokeWidth={1.75} />
           </div>
-        <h3>All caught up!</h3>
-        <p>No cards due for review today.</p>
+        {#if cardsStore.stats && cardsStore.stats.totalCards > 0}
+          <h3>All caught up!</h3>
+          <p>No cards due for review today.</p>
+        {:else}
+          <h3>No cards yet</h3>
+        {/if}
         {#if cardsStore.stats && cardsStore.stats.totalCards > 0}
           <div class="stats-info">
             <p>You have <strong>{cardsStore.stats.totalCards}</strong> card{cardsStore.stats.totalCards > 1 ? "s" : ""} in your deck.</p>

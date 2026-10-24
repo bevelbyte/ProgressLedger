@@ -21,7 +21,7 @@ export function register({ core, win }) {
 
   safeHandle("backups:choose-folder", async () => {
     const res = await dialog.showOpenDialog(win(), {
-      title: "Choose CareerFlow Backup Folder",
+      title: "Choose Progress Ledger Backup Folder",
       properties: ["openDirectory", "createDirectory"],
     });
     if (res.canceled || res.filePaths.length === 0) return { selected: false };

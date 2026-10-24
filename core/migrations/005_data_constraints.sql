@@ -1,7 +1,7 @@
 -- Migration 005: Add CHECK constraints and TRIGGERs for data consistency
 -- Since SQLite does not support ALTER TABLE ADD CHECK, we use TRIGGERs to enforce validation.
 
--- Repair (CareerFlow successor): this migration previously created triggers on a
+-- Repair (Progress Ledger successor): this migration previously created triggers on a
 -- `session_states` table that no earlier migration ever defined, so FRESH
 -- database initialization failed at version 5. Databases that had already
 -- reached v5+ predate the broken edit and are unaffected (migrations are

@@ -6,8 +6,8 @@
 //   - install-from-git submits a Git URL → calls installGit
 //   - disable button calls disable on the correct item
 //
-// The IPC namespace is mocked via window.careerflow.marketplace. Tests
-// reset window.careerflow between cases for hermetic isolation.
+// The IPC namespace is mocked via window.progressLedger.marketplace. Tests
+// reset window.progressLedger between cases for hermetic isolation.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -33,7 +33,7 @@ function setupIpc({
   const update = vi.fn(updateImpl || (async () => ({ ok: true })));
   const get = vi.fn(async () => ({ ok: false, reason: "unknown-item" }));
 
-  window.careerflow = {
+  window.progressLedger = {
     marketplace: { list, installLocal, installGit, enable, disable, uninstall, update, get },
   };
   return { list, installLocal, installGit, enable, disable, uninstall, update };
@@ -47,7 +47,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
   // hunk header) so the two read consistently side-by-side.
   //
   // The renderer NEVER has a path. It calls
-  // window.careerflow.subagent.diff(profileId, callerAgentId, agentId, runId, files)
+  // window.progressLedger.subagent.diff(profileId, callerAgentId, agentId, runId, files)
   // and the main process does `git -C <root> diff -- <path>` for each
   // entry in `files`. Per-file line cap + global byte cap are
   // enforced server-side; the component shows `truncated: true` as a
@@ -30,7 +30,7 @@
     loading = true;
     error = null;
     try {
-      const r = await window.careerflow.subagent.diff(profileId, callerAgentId, agentId, runId, files);
+      const r = await window.progressLedger.subagent.diff(profileId, callerAgentId, agentId, runId, files);
       if (!r || !r.ok) {
         error = (r && r.error && r.error.message) || "Couldn't load sub-agent diff";
         perFile = {};

@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
 
 /**
- * PHASE 1 of the approved D2-D6 plan — the CareerFlow-owned embedded browser,
+ * PHASE 1 of the approved D2-D6 plan — the Progress Ledger-owned embedded browser,
  * on the REAL surface.
  *
  * WHAT THIS SPEC IS FOR. Everything about the embedded browser that jsdom
@@ -24,8 +24,8 @@ const projectRoot = join(__dirname, "..");
  * mirror; they cannot prove any of the above, and they say so.
  *
  * DONUT IS ABSENT FOR EVERY TEST IN THIS FILE, ON PURPOSE. The launch env points
- * `CAREERFLOW_DONUT_SETTINGS_DIR` at a directory that does not exist and leaves
- * the hermetic stub (`CAREERFLOW_E2E_DONUT_STUB`) unset, so there is no Donut
+ * `PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR` at a directory that does not exist and leaves
+ * the hermetic stub (`PROGRESSLEDGER_V2_E2E_DONUT_STUB`) unset, so there is no Donut
  * backend, no Donut stub, no Donut credentials and nothing to call. If the
  * embedded browser ever grew a Donut dependency, every test here would fail -
  * which is exactly the mandatory Phase 1 independence property.
@@ -44,7 +44,7 @@ const PROBE_HTML = `<!doctype html>
     <h1 id="probe">probe</h1>
     <script>
       (function () {
-        var names = ["careerflow", "require", "process", "module", "electron", "ipcRenderer", "Buffer"];
+        var names = ["progressledger", "require", "process", "module", "electron", "ipcRenderer", "Buffer"];
         var surface = {};
         names.forEach(function (n) { surface[n] = typeof window[n]; });
         var out = {
@@ -52,7 +52,7 @@ const PROBE_HTML = `<!doctype html>
           url: String(location.href),
           title: String(document.title),
           surface: surface,
-          careerflowKeys: window.careerflow ? Object.keys(window.careerflow) : [],
+          progressledgerKeys: window.progressLedger ? Object.keys(window.progressLedger) : [],
           globals: names.filter(function (n) { return Object.prototype.hasOwnProperty.call(window, n); }),
         };
         try {
@@ -102,12 +102,12 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-browser-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
+    PROGRESSLEDGER_V2_E2E: "1",
     // Donut absent: no stub, and a settings directory that is not there.
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -128,21 +128,21 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win };
 }
 
 /**
- * Seed one CareerFlow profile through the app's own bridge, then select it
+ * Seed one Progress Ledger profile through the app's own bridge, then select it
  * through the app's own profile card. The browser partition is derived from this
  * profile's id (approved decision B), so the id has to be a REAL row.
  */
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("Browser Phase One", "browser-phase-one");
+    const created = await window.progressLedger.profiles.add("Browser Phase One", "browser-phase-one");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -151,7 +151,7 @@ async function seedAndSelectProfile(win) {
   // Reload so the shell's own boot-time profile load sees the new row.
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
   const card = win.locator("button.profile-main").first();
@@ -212,7 +212,7 @@ function webContentsCount(app) {
 // would work until the page has a title, which is exactly when the test needs it.
 const pageTabs = (win) => win.locator('[data-pane-id] [data-view="page"]');
 
-test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-independent", () => {
+test.describe("Phase 1 embedded browser (D2-D6) — Progress Ledger-owned and Donut-independent", () => {
   let app;
   let win;
   let server;
@@ -237,7 +237,7 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
 
     // Exactly one page the USER opened exists. Since R3 the probe page's
     // `window.open("https://example.com/")` is re-decided by main into an
-    // unfocused CareerFlow tab (approved decision D3-3), so a second, NEVER
+    // unfocused Progress Ledger tab (approved decision D3-3), so a second, NEVER
     // VISIBLE page may also exist. The claim under test is the page this pane
     // owns; the popup is proven separately in e2e/browser-popups.spec.js.
     await expect
@@ -249,7 +249,7 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
     expect(page.attached, "the view is attached to the window").toBe(true);
     expect(page.visible, "the view is on screen").toBe(true);
     expect(page.requestVisible).toBe(true);
-    // Approved decision B: ONE persistent partition per CareerFlow profile.
+    // Approved decision B: ONE persistent partition per Progress Ledger profile.
     expect(page.partition).toBe(`persist:cf-browser-${pid}`);
 
     // The renderer DECLARED a rectangle; main clamped it and decided. The view
@@ -284,7 +284,7 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
 
     // The RENDERER's view of the page is sanitized: the opaque id is there, the
     // partition (a main-process fact) is not.
-    const mirror = await win.evaluate(() => window.careerflow.browser.state());
+    const mirror = await win.evaluate(() => window.progressLedger.browser.state());
     const mirrored = mirror.pages.find((p) => p.id === page.id);
     expect(mirrored, "the page this pane owns is in the renderer mirror").toBeTruthy();
 
@@ -296,7 +296,7 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
     // the renderer-facing half of the download foundation: the destination rules
     // themselves are unit-tested in shell/tests/browser-downloads.test.js, and a
     // real download landing on disk is a later phase's acceptance.
-    const downloads = await win.evaluate(() => window.careerflow.browser.downloads());
+    const downloads = await win.evaluate(() => window.progressLedger.browser.downloads());
     expect(downloads.ok).toBe(true);
     expect(downloads.downloads).toEqual([]);
     expect(JSON.stringify(downloads)).not.toContain("downloads\\");
@@ -404,12 +404,12 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
     // rendered twice.
     await expect(surfaceId(0)).toHaveAttribute("data-page-id", first.id);
     expect(visible.map((p) => p.id).sort()).toEqual([first.id, second.id].sort());
-    // Both pages share the ONE partition the CareerFlow profile owns (approved
+    // Both pages share the ONE partition the Progress Ledger profile owns (approved
     // decision B) — the identity is per page, the storage is per profile.
     expect(new Set(visible.map((p) => p.partition)).size).toBe(1);
   });
 
-  test("page content gets no CareerFlow bridge, no Node and no popup window", async () => {
+  test("page content gets no Progress Ledger bridge, no Node and no popup window", async () => {
     await seedAndSelectProfile(win);
     await openPageTab(win);
     await navigateTo(win, `${server.origin}/probe`);
@@ -419,18 +419,18 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
     await expect.poll(() => server.reports.length).toBeGreaterThan(0);
     const report = server.reports[0];
     expect(report.probe).toBe("ok");
-    expect(report.surface.careerflow, "no CareerFlow preload on a web page").toBe("undefined");
+    expect(report.surface.progressledger, "no Progress Ledger preload on a web page").toBe("undefined");
     expect(report.surface.require, "no Node require").toBe("undefined");
     expect(report.surface.process, "no Node process").toBe("undefined");
     expect(report.surface.module, "no Node module").toBe("undefined");
     expect(report.surface.electron, "no electron module").toBe("undefined");
     expect(report.surface.ipcRenderer, "no ipcRenderer").toBe("undefined");
-    expect(report.careerflowKeys).toEqual([]);
+    expect(report.progressledgerKeys).toEqual([]);
     expect(report.globals).toEqual([]);
     // NO OS WINDOW IS CREATED (R3, approved decision D3-3). `setWindowOpenHandler`
     // denies unconditionally, so `window.open` returns null and the page never
     // sees an OS window. Since R3, an http(s) popup is additionally RE-DECIDED
-    // by main into an unfocused CareerFlow browser tab, so a page may now exist
+    // by main into an unfocused Progress Ledger browser tab, so a page may now exist
     // in main that this pane did not ask for — that is the approved behaviour and
     // is proven in `e2e/browser-popups.spec.js`. What is asserted here is the OS
     // window invariant, which is the security property Phase 1 owns.
@@ -467,14 +467,14 @@ test.describe("Phase 1 embedded browser (D2-D6) — CareerFlow-owned and Donut-i
     const donut = await app.evaluate(() => {
       let dirExists = null;
       try {
-        dirExists = require("node:fs").existsSync(process.env.CAREERFLOW_DONUT_SETTINGS_DIR);
+        dirExists = require("node:fs").existsSync(process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR);
       } catch {
         dirExists = false;
       }
       return {
-        stubEnv: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+        stubEnv: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
         recorder: globalThis.__cfDonutE2E ?? null,
-        settingsDir: process.env.CAREERFLOW_DONUT_SETTINGS_DIR ?? null,
+        settingsDir: process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR ?? null,
         settingsDirExists: dirExists,
       };
     });

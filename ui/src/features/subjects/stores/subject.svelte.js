@@ -61,7 +61,7 @@ export async function loadSubjectTree(profileId) {
 /**
  * Load course marks/credits from SQLite (via the courses API) and index them
  * for the Subjects views. This replaces the old dependency on CGPA Planner's
- * private localStorage["careerflow_degree_data_*"] blob — Subjects now reads
+ * private localStorage["progressledger_v2_degree_data_*"] blob — Subjects now reads
  * persisted domain data through its own service, not another feature's internals.
  */
 export async function loadCourseMarks(profileId) {

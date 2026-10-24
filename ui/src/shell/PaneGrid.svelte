@@ -4,13 +4,13 @@
    *
    * A split is a node (`row`/`col`, with fractional `sizes`); a pane is a leaf
    * holding tabs. This is the Space Bunny workspace model
-   * (`CareerFlow-Frontend-Lab/src/shell/workspace.ts` → `LayoutTree`), rebuilt
-   * for CareerFlow's own views.
+   * (`Progress Ledger-Frontend-Lab/src/shell/workspace.ts` → `LayoutTree`), rebuilt
+   * for Progress Ledger's own views.
    *
    * Two behaviours are deliberately unlike the Lab's, both from its own critique:
    *   - the leaf renders the pane's TAB STRIP and its active view, while the
    *     stage keeps one context header for the focused pane. The Lab gave every
-   *     pane its own header copy; at CareerFlow's window sizes that duplicated
+   *     pane its own header copy; at Progress Ledger's window sizes that duplicated
    *     the same title in two panes.
    *   - an empty pane says what it is and how to fill it, rather than offering a
    *     hardcoded list of unrelated destinations (the Lab's weakness #7).
@@ -36,7 +36,7 @@
     onClosePane = () => {},
     onSetSizes = () => {},
     onSetMode = () => {},
-    /** Open a new CareerFlow browser page in a specific pane. */
+    /** Open a new Progress Ledger browser page in a specific pane. */
     onNewPage = () => {},
     /** Hide native browser views while the pane's destination menu is open. */
     onNewTabMenuOpenChange = () => {},

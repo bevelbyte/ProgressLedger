@@ -53,3 +53,16 @@ Bundled locally, no CDN (see DECISIONS.md V2-10): Inter + a mono font as
 local files. Status after Phase 1: NOT VERIFIED — no .woff2/.ttf files
 were found under ui/src at import. Exact files and licenses recorded here
 once bundled in Phase 2.
+
+## Fonts bundled in Phase 2 (assets, not packages)
+- Inter Variable, latin subset, normal + italic (variable weight
+  100–900, woff2): copied from @fontsource-variable/inter as installed
+  in the Progress Ledger repo (node_modules/@fontsource-variable/inter/
+  files/inter-latin-wght-normal.woff2 + inter-latin-wght-italic.woff2).
+  License OFL-1.1. Latin only by decision (V2-19): the UI is English.
+- Cascadia Mono, Regular (ttf): copied from C:\Windows\Fonts\
+  CascadiaMono.ttf. License OFL-1.1. Chosen because it is present on
+  the machine; JetBrains Mono was not installed and was not downloaded.
+- No new npm or cargo package was added in Phase 2. Font files are
+  bundled into ui/dist by Vite (hashed assets); nothing is fetched from
+  the internet at runtime.

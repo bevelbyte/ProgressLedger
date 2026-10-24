@@ -1,6 +1,6 @@
 <script>
   // ResumeBanner — "Resume previous run" prompt shown on top of Project
-  // Mode when CareerFlow detects a non-terminal agent left over from the
+  // Mode when Progress Ledger detects a non-terminal agent left over from the
   // previous session (the user closed the app mid-run). On mount we ask
   // the main process for the most recent non-terminal agent row; if the
   // IPC returns one, we render a banner with the goal and Resume /
@@ -10,7 +10,7 @@
   //   - Resume  → calls projectMode.startAgent on the leftover agent id
   //               so the loop picks up the persisted plan_json.
   //   - Discard → hides the banner for the rest of this session via a
-  //               localStorage flag ("careerflow_resume_banner_dismissed").
+  //               localStorage flag ("progressledger_v2_resume_banner_dismissed").
   //               The flag is profile-scoped so a different profile
   //               still gets its own prompt.
   //   - Both    → set `visible = false` so the banner disappears.
@@ -25,7 +25,7 @@
 
   let { profileId = null, onResume = null } = $props();
 
-  const DISMISS_KEY_PREFIX = "careerflow_resume_banner_dismissed:";
+  const DISMISS_KEY_PREFIX = "progressledger_v2_resume_banner_dismissed:";
 
   let loading = $state(true);
   let visible = $state(false);
@@ -54,7 +54,7 @@
   }
 
   async function fetchResumable() {
-    const ns = window.careerflow && window.careerflow.projectMode;
+    const ns = window.progressLedger && window.progressLedger.projectMode;
     const fn = ns && ns.listResumableAgent;
     if (typeof fn !== "function") {
       agent = null;
@@ -102,7 +102,7 @@
 
   async function resume() {
     if (!agent || typeof agent.id !== "number") return;
-    const ns = window.careerflow && window.careerflow.projectMode;
+    const ns = window.progressLedger && window.progressLedger.projectMode;
     const fn = ns && ns.startAgent;
     if (typeof fn !== "function") {
       error = "project:start-agent is not available";

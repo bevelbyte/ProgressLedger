@@ -5,12 +5,12 @@ import { render, waitFor } from "@testing-library/svelte";
 import DiffView from "../src/features/project-mode/components/DiffView.svelte";
 
 beforeEach(() => {
-  window.careerflow = window.careerflow || {};
+  window.progressLedger = window.progressLedger || {};
 });
 
 describe("DiffView", () => {
   it("renders an empty state when diff is empty", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({ ok: true, result: { diff: "", truncated: false, root: "/p" } }),
     };
     const { container, getByText } = render(DiffView, { props: { profileId: 1, agentId: 1 } });
@@ -19,7 +19,7 @@ describe("DiffView", () => {
   });
 
   it("renders a diff with added and removed lines", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({
         ok: true,
         result: {
@@ -45,7 +45,7 @@ describe("DiffView", () => {
   });
 
   it("renders an error message on failure", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({ ok: false, error: { message: "boom" } }),
     };
     const { container, getByText } = render(DiffView, { props: { profileId: 1, agentId: 1 } });

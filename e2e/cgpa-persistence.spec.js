@@ -15,22 +15,22 @@ const projectRoot = join(__dirname, "..");
  * renderer profile of the second launch.
  */
 test("CGPA courses persist across an application restart", async () => {
-  // Isolated workspace both launches share via CAREERFLOW_E2E userData.
+  // Isolated workspace both launches share via PROGRESSLEDGER_V2_E2E userData.
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-persist-"));
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   // ---- First run: create profile, degree, graded course ----
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const name = `Persist Student ${Date.now()}`;
   await win.getByPlaceholder(/New profile name/i).fill(name);
@@ -54,9 +54,9 @@ test("CGPA courses persist across an application restart", async () => {
 
   // Read the persisted CGPA straight from the core to assert the value stored.
   const cgpaAfterCreate = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    return window.careerflow.courses.cgpa(pid);
+    return window.progressLedger.courses.cgpa(pid);
   });
   expect(cgpaAfterCreate.cgpa).toBeGreaterThan(8.9); // 85% -> grade point 9.0
   await app.close();
@@ -65,13 +65,13 @@ test("CGPA courses persist across an application restart", async () => {
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const reloaded = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const courses = await window.careerflow.courses.list(pid, null);
-    const cgpa = await window.careerflow.courses.cgpa(pid);
+    const courses = await window.progressLedger.courses.list(pid, null);
+    const cgpa = await window.progressLedger.courses.cgpa(pid);
     return { courses, cgpa };
   });
 

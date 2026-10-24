@@ -40,24 +40,24 @@ switch (platform) {
   case 'android':
     switch (arch) {
       case 'arm64':
-        localFileExisted = existsSync(nativePath('careerflow_core.android-arm64.node'))
+        localFileExisted = existsSync(nativePath('progress_ledger_core.android-arm64.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.android-arm64.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.android-arm64.node'))
           } else {
-            nativeBinding = require('@careerflow/core-android-arm64')
+            nativeBinding = require('@progress-ledger/core-android-arm64')
           }
         } catch (e) {
           loadError = e
         }
         break
       case 'arm':
-        localFileExisted = existsSync(nativePath('careerflow_core.android-arm-eabi.node'))
+        localFileExisted = existsSync(nativePath('progress_ledger_core.android-arm-eabi.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.android-arm-eabi.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.android-arm-eabi.node'))
           } else {
-            nativeBinding = require('@careerflow/core-android-arm-eabi')
+            nativeBinding = require('@progress-ledger/core-android-arm-eabi')
           }
         } catch (e) {
           loadError = e
@@ -71,13 +71,13 @@ switch (platform) {
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(
-          nativePath('careerflow_core.win32-x64-msvc.node')
+          nativePath('progress_ledger_core.win32-x64-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.win32-x64-msvc.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.win32-x64-msvc.node'))
           } else {
-            nativeBinding = require('@careerflow/core-win32-x64-msvc')
+            nativeBinding = require('@progress-ledger/core-win32-x64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -85,13 +85,13 @@ switch (platform) {
         break
       case 'ia32':
         localFileExisted = existsSync(
-          nativePath('careerflow_core.win32-ia32-msvc.node')
+          nativePath('progress_ledger_core.win32-ia32-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.win32-ia32-msvc.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.win32-ia32-msvc.node'))
           } else {
-            nativeBinding = require('@careerflow/core-win32-ia32-msvc')
+            nativeBinding = require('@progress-ledger/core-win32-ia32-msvc')
           }
         } catch (e) {
           loadError = e
@@ -99,13 +99,13 @@ switch (platform) {
         break
       case 'arm64':
         localFileExisted = existsSync(
-          nativePath('careerflow_core.win32-arm64-msvc.node')
+          nativePath('progress_ledger_core.win32-arm64-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.win32-arm64-msvc.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.win32-arm64-msvc.node'))
           } else {
-            nativeBinding = require('@careerflow/core-win32-arm64-msvc')
+            nativeBinding = require('@progress-ledger/core-win32-arm64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -116,23 +116,23 @@ switch (platform) {
     }
     break
   case 'darwin':
-    localFileExisted = existsSync(nativePath('careerflow_core.darwin-universal.node'))
+    localFileExisted = existsSync(nativePath('progress_ledger_core.darwin-universal.node'))
     try {
       if (localFileExisted) {
-        nativeBinding = require(nativePath('careerflow_core.darwin-universal.node'))
+        nativeBinding = require(nativePath('progress_ledger_core.darwin-universal.node'))
       } else {
-        nativeBinding = require('@careerflow/core-darwin-universal')
+        nativeBinding = require('@progress-ledger/core-darwin-universal')
       }
       break
     } catch {}
     switch (arch) {
       case 'x64':
-        localFileExisted = existsSync(nativePath('careerflow_core.darwin-x64.node'))
+        localFileExisted = existsSync(nativePath('progress_ledger_core.darwin-x64.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.darwin-x64.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.darwin-x64.node'))
           } else {
-            nativeBinding = require('@careerflow/core-darwin-x64')
+            nativeBinding = require('@progress-ledger/core-darwin-x64')
           }
         } catch (e) {
           loadError = e
@@ -140,13 +140,13 @@ switch (platform) {
         break
       case 'arm64':
         localFileExisted = existsSync(
-          nativePath('careerflow_core.darwin-arm64.node')
+          nativePath('progress_ledger_core.darwin-arm64.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.darwin-arm64.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.darwin-arm64.node'))
           } else {
-            nativeBinding = require('@careerflow/core-darwin-arm64')
+            nativeBinding = require('@progress-ledger/core-darwin-arm64')
           }
         } catch (e) {
           loadError = e
@@ -160,12 +160,12 @@ switch (platform) {
     if (arch !== 'x64') {
       throw new Error(`Unsupported architecture on FreeBSD: ${arch}`)
     }
-    localFileExisted = existsSync(nativePath('careerflow_core.freebsd-x64.node'))
+    localFileExisted = existsSync(nativePath('progress_ledger_core.freebsd-x64.node'))
     try {
       if (localFileExisted) {
-        nativeBinding = require(nativePath('careerflow_core.freebsd-x64.node'))
+        nativeBinding = require(nativePath('progress_ledger_core.freebsd-x64.node'))
       } else {
-        nativeBinding = require('@careerflow/core-freebsd-x64')
+        nativeBinding = require('@progress-ledger/core-freebsd-x64')
       }
     } catch (e) {
       loadError = e
@@ -176,26 +176,26 @@ switch (platform) {
       case 'x64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-x64-musl.node')
+            nativePath('progress_ledger_core.linux-x64-musl.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-x64-musl.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-x64-musl.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-x64-musl')
+              nativeBinding = require('@progress-ledger/core-linux-x64-musl')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-x64-gnu.node')
+            nativePath('progress_ledger_core.linux-x64-gnu.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-x64-gnu.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-x64-gnu.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-x64-gnu')
+              nativeBinding = require('@progress-ledger/core-linux-x64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -205,26 +205,26 @@ switch (platform) {
       case 'arm64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-arm64-musl.node')
+            nativePath('progress_ledger_core.linux-arm64-musl.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-arm64-musl.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-arm64-musl.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-arm64-musl')
+              nativeBinding = require('@progress-ledger/core-linux-arm64-musl')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-arm64-gnu.node')
+            nativePath('progress_ledger_core.linux-arm64-gnu.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-arm64-gnu.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-arm64-gnu.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-arm64-gnu')
+              nativeBinding = require('@progress-ledger/core-linux-arm64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -234,26 +234,26 @@ switch (platform) {
       case 'arm':
         if (isMusl()) {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-arm-musleabihf.node')
+            nativePath('progress_ledger_core.linux-arm-musleabihf.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-arm-musleabihf.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-arm-musleabihf.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-arm-musleabihf')
+              nativeBinding = require('@progress-ledger/core-linux-arm-musleabihf')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-arm-gnueabihf.node')
+            nativePath('progress_ledger_core.linux-arm-gnueabihf.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-arm-gnueabihf.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-arm-gnueabihf.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-arm-gnueabihf')
+              nativeBinding = require('@progress-ledger/core-linux-arm-gnueabihf')
             }
           } catch (e) {
             loadError = e
@@ -263,26 +263,26 @@ switch (platform) {
       case 'riscv64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-riscv64-musl.node')
+            nativePath('progress_ledger_core.linux-riscv64-musl.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-riscv64-musl.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-riscv64-musl.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-riscv64-musl')
+              nativeBinding = require('@progress-ledger/core-linux-riscv64-musl')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            nativePath('careerflow_core.linux-riscv64-gnu.node')
+            nativePath('progress_ledger_core.linux-riscv64-gnu.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require(nativePath('careerflow_core.linux-riscv64-gnu.node'))
+              nativeBinding = require(nativePath('progress_ledger_core.linux-riscv64-gnu.node'))
             } else {
-              nativeBinding = require('@careerflow/core-linux-riscv64-gnu')
+              nativeBinding = require('@progress-ledger/core-linux-riscv64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -291,13 +291,13 @@ switch (platform) {
         break
       case 's390x':
         localFileExisted = existsSync(
-          nativePath('careerflow_core.linux-s390x-gnu.node')
+          nativePath('progress_ledger_core.linux-s390x-gnu.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require(nativePath('careerflow_core.linux-s390x-gnu.node'))
+            nativeBinding = require(nativePath('progress_ledger_core.linux-s390x-gnu.node'))
           } else {
-            nativeBinding = require('@careerflow/core-linux-s390x-gnu')
+            nativeBinding = require('@progress-ledger/core-linux-s390x-gnu')
           }
         } catch (e) {
           loadError = e
@@ -318,7 +318,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { getProfiles, addProfile, deleteProfile, getAcademicTree, addTrack, addSemester, addMilestone, addSubject, updateSubject, deleteTrack, deleteSemester, deleteMilestone, deleteSubject, setSubjectStatus, setSemesterStatus, listBrowserProfiles, getBrowserProfile, addBrowserProfile, renameBrowserProfile, setBrowserProfileEnabled, touchBrowserProfile, deleteBrowserProfile, reorderBrowserProfiles, getBrowserShortcut, listBrowserShortcuts, addBrowserShortcut, updateBrowserShortcut, deleteBrowserShortcut, reorderBrowserShortcuts, toggleBrowserShortcutPin, listPinnedBrowserShortcuts, addCareerGoal, getCareerGoals, updateCareerGoal, setPrimaryCareerGoal, deleteCareerGoal, addCareerMilestone, getCareerMilestones, updateCareerMilestone, setCareerMilestoneCompletion, reorderCareerMilestones, deleteCareerMilestone, setCareerMilestoneProject, setCareerMilestoneSubject, pmCreateGoal, pmGetGoal, pmListGoals, pmDeleteGoal, pmTransitionGoal, pmLinkGoalAgent, pmUpdateGoalPlanStepCount, pmAppendGoalEvent, pmListGoalEvents, pmGetGoalAgentId, pmCreateProject, pmListProjects, pmGetProject, pmDeleteProject, pmCreateAgent, pmGetAgent, pmUpdateAgent, pmFinishAgent, pmListAgents, pmGetChildren, pmSetParent, pmAppendMessage, pmListMessagesPaginated, pmListMessages, pmListFailedAgentRuns, pmInsertSubagentRun, pmEndSubagentRun, pmListSubagentRuns, pmGetDefaultProvider, pmSetDefaultProvider, pmListRecentAgentRuns, pmSavePlanTemplate, pmListPlanTemplates, pmLoadPlanTemplate, pmDeletePlanTemplate, pmUpsertRunState, pmDeleteRunState, pmListResumableRuns, pmListStaleRuns, pmGetRunState, createCard, getDueCards, getAllCards, reviewCard, updateCard, deleteCard, getReviewStats, getGradeScale, getDefaultGradeScale, validateGradeScale, setGradeScale, addCourse, getCourses, updateCourse, deleteCourse, calculateSgpa, calculateCgpa, addDeadline, getDeadlines, updateDeadline, deleteDeadline, setDeadlineCompletion, calculateDeadlinePace, getDeadlinePaces, getFocusSettings, updateFocusSettings, getFocusSignals, addFormula, getFormulas, updateFormula, deleteFormula, addExperiment, getExperiments, updateExperiment, deleteExperiment, getLabSummary, addMistake, getMistakes, updateMistake, deleteMistake, getMistakeStats, addProject, getProjects, updateProject, deleteProject, addProjectTask, getProjectTasks, updateProjectTask, deleteProjectTask, listResources, getResource, addNote, updateNote, deleteResource, attachFile, searchResources, getDashboardStats, cleanupOrphanAttachments, saveResearchSource, listResearchSources, listResearchCaptures, countKeptResearchPassages, captureResearchPassage, getSemesterOverview, addStudySession, getStudySessions, deleteStudySession, getStudySessionStats, getSubjectLinks, addSubjectLink, updateSubjectLink, deleteSubjectLink, setPrimaryLink, getSubjectOverview, initDb, checkpointDb, verifyDb, findWindowForProcess, findWindowsForProcess, hostWindow, unhostWindow, resizeHostedWindow, focusHostedWindow, focusWindow, showHostedWindow, inspectWindow, hostedWindows, getWindowRectForHandle, inspectProfileBundle, exportProfile, importProfile, ping } = nativeBinding
+const { getProfiles, addProfile, deleteProfile, getAcademicTree, addTrack, addSemester, addMilestone, addSubject, updateSubject, deleteTrack, deleteSemester, deleteMilestone, deleteSubject, setSubjectStatus, setSemesterStatus, addCareerGoal, getCareerGoals, updateCareerGoal, setPrimaryCareerGoal, deleteCareerGoal, addCareerMilestone, getCareerMilestones, updateCareerMilestone, setCareerMilestoneCompletion, reorderCareerMilestones, deleteCareerMilestone, setCareerMilestoneProject, setCareerMilestoneSubject, pmCreateGoal, pmGetGoal, pmListGoals, pmDeleteGoal, pmTransitionGoal, pmLinkGoalAgent, pmUpdateGoalPlanStepCount, pmAppendGoalEvent, pmListGoalEvents, pmGetGoalAgentId, pmCreateProject, pmListProjects, pmGetProject, pmDeleteProject, pmCreateAgent, pmGetAgent, pmUpdateAgent, pmFinishAgent, pmListAgents, pmGetChildren, pmSetParent, pmAppendMessage, pmListMessagesPaginated, pmListMessages, pmListFailedAgentRuns, pmInsertSubagentRun, pmEndSubagentRun, pmListSubagentRuns, pmGetDefaultProvider, pmSetDefaultProvider, pmListRecentAgentRuns, pmSavePlanTemplate, pmListPlanTemplates, pmLoadPlanTemplate, pmDeletePlanTemplate, pmUpsertRunState, pmDeleteRunState, pmListResumableRuns, pmListStaleRuns, pmGetRunState, createCard, getDueCards, getAllCards, reviewCard, updateCard, deleteCard, getReviewStats, getGradeScale, getDefaultGradeScale, validateGradeScale, setGradeScale, addCourse, getCourses, updateCourse, deleteCourse, calculateSgpa, calculateCgpa, addDeadline, getDeadlines, updateDeadline, deleteDeadline, setDeadlineCompletion, calculateDeadlinePace, getDeadlinePaces, getFocusSettings, updateFocusSettings, getFocusSignals, addFormula, getFormulas, updateFormula, deleteFormula, addExperiment, getExperiments, updateExperiment, deleteExperiment, getLabSummary, addMistake, getMistakes, updateMistake, deleteMistake, getMistakeStats, addProject, getProjects, updateProject, deleteProject, addProjectTask, getProjectTasks, updateProjectTask, deleteProjectTask, listResources, getResource, addNote, updateNote, deleteResource, attachFile, searchResources, getDashboardStats, cleanupOrphanAttachments, saveResearchSource, listResearchSources, listResearchCaptures, countKeptResearchPassages, captureResearchPassage, getSemesterOverview, addStudySession, getStudySessions, deleteStudySession, getStudySessionStats, getSubjectLinks, addSubjectLink, updateSubjectLink, deleteSubjectLink, setPrimaryLink, getSubjectOverview, initDb, checkpointDb, verifyDb, inspectProfileBundle, exportProfile, importProfile, ping } = nativeBinding
 
 module.exports.getProfiles = getProfiles
 module.exports.addProfile = addProfile
@@ -335,22 +335,6 @@ module.exports.deleteMilestone = deleteMilestone
 module.exports.deleteSubject = deleteSubject
 module.exports.setSubjectStatus = setSubjectStatus
 module.exports.setSemesterStatus = setSemesterStatus
-module.exports.listBrowserProfiles = listBrowserProfiles
-module.exports.getBrowserProfile = getBrowserProfile
-module.exports.addBrowserProfile = addBrowserProfile
-module.exports.renameBrowserProfile = renameBrowserProfile
-module.exports.setBrowserProfileEnabled = setBrowserProfileEnabled
-module.exports.touchBrowserProfile = touchBrowserProfile
-module.exports.deleteBrowserProfile = deleteBrowserProfile
-module.exports.reorderBrowserProfiles = reorderBrowserProfiles
-module.exports.getBrowserShortcut = getBrowserShortcut
-module.exports.listBrowserShortcuts = listBrowserShortcuts
-module.exports.addBrowserShortcut = addBrowserShortcut
-module.exports.updateBrowserShortcut = updateBrowserShortcut
-module.exports.deleteBrowserShortcut = deleteBrowserShortcut
-module.exports.reorderBrowserShortcuts = reorderBrowserShortcuts
-module.exports.toggleBrowserShortcutPin = toggleBrowserShortcutPin
-module.exports.listPinnedBrowserShortcuts = listPinnedBrowserShortcuts
 module.exports.addCareerGoal = addCareerGoal
 module.exports.getCareerGoals = getCareerGoals
 module.exports.updateCareerGoal = updateCareerGoal
@@ -481,17 +465,6 @@ module.exports.getSubjectOverview = getSubjectOverview
 module.exports.initDb = initDb
 module.exports.checkpointDb = checkpointDb
 module.exports.verifyDb = verifyDb
-module.exports.findWindowForProcess = findWindowForProcess
-module.exports.findWindowsForProcess = findWindowsForProcess
-module.exports.hostWindow = hostWindow
-module.exports.unhostWindow = unhostWindow
-module.exports.resizeHostedWindow = resizeHostedWindow
-module.exports.focusHostedWindow = focusHostedWindow
-module.exports.focusWindow = focusWindow
-module.exports.showHostedWindow = showHostedWindow
-module.exports.inspectWindow = inspectWindow
-module.exports.hostedWindows = hostedWindows
-module.exports.getWindowRectForHandle = getWindowRectForHandle
 module.exports.inspectProfileBundle = inspectProfileBundle
 module.exports.exportProfile = exportProfile
 module.exports.importProfile = importProfile

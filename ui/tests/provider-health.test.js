@@ -12,7 +12,7 @@
 //   - the pure helpers (classifyProviderHealth / formatLatencyMs / formatAgo /
 //     providerErrorRate) are exercised directly, no jsdom needed
 //
-// The IPC namespace is mocked on window.careerflow.projectMode, mirroring
+// The IPC namespace is mocked on window.progressLedger.projectMode, mirroring
 // the shape shipped by shell/src/preload.cjs + shell/src/ipc/project-mode.js
 // (`provider:health` → { ok, providers, updatedAt }).
 
@@ -47,7 +47,7 @@ function setupIpc({ providers = [OK_ROW], impl = null, updatedAt = NOW } = {}) {
   const getProviderHealth = impl
     ? impl
     : vi.fn().mockResolvedValue({ ok: true, providers, updatedAt });
-  window.careerflow = { projectMode: { getProviderHealth } };
+  window.progressLedger = { projectMode: { getProviderHealth } };
   return { getProviderHealth };
 }
 
@@ -59,7 +59,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ describe("ProviderHealth — rendering", () => {
   });
 
   it("renders the error state when the IPC surface is missing", async () => {
-    window.careerflow = { projectMode: {} };
+    window.progressLedger = { projectMode: {} };
     render(ProviderHealth);
     await vi.advanceTimersByTimeAsync(0);
 
@@ -197,7 +197,7 @@ describe("ProviderHealth — refresh", () => {
     const getProviderHealth = vi.fn(() =>
       Promise.resolve({ ok: true, providers, updatedAt: NOW })
     );
-    window.careerflow = { projectMode: { getProviderHealth } };
+    window.progressLedger = { projectMode: { getProviderHealth } };
 
     render(ProviderHealth);
     await vi.advanceTimersByTimeAsync(0);

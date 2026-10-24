@@ -21,7 +21,7 @@ fn temp_db_path(label: &str) -> PathBuf {
     let n = COUNTER.fetch_add(1, Ordering::SeqCst);
     let mut p = std::env::temp_dir();
     let id = format!(
-        "careerflow-goals-test-{}-{}-{}-{}.db",
+        "progressledger-goals-test-{}-{}-{}-{}.db",
         label,
         std::process::id(),
         n,

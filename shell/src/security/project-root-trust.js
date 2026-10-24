@@ -18,7 +18,7 @@
 //
 // DESIGN DECISION
 // ---------------
-// CareerFlow already owns the right idiom for this exact class of problem: the
+// Progress Ledger already owns the right idiom for this exact class of problem: the
 // first-run migration wizard opens `dialog.showOpenDialog` in the MAIN process
 // and refuses any path the user did not actually pick there (see
 // `migration:start` -> `workspace-path-not-selected`). So the trust anchor must

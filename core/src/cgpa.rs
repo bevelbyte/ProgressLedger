@@ -1,6 +1,6 @@
 //! Pure CGPA/SGPA domain logic — no SQLite, no N-API, no I/O.
 //!
-//! CareerFlow's authoritative academic-performance model. The pipeline is:
+//! Progress Ledger's authoritative academic-performance model. The pipeline is:
 //!
 //! ```text
 //! obtained marks + max marks  ->  percentage  ->  grade point (via GradeScale)

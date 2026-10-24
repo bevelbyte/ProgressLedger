@@ -132,7 +132,7 @@ describe("Citations and PDF Source References", () => {
 describe("NoteEditor Grounded Citation Workflow", () => {
   afterEach(() => {
     cleanup();
-    delete window.careerflow;
+    delete window.progressLedger;
   });
 
   it("grounds passage against subject PDF and inserts citation with page attribution", async () => {
@@ -141,7 +141,7 @@ describe("NoteEditor Grounded Citation Workflow", () => {
       "Page 2: Memory Management and Virtual Memory Algorithms",
     ].join("\f");
 
-    window.careerflow = {
+    window.progressLedger = {
       resources: {
         list: vi.fn(async () => [
           { id: 10, title: "OS Textbook.pdf", kind: "pdf" },

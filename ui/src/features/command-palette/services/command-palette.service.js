@@ -4,6 +4,6 @@
 
 export const commandPaletteService = {
   async search(profileId, query) {
-    return await window.careerflow.resources.search(profileId, query);
+    return await window.progressLedger.resources.search(profileId, query);
   }
 };

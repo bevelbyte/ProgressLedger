@@ -5,7 +5,7 @@ import { render, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
 import ProjectDiff from "../src/features/project-mode/components/ProjectDiff.svelte";
 
 beforeEach(() => {
-  window.careerflow = window.careerflow || {};
+  window.progressLedger = window.progressLedger || {};
 });
 
 afterEach(() => {
@@ -50,7 +50,7 @@ function badgeCount(cls) {
 
 describe("ProjectDiff", () => {
   it("renders an empty state when there are no changes", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({ ok: true, result: { diff: "", truncated: false } }),
     };
     const { getByText } = render(ProjectDiff, { props: { profileId: 1, agentId: 1 } });
@@ -58,7 +58,7 @@ describe("ProjectDiff", () => {
   });
 
   it("parses modified, added, and deleted files with correct status + counts", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({
         ok: true,
         result: { diff: SAMPLE_DIFF, truncated: false },
@@ -78,7 +78,7 @@ describe("ProjectDiff", () => {
   });
 
   it("renders an error message on failure", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({ ok: false, error: { message: "project root not set" } }),
     };
     const { getByText } = render(ProjectDiff, { props: { profileId: 1, agentId: 1 } });
@@ -86,7 +86,7 @@ describe("ProjectDiff", () => {
   });
 
   it("filters rows by status when a filter button is clicked", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({
         ok: true,
         result: { diff: SAMPLE_DIFF, truncated: false },
@@ -106,7 +106,7 @@ describe("ProjectDiff", () => {
   });
 
   it("expands a file row to show the diff block on click", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({
         ok: true,
         result: { diff: SAMPLE_DIFF, truncated: false },
@@ -128,7 +128,7 @@ describe("ProjectDiff", () => {
   });
 
   it("shows a truncated warning when the diff is truncated", async () => {
-    window.careerflow.diff = {
+    window.progressLedger.diff = {
       workingTree: async () => ({
         ok: true,
         result: { diff: "diff --git a/big.js b/big.js\n--- a/big.js\n+++ b/big.js\n@@ -1 +1 @@\n-old\n+new", truncated: true },

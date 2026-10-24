@@ -295,7 +295,7 @@
   {#if allSubjects.length === 0}
     <div class="cf-empty boxed">
       <FlaskConical size={26} />
-      <h3>No subjects yet</h3>
+      <h3>No labs yet</h3>
       <p>Labs attach to a subject, and subjects are created in the Degree planner.</p>
     </div>
   {:else}

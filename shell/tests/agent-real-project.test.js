@@ -168,7 +168,7 @@ test("real-project fixture: realProjectSequence has the 8 rounds the loop needs"
 // ---------------------------------------------------------------------------
 
 test("GATE 19: real project acceptance (parseCSV, 4-step plan, multi-file inspect, fail->fix->verify)", { timeout: 15_000 }, async () => {
-  const userDataDir = mkdtempSync(join(tmpdir(), "careerflow-realproj-"));
+  const userDataDir = mkdtempSync(join(tmpdir(), "progressledger-realproj-"));
   try {
     const testCallCount = { v: 0 };
     const core = makeFakeCore({ testCallCount });

@@ -5,8 +5,8 @@
 
 export function initDebugLogger() {
   function logClick(e) {
-    const isDebug = localStorage.getItem("careerflow_debug_mode") === "true";
-    const isClickLog = localStorage.getItem("careerflow_click_logging") === "true";
+    const isDebug = localStorage.getItem("progressledger_v2_debug_mode") === "true";
+    const isClickLog = localStorage.getItem("progressledger_v2_click_logging") === "true";
     if (!isDebug && !isClickLog) return;
 
     const btn = e.target.closest("button, a, input, select");
@@ -21,7 +21,7 @@ export function initDebugLogger() {
       }
 
       if (isDebug) {
-        window.careerflow?.diagnostics?.appendLog("info", msg, {
+        window.progressLedger?.diagnostics?.appendLog("info", msg, {
           timestamp: new Date().toISOString(),
           component: "UI",
           function: "logClick",
@@ -37,8 +37,8 @@ export function initDebugLogger() {
   }
 
   function handleException(message, source, lineno, colno, error) {
-    if (localStorage.getItem("careerflow_debug_mode") === "true") {
-      window.careerflow?.diagnostics?.appendLog("error", `[Unhandled Exception] ${message}`, {
+    if (localStorage.getItem("progressledger_v2_debug_mode") === "true") {
+      window.progressLedger?.diagnostics?.appendLog("error", `[Unhandled Exception] ${message}`, {
         timestamp: new Date().toISOString(),
         component: "Exceptions",
         event: "exception",
@@ -52,8 +52,8 @@ export function initDebugLogger() {
   }
 
   function handleRejection(e) {
-    if (localStorage.getItem("careerflow_debug_mode") === "true") {
-      window.careerflow?.diagnostics?.appendLog("error", `[Unhandled Promise Rejection] ${e.reason}`, {
+    if (localStorage.getItem("progressledger_v2_debug_mode") === "true") {
+      window.progressLedger?.diagnostics?.appendLog("error", `[Unhandled Promise Rejection] ${e.reason}`, {
         timestamp: new Date().toISOString(),
         component: "Exceptions",
         event: "promise_rejection",
@@ -78,9 +78,9 @@ export function initDebugLogger() {
 }
 
 export function logViewLifecycle(event, viewName) {
-  const isDebug = localStorage.getItem("careerflow_debug_mode") === "true";
+  const isDebug = localStorage.getItem("progressledger_v2_debug_mode") === "true";
   if (isDebug && viewName) {
-    window.careerflow?.diagnostics?.appendLog("info", `[Component Lifecycle] ${event === "mount" ? "Mounted" : "Unmounted"} view "${viewName}"`, {
+    window.progressLedger?.diagnostics?.appendLog("info", `[Component Lifecycle] ${event === "mount" ? "Mounted" : "Unmounted"} view "${viewName}"`, {
       timestamp: new Date().toISOString(),
       component: "UI",
       event,

@@ -18,7 +18,7 @@
 //   5. SessionTimeline renders the message stream in the exact order the
 //      loop emitted it: plan → tool_call → tool_result → assistant → status.
 //
-// Every test wires the real IPC channels (`window.careerflow.*`) and
+// Every test wires the real IPC channels (`window.progressLedger.*`) and
 // renders the real Svelte components. The data shapes match what
 // `core::db::project_mode` actually emits via NAPI — see
 // core/src/db/project_mode.rs `pm_list_recent_agent_runs`,
@@ -52,7 +52,7 @@ function setupIpc() {
   const listMessagesPaginated = vi.fn();
   const listSubagentRuns    = vi.fn();
 
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listRecentAgentRuns,
       listAgentErrors,
@@ -92,7 +92,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   resetStore();
 });
 

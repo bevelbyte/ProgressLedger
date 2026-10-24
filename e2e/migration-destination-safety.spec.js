@@ -13,12 +13,12 @@ test("migration destination safety: rejects occupied destination and preserves s
 
   try {
     // 1. Prepare legacy source data
-    const sourceDb = join(userDataDir, "careerflow.db");
+    const sourceDb = join(userDataDir, "progress-ledger-v2.db");
     const sourceContent = "SQLITE_SOURCE_DATA_LEGACY_V0_ABC123";
     writeFileSync(sourceDb, sourceContent);
 
     // 2. Prepare occupied destination with sentinel database and attachments
-    const destDb = join(destDir, "careerflow.db");
+    const destDb = join(destDir, "progress-ledger-v2.db");
     const destSentinelDb = "PREEXISTING_DATABASE_SENTINEL_DO_NOT_TOUCH";
     writeFileSync(destDb, destSentinelDb);
 
@@ -33,9 +33,9 @@ test("migration destination safety: rejects occupied destination and preserves s
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
       env: {
         ...process.env,
-        CAREERFLOW_MIGRATION_TEST: "1",
-        CAREERFLOW_E2E_USER_DATA: userDataDir,
-        CAREERFLOW_MIGRATION_TEST_TARGET: destDir,
+        PROGRESSLEDGER_V2_MIGRATION_TEST: "1",
+        PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+        PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET: destDir,
       },
     });
 
@@ -43,7 +43,7 @@ test("migration destination safety: rejects occupied destination and preserves s
     await win.waitForLoadState("domcontentloaded");
 
     // Verify migration wizard is on screen
-    await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to CareerFlow");
+    await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to Progress Ledger");
 
     // Click Browse (resolves immediately to target via test hook)
     await win.locator("#btn-browse").click();
@@ -80,7 +80,7 @@ test("migration destination safety: permits genuinely empty destination in real 
 
   try {
     // 1. Prepare valid legacy SQLite source database
-    const sourceDb = join(userDataDir, "careerflow.db");
+    const sourceDb = join(userDataDir, "progress-ledger-v2.db");
     const Database = (await import("better-sqlite3")).default;
     const db = new Database(sourceDb);
     db.exec("CREATE TABLE legacy_items (id INTEGER PRIMARY KEY, note TEXT); INSERT INTO legacy_items VALUES (1, 'migrated note');");
@@ -91,9 +91,9 @@ test("migration destination safety: permits genuinely empty destination in real 
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
       env: {
         ...process.env,
-        CAREERFLOW_MIGRATION_TEST: "1",
-        CAREERFLOW_E2E_USER_DATA: userDataDir,
-        CAREERFLOW_MIGRATION_TEST_TARGET: destDir,
+        PROGRESSLEDGER_V2_MIGRATION_TEST: "1",
+        PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+        PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET: destDir,
       },
     });
 
@@ -113,7 +113,7 @@ test("migration destination safety: permits genuinely empty destination in real 
     await expect(win.locator("#progress-fill")).toHaveCSS("width", /.+/);
 
     // Destination should now contain the migrated files
-    const migratedDb = join(destDir, "careerflow.db");
+    const migratedDb = join(destDir, "progress-ledger-v2.db");
     const migratedWs = join(destDir, "workspace.json");
 
     expect(existsSync(migratedDb)).toBe(true);

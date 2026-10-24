@@ -15,7 +15,7 @@ let automationRunning = false;
 
 /** Export one profile to a temp .cfprofile bundle and upload it. Returns remote name. */
 export async function uploadBundleToCloud(core, cloud, profile) {
-  const dir = await mkdtemp(join(resolveTempDir(), "careerflow-cloud-"));
+  const dir = await mkdtemp(join(resolveTempDir(), "progressledger-cloud-"));
   try {
     const safeSlug = String(profile.slug || "profile").replace(/[^a-z0-9_-]+/gi, "-");
     const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

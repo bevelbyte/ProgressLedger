@@ -36,15 +36,15 @@ function localDate(date = new Date()) {
 async function launchApp(userDataDir) {
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
   // Onboarding bypass BEFORE any locator work — the overlay intercepts clicks.
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
   return { app, win };
 }
 
@@ -64,12 +64,12 @@ async function closeApp(app) {
 async function seedProfile(win, slugPrefix, subjectName = SUBJECT) {
   return win.evaluate(
     async ({ slugPrefix, subjectName, profile, track, semester, milestone }) => {
-      const p = await window.careerflow.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
+      const p = await window.progressLedger.profiles.add(profile, `${slugPrefix}-${Date.now()}`);
       const pid = p.id;
-      const trackId = await window.careerflow.academic.addTrack(pid, track);
-      const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-      const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
-      const subjectId = await window.careerflow.academic.addSubject(pid, msId, subjectName, null);
+      const trackId = await window.progressLedger.academic.addTrack(pid, track);
+      const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+      const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
+      const subjectId = await window.progressLedger.academic.addSubject(pid, msId, subjectName, null);
       return { pid, subjectId, subjectName, slug: p.slug };
     },
     { slugPrefix, subjectName, profile: PROFILE, track: TRACK, semester: SEMESTER, milestone: MILESTONE }
@@ -80,7 +80,7 @@ async function seedProfile(win, slugPrefix, subjectName = SUBJECT) {
 async function activateProfile(win, name = PROFILE) {
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
   await win.locator(".nav-item", { hasText: "Profiles" }).click();
   // aria-label="Select <name>" is exact, unlike a hasText filter (which would also
@@ -162,11 +162,11 @@ async function chooseSubject(win, index = 0) {
 }
 
 async function readSessions(win, pid) {
-  return win.evaluate(async (id) => window.careerflow.sessions.list(id, 500), pid);
+  return win.evaluate(async (id) => window.progressLedger.sessions.list(id, 500), pid);
 }
 
 async function readStats(win, pid) {
-  return win.evaluate(async (id) => window.careerflow.sessions.stats(id), pid);
+  return win.evaluate(async (id) => window.progressLedger.sessions.stats(id), pid);
 }
 
 /** Start a real 5-minute focus from the Dashboard and finish it through the UI. */
@@ -191,7 +191,7 @@ test.describe("Focus Session — lifecycle", () => {
     const launch = () =>
       electron.launch({
         args: [projectRoot, `--user-data-dir=${userDataDir}`],
-        env: { ...process.env, CAREERFLOW_E2E: "1" },
+        env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
       });
 
     let app;
@@ -200,10 +200,10 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+      await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
       await win.reload();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       const seed = await seedProfile(win, "foc-abandon");
       await activateProfile(win);
@@ -229,12 +229,12 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       const after = await win.evaluate(async (pid) => {
-        const profiles = await window.careerflow.profiles.list();
-        const list = await window.careerflow.sessions.list(pid, 500);
-        const stats = await window.careerflow.sessions.stats(pid);
+        const profiles = await window.progressLedger.profiles.list();
+        const list = await window.progressLedger.sessions.list(pid, 500);
+        const stats = await window.progressLedger.sessions.stats(pid);
         return { profileExists: profiles.some((p) => p.id === pid), list, stats };
       }, seed.pid);
 
@@ -256,7 +256,7 @@ test.describe("Focus Session — lifecycle", () => {
     const launch = () =>
       electron.launch({
         args: [projectRoot, `--user-data-dir=${userDataDir}`],
-        env: { ...process.env, CAREERFLOW_E2E: "1" },
+        env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
       });
 
     let app;
@@ -265,10 +265,10 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+      await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
       await win.reload();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       const seed = await seedProfile(win, "foc-persist");
       await activateProfile(win);
@@ -289,11 +289,11 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       const after = await win.evaluate(async (pid) => ({
-        list: await window.careerflow.sessions.list(pid, 500),
-        stats: await window.careerflow.sessions.stats(pid),
+        list: await window.progressLedger.sessions.list(pid, 500),
+        stats: await window.progressLedger.sessions.stats(pid),
       }), seed.pid);
 
       expect(after.list.length).toBe(1);
@@ -320,12 +320,12 @@ test.describe("Focus Session — lifecycle", () => {
       const a = await seedProfile(win, "foc-iso-a", "Data Structures");
       // Profile B owns its own subject.
       const b = await win.evaluate(async ({ profile, track, semester, milestone }) => {
-        const p = await window.careerflow.profiles.add(`${profile} B`, `foc-iso-b-${Date.now()}`);
+        const p = await window.progressLedger.profiles.add(`${profile} B`, `foc-iso-b-${Date.now()}`);
         const pid = p.id;
-        const trackId = await window.careerflow.academic.addTrack(pid, track);
-        const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-        const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
-        const subjectId = await window.careerflow.academic.addSubject(pid, msId, "Operating Systems", null);
+        const trackId = await window.progressLedger.academic.addTrack(pid, track);
+        const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+        const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
+        const subjectId = await window.progressLedger.academic.addSubject(pid, msId, "Operating Systems", null);
         return { pid, subjectId, name: `${profile} B` };
       }, { profile: PROFILE, track: TRACK, semester: SEMESTER, milestone: MILESTONE });
 
@@ -378,15 +378,15 @@ test.describe("Focus Session — lifecycle", () => {
       // Two subjects: one to delete first, one that survives.
       const primary = await seedProfile(win, "foc-deleted", "Data Structures");
       const survivor = await win.evaluate(async ({ pid, track, semester, milestone }) => {
-        const trackId = await window.careerflow.academic.addTrack(pid, track);
-        const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-        const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
-        const subjectId = await window.careerflow.academic.addSubject(pid, msId, "Graph Theory", null);
+        const trackId = await window.progressLedger.academic.addTrack(pid, track);
+        const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+        const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
+        const subjectId = await window.progressLedger.academic.addSubject(pid, msId, "Graph Theory", null);
         return { subjectId, name: "Graph Theory" };
       }, { pid: primary.pid, track: TRACK, semester: SEMESTER, milestone: MILESTONE });
 
       // ---- (a) Delete BEFORE starting ----
-      await win.evaluate(async ({ pid, id }) => window.careerflow.academic.deleteSubject(pid, id), { pid: primary.pid, id: primary.subjectId });
+      await win.evaluate(async ({ pid, id }) => window.progressLedger.academic.deleteSubject(pid, id), { pid: primary.pid, id: primary.subjectId });
 
       // The chooser can no longer see the deleted subject.
       await activateProfile(win);
@@ -413,7 +413,7 @@ test.describe("Focus Session — lifecycle", () => {
       expect(rowsA[0].durationMinutes).toBe(5);
 
       // ---- (b) Delete AFTER finishing ----
-      await win.evaluate(async ({ pid, id }) => window.careerflow.academic.deleteSubject(pid, id), { pid: primary.pid, id: survivor.subjectId });
+      await win.evaluate(async ({ pid, id }) => window.progressLedger.academic.deleteSubject(pid, id), { pid: primary.pid, id: survivor.subjectId });
 
       const rowsB = await readSessions(win, primary.pid);
       const statsB = await readStats(win, primary.pid);
@@ -435,17 +435,17 @@ test.describe("Focus Session — lifecycle", () => {
       const seed = await seedProfile(win, "foc-chooser-ids", "Data Structures");
       // Two more subjects so the picker is not trivially single-valued.
       const extra = await win.evaluate(async ({ pid, track, semester, milestone }) => {
-        const trackId = await window.careerflow.academic.addTrack(pid, track);
-        const semId = await window.careerflow.academic.addSemester(pid, trackId, semester);
-        const msId = await window.careerflow.academic.addMilestone(pid, semId, milestone);
+        const trackId = await window.progressLedger.academic.addTrack(pid, track);
+        const semId = await window.progressLedger.academic.addSemester(pid, trackId, semester);
+        const msId = await window.progressLedger.academic.addMilestone(pid, semId, milestone);
         return [
-          await window.careerflow.academic.addSubject(pid, msId, "Graph Theory", null),
-          await window.careerflow.academic.addSubject(pid, msId, "Compiler Design", null),
+          await window.progressLedger.academic.addSubject(pid, msId, "Graph Theory", null),
+          await window.progressLedger.academic.addSubject(pid, msId, "Compiler Design", null),
         ];
       }, { pid: seed.pid, track: TRACK, semester: SEMESTER, milestone: MILESTONE });
 
       const treeIds = await win.evaluate(async (pid) => {
-        const tree = await window.careerflow.academic.tree(pid);
+        const tree = await window.progressLedger.academic.tree(pid);
         const ids = [];
         for (const track of tree) {
           for (const sem of track.semesters || []) {
@@ -574,7 +574,7 @@ test.describe("Focus Session — lifecycle", () => {
     const launch = () =>
       electron.launch({
         args: [projectRoot, `--user-data-dir=${userDataDir}`],
-        env: { ...process.env, CAREERFLOW_E2E: "1" },
+        env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
       });
 
     const objective = "Restore-proof reading: Ch. 4 on deadlock";
@@ -584,10 +584,10 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+      await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
       await win.reload();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       // Point the backup vault at our temp folder (same file the shell reads).
       const wsDir = await app.evaluate(({ app: a }) => a.getPath("userData"));
@@ -600,7 +600,7 @@ test.describe("Focus Session — lifecycle", () => {
           automation: { enabled: false, intervalMinutes: 60, target: "local", retentionKeep: 5 },
         })
       );
-      const readback = await win.evaluate(() => window.careerflow.backups.get());
+      const readback = await win.evaluate(() => window.progressLedger.backups.get());
       if (!readback.backupDir) {
         throw new Error("backup settings not visible to shell; settingsPath=" + settingsPath);
       }
@@ -635,7 +635,7 @@ test.describe("Focus Session — lifecycle", () => {
       await win.waitForTimeout(600);
 
       const goneCheck = await win.evaluate(async (pid) => {
-        const profiles = await window.careerflow.profiles.list();
+        const profiles = await window.progressLedger.profiles.list();
         return profiles.some((p) => p.id === pid);
       }, seed.pid);
       expect(goneCheck, "the profile was deleted").toBe(false);
@@ -643,11 +643,11 @@ test.describe("Focus Session — lifecycle", () => {
       // ---- RESTORE from the vault through the UI ----
       // The vault list only renders when at least one profile exists.
       await win.evaluate(async () => {
-        await window.careerflow.profiles.add("Placeholder", `ph-${Date.now()}`);
+        await window.progressLedger.profiles.add("Placeholder", `ph-${Date.now()}`);
       });
       await win.reload();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       await win.locator(".nav-item", { hasText: "Settings" }).click();
       await win.locator(".restore-btn").first().click();
@@ -657,7 +657,7 @@ test.describe("Focus Session — lifecycle", () => {
       await win.waitForTimeout(900);
 
       const restored = await win.evaluate(async (profileName) => {
-        const profiles = await window.careerflow.profiles.list();
+        const profiles = await window.progressLedger.profiles.list();
         const mine = profiles.find((p) => p.name === profileName);
         return {
           found: !!mine,
@@ -675,15 +675,15 @@ test.describe("Focus Session — lifecycle", () => {
       app = await launch();
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 30000 });
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 30000 });
 
       const after = await win.evaluate(async ({ subjectName, objective, profileName }) => {
-        const profiles = await window.careerflow.profiles.list();
+        const profiles = await window.progressLedger.profiles.list();
         const me = profiles.find((p) => p.name === profileName);
         if (!me) return { found: false, profileNames: profiles.map((p) => p.name) };
-        const sessions = await window.careerflow.sessions.list(me.id, 500);
-        const stats = await window.careerflow.sessions.stats(me.id);
-        const tree = await window.careerflow.academic.tree(me.id);
+        const sessions = await window.progressLedger.sessions.list(me.id, 500);
+        const stats = await window.progressLedger.sessions.stats(me.id);
+        const tree = await window.progressLedger.academic.tree(me.id);
         const subjects = [];
         for (const t of tree) for (const s of t.semesters || []) for (const ms of s.milestones || []) {
           for (const subj of ms.subjects || []) subjects.push(subj.id);

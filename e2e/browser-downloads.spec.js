@@ -44,7 +44,7 @@ const ABSENT_DONUT_DIR = join(
 );
 
 /** Real bytes a download actually writes. Not a token, not a mock. */
-const DL_BODY = "CAREERFLOW-R3-DOWNLOAD-E2E\n".repeat(64);
+const DL_BODY = "PROGRESSLEDGER-R3-DOWNLOAD-E2E\n".repeat(64);
 
 /** Filenames a site could try, and what must NOT happen for each. */
 const HOSTILE_NAMES = [
@@ -261,12 +261,12 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-r3-dl-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -280,21 +280,21 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
   return { app, win, userDataDir };
 }
 
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("R3 Downloads", "r3-downloads");
+    const created = await window.progressLedger.profiles.add("R3 Downloads", "r3-downloads");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -302,10 +302,10 @@ async function seedAndSelectProfile(win) {
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
@@ -345,7 +345,7 @@ function snapshot(app) {
 
 /** The renderer's own view of downloads — the surface a user would see. */
 function rendererDownloads(win) {
-  return win.evaluate(() => window.careerflow.browser.downloads());
+  return win.evaluate(() => window.progressLedger.browser.downloads());
 }
 
 /** Run code inside the browser page's own webContents. */
@@ -556,7 +556,7 @@ test.describe("R3 downloads — real files land inside the managed directory, an
     expect(before.filename).toBe("cancel-me.bin");
 
     const cancelled = await win.evaluate(
-      (id) => window.careerflow.browser.cancelDownload(id),
+      (id) => window.progressLedger.browser.cancelDownload(id),
       before.id,
     );
     expect(cancelled.ok, "an active download can be cancelled").toBe(true);
@@ -630,7 +630,7 @@ test.describe("R3 downloads — real files land inside the managed directory, an
 
     for (const bogus of ["dl-99999", "dl-0", "../../etc/passwd", "", "javascript:alert(1)", null]) {
       const res = await win.evaluate(
-        (id) => window.careerflow.browser.cancelDownload(id),
+        (id) => window.progressLedger.browser.cancelDownload(id),
         bogus,
       );
       expect(res.ok, `${JSON.stringify(bogus)} must not be accepted`).toBe(false);
@@ -655,7 +655,7 @@ test.describe("R3 downloads — real files land inside the managed directory, an
       (d) => d.state === "progressing",
     );
 
-    expect((await win.evaluate((id) => window.careerflow.browser.cancelDownload(id), active.id)).ok).toBe(
+    expect((await win.evaluate((id) => window.progressLedger.browser.cancelDownload(id), active.id)).ok).toBe(
       true,
     );
     await untilDownloads(win, (list) => list.every((d) => d.state !== "progressing"));
@@ -663,7 +663,7 @@ test.describe("R3 downloads — real files land inside the managed directory, an
     // A second cancel of the SAME record is refused with a stated reason rather
     // than silently reporting success.
     const again = await win.evaluate(
-      (id) => window.careerflow.browser.cancelDownload(id),
+      (id) => window.progressLedger.browser.cancelDownload(id),
       active.id,
     );
     expect(again.ok, "a terminal record cannot be cancelled again").toBe(false);
@@ -677,9 +677,9 @@ test.describe("R3 downloads — real files land inside the managed directory, an
   test("the embedded browser still works with Donut completely absent", async () => {
     expect(existsSync(ABSENT_DONUT_DIR), "the Donut settings dir must not exist").toBe(false);
     const donut = await app.evaluate(() => ({
-      stub: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+      stub: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
       recorder: globalThis.__cfDonutE2E ?? null,
-      settingsDir: process.env.CAREERFLOW_DONUT_SETTINGS_DIR ?? null,
+      settingsDir: process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR ?? null,
     }));
     expect(donut.settingsDir).toBe(ABSENT_DONUT_DIR);
     expect(donut.stub, "the Donut E2E stub must not be in play").toBe(null);
@@ -702,11 +702,11 @@ test.describe("R3 downloads — real files land inside the managed directory, an
 /** Assert Donut is still absent at the END of a test, not merely at launch. */
 async function assertDonutAbsent(app) {
   const donut = await app.evaluate(() => ({
-    stub: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+    stub: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
     recorder: globalThis.__cfDonutE2E ?? null,
     settingsDirExists: process
       .getBuiltinModule("node:fs")
-      .existsSync(process.env.CAREERFLOW_DONUT_SETTINGS_DIR),
+      .existsSync(process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR),
   }));
   expect(donut.stub).toBe(null);
   expect(donut.recorder).toBe(null);

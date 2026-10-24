@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Original Progress Ledger v2 mark: an amber ledger plate with three
+       entry lines. Drawn for v2, not copied from CareerFlow or Progress Ledger. -->
+  <rect x="2" y="2" width="20" height="20" rx="5" fill="#e0a35c"/>
+  <rect x="6" y="7" width="12" height="2" rx="1" fill="#0e0e11"/>
+  <rect x="6" y="11" width="12" height="2" rx="1" fill="#0e0e11"/>
+  <rect x="6" y="15" width="7" height="2" rx="1" fill="#0e0e11"/>
+</svg>

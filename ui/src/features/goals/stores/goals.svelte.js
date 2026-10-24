@@ -87,13 +87,13 @@ export const goalsStore = {
       try { _unsubscribeEngine(); } catch (_e) {}
       _unsubscribeEngine = null;
     }
-    const svc = window.careerflow && window.careerflow.goals;
+    const svc = window.progressLedger && window.progressLedger.goals;
     if (!svc || typeof svc.onEvent !== "function") return;
     _unsubscribeEngine = svc.onEvent((evt) => {
       state.lastEvent = { ...evt, receivedAt: Date.now() };
       const activeId = state.activeGoalId;
       if (activeId != null && evt && evt.goalId === activeId) {
-        const svc2 = window.careerflow && window.careerflow.goals;
+        const svc2 = window.progressLedger && window.progressLedger.goals;
         if (svc2 && typeof svc2.get === "function") {
           const profileId = state.goals.find((g) => g.id === activeId)?.profileId;
           if (profileId != null) {
@@ -160,7 +160,7 @@ export const goalsStore = {
     if (state.agentInflight[id]) return state.agentInflight[id];
     const promise = (async () => {
       try {
-        const pm = window.careerflow && window.careerflow.projectMode;
+        const pm = window.progressLedger && window.progressLedger.projectMode;
         if (!pm || typeof pm.getAgent !== "function") return;
         const profileId = goal.profileId;
         if (typeof profileId !== "number") return;
@@ -323,13 +323,13 @@ export function subscribeEngineEvents() {
     try { _moduleUnsubscribe(); } catch (_e) {}
     _moduleUnsubscribe = null;
   }
-  const svc = window.careerflow && window.careerflow.goals;
+  const svc = window.progressLedger && window.progressLedger.goals;
   if (!svc || typeof svc.onEvent !== "function") return;
   _moduleUnsubscribe = svc.onEvent((evt) => {
     state.lastEvent = { ...evt, receivedAt: Date.now() };
     const activeId = state.activeGoalId;
     if (activeId != null && evt && evt.goalId === activeId) {
-      const svc2 = window.careerflow && window.careerflow.goals;
+      const svc2 = window.progressLedger && window.progressLedger.goals;
       if (svc2 && typeof svc2.get === "function") {
         const profileId = state.goals.find((g) => g.id === activeId)?.profileId;
         if (profileId != null) {

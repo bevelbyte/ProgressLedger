@@ -26,7 +26,7 @@ export async function buildDiagnosticsReport(core, { includeNetwork = false } = 
   const settings = await readBackupSettings();
   const dbPath = resolveDbPath();
   const uiPath = join(app.getAppPath(), "ui", "dist", "index.html");
-  const nativePath = join(app.getAppPath(), "core", "careerflow_core.win32-x64-msvc.node");
+  const nativePath = join(app.getAppPath(), "core", "progress_ledger_core.win32-x64-msvc.node");
   const profiles = (() => {
     try {
       return core.getProfiles();
@@ -49,7 +49,7 @@ export async function buildDiagnosticsReport(core, { includeNetwork = false } = 
   }
 
   const checks = [
-    makeCheck("core", "Native Rust core responds", core.ping?.() === "CareerFlow core online"),
+    makeCheck("core", "Native Rust core responds", core.ping?.() === "Progress Ledger core online"),
     makeCheck("db", "SQLite database exists", (await pathStatus(dbPath)).exists, dbPath),
     makeCheck(
       "ui-dist",

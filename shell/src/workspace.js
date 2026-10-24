@@ -51,10 +51,10 @@ function isValidWorkspace(dirPath) {
 }
 
 /**
- * Internal function to lock the workspace using a .careerflow.lock file
+ * Internal function to lock the workspace using a .progressLedger.lock file
  */
 function lockWorkspace(dirPath) {
-  const lockPath = join(dirPath, ".careerflow.lock");
+  const lockPath = join(dirPath, ".progressLedger.lock");
   if (existsSync(lockPath)) {
     try {
       const pid = parseInt(readFileSync(lockPath, "utf8"), 10);
@@ -89,7 +89,7 @@ function setActiveWorkspace(dirPath) {
 
 function unlockWorkspace() {
   if (activeWorkspace) {
-    const lockPath = join(activeWorkspace, ".careerflow.lock");
+    const lockPath = join(activeWorkspace, ".progressLedger.lock");
     if (existsSync(lockPath)) {
       try {
         unlinkSync(lockPath);
@@ -152,7 +152,7 @@ function ensureWorkspaceStructure() {
  */
 function resolveDbPath() {
   if (!activeWorkspace) throw new Error("No active workspace set");
-  return join(activeWorkspace, "careerflow.db");
+  return join(activeWorkspace, "progress-ledger-v2.db");
 }
 
 /**
@@ -160,7 +160,7 @@ function resolveDbPath() {
  */
 function resolveLogPath() {
   if (!activeWorkspace) throw new Error("No active workspace set");
-  return join(activeWorkspace, "Logs", "careerflow.log");
+  return join(activeWorkspace, "Logs", "progress-ledger-v2.log");
 }
 
 /**
@@ -174,7 +174,7 @@ function resolveAttachmentsDir() {
 /**
  * Returns the MANAGED DOWNLOADS directory for the active workspace.
  *
- * Approved decision D: the CareerFlow-owned browser writes downloads to
+ * Approved decision D: the Progress Ledger-owned browser writes downloads to
  * `<workspace>/downloads` and nowhere else. It is per-workspace on purpose -
  * switching workspace switches the download set the same way it switches the
  * database - and it is a directory, not a schema change.
@@ -197,24 +197,7 @@ function resolveBackupSettingsPath() {
   return join(activeWorkspace, "backup-settings.json");
 }
 
-/**
- * Returns the path to the CareerFlow↔Donut profile mapping file for the
- * active workspace. Machine-local by design and NOT part of backup bundles.
- */
-function resolveDonutMappingPath() {
-  if (!activeWorkspace) throw new Error("No active workspace set");
-  return join(activeWorkspace, "donut-mapping.json");
-}
 
-/**
- * Returns the path to the browser-profile binding store (managed browser
- * profile local id -> machine-local Donut profile UUID). Same isolation rules
- * as donut-mapping.json: machine-local, never exported.
- */
-function resolveDonutBindingsPath() {
-  if (!activeWorkspace) throw new Error("No active workspace set");
-  return join(activeWorkspace, "donut-bindings.json");
-}
 
 function resolveTempDir() {
   if (!activeWorkspace) throw new Error("No active workspace set");
@@ -225,7 +208,7 @@ function resolveTempDir() {
  * Returns the path to the sidecar SQLite store used by the file-
  * reservations service. This file is NOT part of the main pm_* schema:
  * it is a small dedicated DB so the reservation lifecycle never touches
- * the canonical CareerFlow DB and so it can be wiped independently.
+ * the canonical Progress Ledger DB and so it can be wiped independently.
  */
 function resolveReservationsDbPath() {
   if (!activeWorkspace) throw new Error("No active workspace set");
@@ -261,8 +244,6 @@ export {
   resolveAttachmentsDir,
   resolveDownloadsDir,
   resolveBackupSettingsPath,
-  resolveDonutMappingPath,
-  resolveDonutBindingsPath,
   resolveTempDir,
   resolveReservationsDbPath,
   resolveMarketplaceDir,

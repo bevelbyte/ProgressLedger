@@ -4,30 +4,30 @@
 
 export const backupService = {
   async get() {
-    return await window.careerflow.backups.get();
+    return await window.progressLedger.backups.get();
   },
 
   async chooseFolder() {
-    return await window.careerflow.backups.chooseFolder();
+    return await window.progressLedger.backups.chooseFolder();
   },
 
   async clearFolder() {
-    return await window.careerflow.backups.clearFolder();
+    return await window.progressLedger.backups.clearFolder();
   },
 
   async run(profileId, slug) {
-    return await window.careerflow.backups.run(profileId, slug);
+    return await window.progressLedger.backups.run(profileId, slug);
   },
 
   async inspect(path) {
-    return await window.careerflow.backups.inspect(path);
+    return await window.progressLedger.backups.inspect(path);
   },
 
   async restore(path) {
-    return await window.careerflow.backups.restore(path);
+    return await window.progressLedger.backups.restore(path);
   },
 
   async openFolder() {
-    return await window.careerflow.backups.openFolder();
+    return await window.progressLedger.backups.openFolder();
   }
 };

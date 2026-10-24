@@ -165,7 +165,7 @@ test("SF-1: a nested subdirectory of a broad location is still a legitimate proj
   if (!home) return;
   // A user may legitimately keep a project inside their home directory. That
   // must NOT require a confirmation prompt — only the profile root itself does.
-  const nested = join(home, ".careerflow-sf1-probe");
+  const nested = join(home, ".progressledger-sf1-probe");
   mkdirSync(nested, { recursive: true });
   try {
     const res = await authorizeProjectRoot(nested, {

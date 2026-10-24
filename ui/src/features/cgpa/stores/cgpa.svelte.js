@@ -53,7 +53,7 @@ export async function loadCgpa(profileId) {
     return;
   }
   await migrateLegacyIfNeeded(profileId);
-  cgpaStore.degrees = await buildDegreesFromDb(window.careerflow, profileId);
+  cgpaStore.degrees = await buildDegreesFromDb(window.progressLedger, profileId);
   cgpaStore.activeDegreeId = cgpaStore.degrees.length > 0 ? cgpaStore.degrees[0].id : "";
   await refreshSummary(profileId);
 }
@@ -76,7 +76,7 @@ export async function persist(profileId) {
   if (!profileId) return false;
   cgpaStore.saving = true;
   try {
-    await persistDegreesToDb(window.careerflow, profileId, cgpaStore.degrees);
+    await persistDegreesToDb(window.progressLedger, profileId, cgpaStore.degrees);
     await refreshSummary(profileId);
     window.dispatchEvent(new Event("cf:data-changed"));
     return true;
@@ -94,10 +94,10 @@ export async function persist(profileId) {
  * deleted. This is the ONLY sanctioned localStorage read in the feature.
  */
 export async function migrateLegacyIfNeeded(profileId) {
-  const flagKey = `careerflow_cgpa_migrated_${profileId}`;
+  const flagKey = `progressledger_v2_cgpa_migrated_${profileId}`;
   if (localStorage.getItem(flagKey) === "1") return;
 
-  const legacyKey = `careerflow_degree_data_${profileId}`;
+  const legacyKey = `progressledger_v2_degree_data_${profileId}`;
   const raw = localStorage.getItem(legacyKey);
   if (!raw) {
     localStorage.setItem(flagKey, "1");
@@ -115,7 +115,7 @@ export async function migrateLegacyIfNeeded(profileId) {
           semestersCount: d.semestersCount || d.semesters.length,
         }));
       if (normalized.length > 0) {
-        await persistDegreesToDb(window.careerflow, profileId, normalized);
+        await persistDegreesToDb(window.progressLedger, profileId, normalized);
       }
     }
     localStorage.setItem(`${legacyKey}.migrated`, raw);

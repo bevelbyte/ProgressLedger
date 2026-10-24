@@ -32,9 +32,7 @@
 // lines, or thrown exceptions. Tests pin this.
 //
 // The credential value is read FRESH on every call. We do NOT cache the
-// key inside the provider — that mirrors the existing CDP adapter
-// pattern (`readRuntimeCredential` is called per-method) and means a
-// rotated key is picked up without restart.
+// key inside the provider, so a rotated key is picked up without restart.
 
 import { Audit } from "../audit/index.js";
 // ---------------------------------------------------------------------------
@@ -496,7 +494,7 @@ if (status >= 500 && status < 600) {
 
 // Other 4xx: terminal — with ONE bounded exception. Phase 12/13 live
 // evidence: b.ai intermittently returns HTTP 400 with an EMPTY body for
-// provably well-formed requests (captured via CAREERFLOW_DEBUG_HTTP_DIR;
+// provably well-formed requests (captured via PROGRESSLEDGER_V2_DEBUG_HTTP_DIR;
 // identical shapes succeed on retry), i.e. load-dependent transients.
 // A genuine malformed-request 400 carries a JSON error body, so the
 // empty-body 400 is the discriminator. Retry the identical request ONCE

@@ -167,7 +167,7 @@ test("gate21 fixture: gate21Sequence has the 9 rounds the loop needs", () => {
 // ---------------------------------------------------------------------------
 
 test("GATE 21: multi-agent acceptance (inspect 2 files + dispatch sub-agent + implement + fail->fix->verify)", { timeout: 20_000 }, async () => {
-  const userDataDir = mkdtempSync(join(tmpdir(), "careerflow-gate21-"));
+  const userDataDir = mkdtempSync(join(tmpdir(), "progressledger-gate21-"));
   try {
     const testRunCalls = { v: 0 };
     const delegateCalls = { v: 0 };

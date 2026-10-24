@@ -53,7 +53,7 @@
     if (typeof profileId !== "number") return;
     if (recoveryResult != null) return; // one-shot
     recoveryLoading = true;
-    const svc = window.careerflow && window.careerflow.goals;
+    const svc = window.progressLedger && window.progressLedger.goals;
     if (!svc || typeof svc.recoverySweep !== "function") {
       recoveryLoading = false;
       return;
@@ -73,7 +73,7 @@
     // duplicate agent.
     if (!row || typeof row.agent_id !== "number") return;
     const agentId = row.agent_id;
-    const svc = window.careerflow && window.careerflow.goals;
+    const svc = window.progressLedger && window.progressLedger.goals;
     if (!svc || typeof svc.resume !== "function") {
       window.dispatchEvent(new CustomEvent("cf:open-agent", { detail: { agentId } }));
       return;

@@ -19,7 +19,7 @@
    * on the surface that owns the count.
    *
    * NOT TRANSFERRED: the Lab's UNFILED signal. It counted items captured into an
-   * Inbox surface that CareerFlow does not have. Rendering it would be a
+   * Inbox surface that Progress Ledger does not have. Rendering it would be a
    * decorative copy — a number with nothing behind it — so the row is omitted
    * until there is a real capture store to count.
    *

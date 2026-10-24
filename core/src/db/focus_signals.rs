@@ -104,12 +104,12 @@ pub fn get_focus_signals(profile_id: i32) -> Result<FocusSignals> {
     with_db(|conn| {
         // E2E runs pin Chromium/JS to UTC so date fixtures are deterministic.
         // Keep production semantics on the user's local calendar.
-        let today_expr = if std::env::var_os("CAREERFLOW_E2E").is_some() {
+        let today_expr = if std::env::var_os("PROGRESSLEDGER_V2_E2E").is_some() {
             "date('now')"
         } else {
             "date('now','localtime')"
         };
-        let today_lookback_expr = if std::env::var_os("CAREERFLOW_E2E").is_some() {
+        let today_lookback_expr = if std::env::var_os("PROGRESSLEDGER_V2_E2E").is_some() {
             "date('now',?2)"
         } else {
             "date('now','localtime',?2)"
@@ -279,7 +279,7 @@ pub fn get_focus_signals(profile_id: i32) -> Result<FocusSignals> {
             .query_row(
                 &format!(
                     "SELECT {}",
-                    if std::env::var_os("CAREERFLOW_E2E").is_some() {
+                    if std::env::var_os("PROGRESSLEDGER_V2_E2E").is_some() {
                         "datetime('now')"
                     } else {
                         "datetime('now','localtime')"

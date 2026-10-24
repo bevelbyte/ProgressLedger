@@ -100,7 +100,7 @@ test("every named denial in the design table stays denied, even for the focused 
 
 test("an UNKNOWN permission is denied — including one a page invented", () => {
   for (const invented of [
-    "careerflow-super-power",
+    "progressledger-super-power",
     "elevate",
     "filesystem",
     "background-sync",

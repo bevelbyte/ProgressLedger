@@ -3,7 +3,7 @@
 // The model is pure on purpose: every transition takes state and returns new
 // state, so the whole workspace can be exercised here in plain Node with no
 // rendered component. Each block below also pins one of the Lab's recorded
-// weaknesses (`CareerFlow-Frontend-Lab/LAB-CRITIQUE.md`) so a future wave cannot
+// weaknesses (`Progress Ledger-Frontend-Lab/LAB-CRITIQUE.md`) so a future wave cannot
 // quietly reintroduce it.
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -159,7 +159,6 @@ describe("context seeds", () => {
     expect(CONTEXT_OWNER.goals).toBe("Study"); // plane `plan`, not Operator
     expect(CONTEXT_OWNER.career).toBe("Study"); // plane `plan`, not Operator
     expect(CONTEXT_OWNER.project).toBe("Operator");
-    expect(CONTEXT_OWNER.browser).toBe("Operator");
     // The embedded browser's page surface is OWNED but not SEEDED: it is a
     // destination belonging to the machine plane, and a bare "Page" tab at boot
     // would be a lie about what is open (see contexts.js).

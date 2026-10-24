@@ -8,19 +8,19 @@ const projectRoot = join(__dirname, "..");
 test("creates a profile, configures a degree, adds a subject, and verifies sync to Subjects Hub", async () => {
   const app = await electron.launch({
     args: [projectRoot],
-    env: { ...process.env, CAREERFLOW_E2E: "1" }, // load static ui/dist, skip vite
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" }, // load static ui/dist, skip vite
   });
 
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
 
   // Bypass onboarding for E2E testing to prevent overlay intercepting clicks
-  await win.evaluate(() => localStorage.setItem('careerflow_onboarding_complete', 'true'));
+  await win.evaluate(() => localStorage.setItem('progressledger_v2_onboarding_complete', 'true'));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
 
   // Rust core should be online.
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   // --- Create a profile ---
   const name = `E2E Student ${Date.now()}`;

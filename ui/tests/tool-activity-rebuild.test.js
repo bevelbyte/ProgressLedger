@@ -77,7 +77,7 @@ function unreadableToolRow(role = "tool_call") {
 }
 
 function installIpc({ messages = [], pendingApprovals = [] } = {}) {
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       getAgent: vi.fn(async () => ({
         id: 1, projectId: 1, objective: "x", state: "running",
@@ -114,7 +114,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
   resetStore();
   vi.restoreAllMocks();
 });

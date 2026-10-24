@@ -14,7 +14,7 @@ const projectRoot = join(__dirname, "..");
 test("electron main process boots and the Rust core responds", async () => {
   const app = await electron.launch({
     args: [projectRoot],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
 
   // Surface a main-process crash as a clear failure instead of a hang.
@@ -28,7 +28,7 @@ test("electron main process boots and the Rust core responds", async () => {
 
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible({ timeout: 15000 });
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible({ timeout: 15000 });
 
   expect(mainProcessError, `main process reported a load error:\n${mainProcessError}`).toBeNull();
 

@@ -46,9 +46,9 @@ const MOCK_PLUGINS = [
   { id: "browser-use", name: "Browser Use", version: "0.4.1", enabled: false },
 ];
 
-/** Set up the window.careerflow mock namespace for one test. */
-function mockCareerFlow({ messages, memory, skills, tools, plugins } = {}) {
-  window.careerflow = {
+/** Set up the window.progressLedger mock namespace for one test. */
+function mockProgressLedger({ messages, memory, skills, tools, plugins } = {}) {
+  window.progressLedger = {
     projectMode: {
       listMessages: vi.fn().mockResolvedValue(messages ?? MOCK_MESSAGES),
     },
@@ -67,7 +67,7 @@ function mockCareerFlow({ messages, memory, skills, tools, plugins } = {}) {
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
   projectModeStore.activeProjectId = null;
   projectModeStore.activeAgentId = null;
   projectModeStore.activeProject = null;
@@ -89,7 +89,7 @@ function keydown(key, extra = {}) {
 
 describe("SearchModal", () => {
   beforeEach(() => {
-    mockCareerFlow();
+    mockProgressLedger();
   });
 
   it("renders empty state when visible with no query", async () => {
@@ -102,7 +102,7 @@ describe("SearchModal", () => {
 
   it("shows loading state while data is being fetched", async () => {
     // Make fetch slow so we can observe the loading state.
-    window.careerflow.projectMode.listMessages.mockImplementation(
+    window.progressLedger.projectMode.listMessages.mockImplementation(
       () => new Promise((resolve) => setTimeout(() => resolve(MOCK_MESSAGES), 200))
     );
     render(SearchModal, { props: { visible: true, profileId: 1, agentId: 1, projectId: 7 } });
@@ -137,13 +137,13 @@ describe("SearchModal", () => {
     // the main process normalised it to 0 and answered `invalid-input`, and
     // the memory group was therefore permanently empty in the product while
     // still being advertised in the modal's own aria-label/placeholder.
-    mockCareerFlow();
+    mockProgressLedger();
     render(SearchModal, { props: { visible: true, profileId: 1, agentId: 1, projectId: 7 } });
     await waitFor(() => expect(screen.queryByTestId("search-loading")).toBeNull(), { timeout: 500 });
 
     // The project id must be passed POSITIONALLY as the 2nd argument, with the
     // options object third — matching `memory.list(profileId, projectId, opts)`.
-    const calls = window.careerflow.memory.list.mock.calls;
+    const calls = window.progressLedger.memory.list.mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
       expect(call[0]).toBe(1);
@@ -156,11 +156,11 @@ describe("SearchModal", () => {
     // Memory is project-scoped by design (the handler requires projectId and
     // proves project ownership), so with no active project the honest answer
     // is an empty memory group — not a malformed call that silently fails.
-    mockCareerFlow();
+    mockProgressLedger();
     render(SearchModal, { props: { visible: true, profileId: 1, agentId: 1, projectId: null } });
     await waitFor(() => expect(screen.queryByTestId("search-loading")).toBeNull(), { timeout: 500 });
 
-    expect(window.careerflow.memory.list).not.toHaveBeenCalled();
+    expect(window.progressLedger.memory.list).not.toHaveBeenCalled();
 
     typeInto(screen.getByTestId("search-input"), "OAuth2");
     await waitFor(() => {
@@ -172,11 +172,11 @@ describe("SearchModal", () => {
     // Same class of defect: `extensions.listPlugins()` was called with no
     // argument, and `plugins:list` is ownership-gated in the main process, so
     // the plugin group was permanently empty.
-    mockCareerFlow();
+    mockProgressLedger();
     render(SearchModal, { props: { visible: true, profileId: 1, agentId: 1, projectId: 7 } });
     await waitFor(() => expect(screen.queryByTestId("search-loading")).toBeNull(), { timeout: 500 });
 
-    const calls = window.careerflow.extensions.listPlugins.mock.calls;
+    const calls = window.progressLedger.extensions.listPlugins.mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) expect(call[0]).toBe(1);
   });
@@ -262,7 +262,7 @@ describe("SearchModal", () => {
 
 describe("ProjectModePanel Cmd+K integration", () => {
   beforeEach(() => {
-    mockCareerFlow();
+    mockProgressLedger();
   });
 
   it("opens the search modal when Cmd+K is pressed", async () => {

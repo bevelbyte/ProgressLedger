@@ -1,5 +1,5 @@
 /**
- * Comprehensive Safety Test Suite for CareerFlow Version Manager
+ * Comprehensive Safety Test Suite for Progress Ledger Version Manager
  * Validates all safety guarantees, edge cases, failure recoveries, and verification checks
  * in an isolated disposable temporary directory.
  */
@@ -37,7 +37,7 @@ function setupMockWorkspace(root) {
   // native core binary
   const coreDir = path.join(root, 'core');
   fs.mkdirSync(toExtendedPath(coreDir), { recursive: true });
-  fs.writeFileSync(toExtendedPath(path.join(coreDir, 'careerflow_core.win32-x64-msvc.node')), 'CORE_BINARY_MOCK_BYTES');
+  fs.writeFileSync(toExtendedPath(path.join(coreDir, 'progress_ledger_core.win32-x64-msvc.node')), 'CORE_BINARY_MOCK_BYTES');
 
   // ui dist
   const uiDistDir = path.join(root, 'ui', 'dist');
@@ -62,7 +62,7 @@ function setupMockWorkspace(root) {
 
 async function runAllSafetyTests() {
   console.log(`============================================================`);
-  console.log(`CAREERFLOW VERSION MANAGER -- ISOLATED SAFETY TEST SUITE`);
+  console.log(`PROGRESSLEDGER VERSION MANAGER -- ISOLATED SAFETY TEST SUITE`);
   console.log(`Test Directory: ${TEST_ROOT}`);
   console.log(`============================================================\n`);
 
@@ -123,17 +123,17 @@ async function runAllSafetyTests() {
 
     // 3b. Companion Launcher Policy Tests
     // Test Valid Companion Launcher for v1
-    const v1Launcher = path.join(TEST_ROOT, 'versions', 'v1', 'Launch-CareerFlow-V1.bat');
+    const v1Launcher = path.join(TEST_ROOT, 'versions', 'v1', 'Launch-Progress Ledger-V1.bat');
     fs.writeFileSync(toExtendedPath(v1Launcher), '@echo off\r\necho Launching v1');
     const verifyV1WithLauncher = await verifyVersion('v1', { cwd: TEST_ROOT });
-    record('Valid companion launcher accepted for v1 (Launch-CareerFlow-V1.bat)', verifyV1WithLauncher.status === 'VERIFIED' && verifyV1WithLauncher.extra === 0);
+    record('Valid companion launcher accepted for v1 (Launch-Progress Ledger-V1.bat)', verifyV1WithLauncher.status === 'VERIFIED' && verifyV1WithLauncher.extra === 0);
 
     // Test Valid Companion Launcher for v2
     await freezeVersion({ cwd: TEST_ROOT, tag: 'v2', description: 'V2 Freeze' });
-    const v2Launcher = path.join(TEST_ROOT, 'versions', 'v2', 'Launch-CareerFlow-V2.bat');
+    const v2Launcher = path.join(TEST_ROOT, 'versions', 'v2', 'Launch-Progress Ledger-V2.bat');
     fs.writeFileSync(toExtendedPath(v2Launcher), '@echo off\r\necho Launching v2');
     const verifyV2WithLauncher = await verifyVersion('v2', { cwd: TEST_ROOT });
-    record('Valid companion launcher accepted for v2 (Launch-CareerFlow-V2.bat)', verifyV2WithLauncher.status === 'VERIFIED' && verifyV2WithLauncher.extra === 0);
+    record('Valid companion launcher accepted for v2 (Launch-Progress Ledger-V2.bat)', verifyV2WithLauncher.status === 'VERIFIED' && verifyV2WithLauncher.extra === 0);
 
     // Test Rejection of Arbitrary Launcher in v1
     const v1Arbitrary = path.join(TEST_ROOT, 'versions', 'v1', 'Launch-Arbitrary.bat');
@@ -143,21 +143,21 @@ async function runAllSafetyTests() {
     fs.unlinkSync(toExtendedPath(v1Arbitrary));
 
     // Test Rejection of Mismatched Version Launcher (v2 launcher placed in v1)
-    const v1Mismatched = path.join(TEST_ROOT, 'versions', 'v1', 'Launch-CareerFlow-V2.bat');
+    const v1Mismatched = path.join(TEST_ROOT, 'versions', 'v1', 'Launch-Progress Ledger-V2.bat');
     fs.writeFileSync(toExtendedPath(v1Mismatched), '@echo off\r\necho Mismatched');
     const verifyV1Mismatched = await verifyVersion('v1', { cwd: TEST_ROOT });
     record('Mismatched companion launcher rejected (V2 launcher in v1)', verifyV1Mismatched.status === 'CORRUPTED' && verifyV1Mismatched.extra === 1);
     fs.unlinkSync(toExtendedPath(v1Mismatched));
 
     // Test Rejection of Launcher in Nested Directory
-    const v1Nested = path.join(TEST_ROOT, 'versions', 'v1', 'ui', 'Launch-CareerFlow-V1.bat');
+    const v1Nested = path.join(TEST_ROOT, 'versions', 'v1', 'ui', 'Launch-Progress Ledger-V1.bat');
     fs.writeFileSync(toExtendedPath(v1Nested), '@echo off\r\necho Nested');
     const verifyV1Nested = await verifyVersion('v1', { cwd: TEST_ROOT });
     record('Companion launcher in subdirectory rejected', verifyV1Nested.status === 'CORRUPTED' && verifyV1Nested.extra === 1);
     fs.unlinkSync(toExtendedPath(v1Nested));
 
     // Test Rejection of Companion Launcher in Unwhitelisted Version Tag
-    const vDetectLauncher = path.join(TEST_ROOT, 'versions', 'v-detect', 'Launch-CareerFlow-V1.bat');
+    const vDetectLauncher = path.join(TEST_ROOT, 'versions', 'v-detect', 'Launch-Progress Ledger-V1.bat');
     fs.writeFileSync(toExtendedPath(vDetectLauncher), '@echo off\r\necho In v-detect');
     const verifyVDetectLauncher = await verifyVersion('v-detect', { cwd: TEST_ROOT });
     record('Companion launcher rejected in unwhitelisted version tag', verifyVDetectLauncher.status === 'CORRUPTED' && verifyVDetectLauncher.extra === 1);
@@ -189,7 +189,7 @@ async function runAllSafetyTests() {
 
     // 4b. Explicit integrity coverage for ignored bulky directories
     record('node_modules is explicitly outside manifest integrity coverage', isSnapshotUnverifiedPath('node_modules/pkg/index.js'));
-    record('nested release output is explicitly outside manifest integrity coverage', isSnapshotUnverifiedPath('release/win-unpacked/CareerFlow.exe'));
+    record('nested release output is explicitly outside manifest integrity coverage', isSnapshotUnverifiedPath('release/win-unpacked/Progress Ledger.exe'));
     record('normal application source remains integrity-covered', !isSnapshotUnverifiedPath('shell/src/main.js'));
 
     const excludedProbe = path.join(TEST_ROOT, 'versions', 'v-detect', 'node_modules', 'ignored-package', 'ignored.js');

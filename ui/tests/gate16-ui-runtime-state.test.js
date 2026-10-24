@@ -259,7 +259,7 @@ function setupRuntimeIpc() {
   const denyCall              = vi.fn().mockResolvedValue({ ok: true, deleted: true });
   const memoryList            = vi.fn().mockResolvedValue({ ok: true, result: RUNTIME_MEMORY_ENTRIES });
 
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listMessagesPaginated,
       listRecentAgentRuns,
@@ -304,7 +304,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -511,7 +511,7 @@ describe("GATE 16.5 — ApprovalQueue reflects real pending approvals", () => {
     pushApprovalRequest({
       id: "apr-001",
       toolName: "exec_run",
-      input: { command: "npx vitest run", cwd: "/workspace/careerflow" },
+      input: { command: "npx vitest run", cwd: "/workspace/progressledger" },
       permission: "EXECUTE",
       requestedAt: NOW,
     });
@@ -771,10 +771,10 @@ describe("GATE 16.8 — All runtime-state panels coexist without interference", 
     expect(listExecutions).toHaveBeenCalledWith({});
 
     // Memory and approval panels got their own channels
-    const memoryList = window.careerflow.memory.list;
+    const memoryList = window.progressLedger.memory.list;
     expect(memoryList).toHaveBeenCalled();
 
-    const { approveCall, denyCall } = window.careerflow.projectMode;
+    const { approveCall, denyCall } = window.progressLedger.projectMode;
     expect(approveCall).toHaveBeenCalledTimes(0); // not triggered yet
     expect(denyCall).toHaveBeenCalledTimes(0);
   });

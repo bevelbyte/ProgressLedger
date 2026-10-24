@@ -7,7 +7,7 @@
 //   - renders "no limit" when cap is 0 (budget module contract)
 //   - polls every 5 seconds (fake timers advance the interval)
 //
-// The IPC namespace is mocked on window.careerflow.projectMode, mirroring
+// The IPC namespace is mocked on window.progressLedger.projectMode, mirroring
 // the shape shipped by shell/src/preload.cjs + shell/src/ipc/project-mode.js.
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/svelte";
@@ -25,7 +25,7 @@ function setupIpc({
   const getBudget = getBudgetImpl
     ? getBudgetImpl
     : vi.fn().mockResolvedValue({ ok: true, ...budget });
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: { getBudget },
   };
   return { getBudget, error };
@@ -39,7 +39,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ describe("TokenBudgetPanel — no-limit mode", () => {
 describe("TokenBudgetPanel — polling", () => {
   it("calls getBudget again after 5 seconds (the polling interval)", async () => {
     const getBudget = vi.fn().mockResolvedValue({ ok: true, current: 10_000, cap: 200_000, usedPct: 5, lastUpdated: NOW });
-    window.careerflow = { projectMode: { getBudget } };
+    window.progressLedger = { projectMode: { getBudget } };
 
     render(TokenBudgetPanel, { props: { profileId: 1, agentId: 42 } });
     await vi.advanceTimersByTimeAsync(0);
@@ -175,7 +175,7 @@ describe("TokenBudgetPanel — polling", () => {
   it("updates the displayed numbers when a polled refresh returns new data", async () => {
     let next = { ok: true, current: 10_000, cap: 200_000, usedPct: 5, lastUpdated: NOW };
     const getBudget = vi.fn(() => Promise.resolve({ ...next }));
-    window.careerflow = { projectMode: { getBudget } };
+    window.progressLedger = { projectMode: { getBudget } };
 
     render(TokenBudgetPanel, { props: { profileId: 1, agentId: 42 } });
     await vi.advanceTimersByTimeAsync(0);

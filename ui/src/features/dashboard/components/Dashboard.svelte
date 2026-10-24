@@ -54,7 +54,7 @@
   // ISO/UTC strings, while the rest of the application remains user-local.
   // Keep only this pure prioritization input deterministic; persistence and
   // native session timestamps continue using the actual local calendar.
-  const todayStr = window.careerflow?.runtime?.isE2E
+  const todayStr = window.progressLedger?.runtime?.isE2E
     ? new Date().toISOString().slice(0, 10)
     : localDayString();
   // The day's dated work, as one ordered run: overdue → today → next 7 days.
@@ -95,7 +95,7 @@
     dashboardService.getMistakeStats(pid),
     dashboardService.getDeadlines(pid),
     dashboardService.getReviewStats(pid),
-    window.careerflow.cards.due(pid),
+    window.progressLedger.cards.due(pid),
     dashboardService.getSessionStats(pid),
     loadCareerNext(pid),
     loadSessions(pid),
@@ -139,10 +139,10 @@
       }));
       const nativeDueCards = dueCards.map((c) => ({
           subjectId: c.subjectId,
-          dueDate: window.careerflow?.runtime?.isE2E ? todayStr : c.dueDate,
+          dueDate: window.progressLedger?.runtime?.isE2E ? todayStr : c.dueDate,
       }));
       const cards = nativeDueCards.length > 0 ? nativeDueCards : signalCards;
-      const newestDueDate = window.careerflow?.runtime?.isE2E
+      const newestDueDate = window.progressLedger?.runtime?.isE2E
         ? todayStr
         : cards.reduce(
           (latest, card) => card.dueDate > latest ? card.dueDate : latest,
@@ -251,7 +251,7 @@
   async function loadSessions(pid) {
     if (pid == null) return [];
     try {
-      return await window.careerflow.sessions.list(pid, 200);
+      return await window.progressLedger.sessions.list(pid, 200);
     } catch (e) {
       console.error("Failed to load sessions for weekly plan:", e);
       return [];
@@ -302,7 +302,7 @@
   <header class="home-header">
     <div>
       <p class="eyebrow">Workspace</p>
-      <h1>{activeProfile?.name ?? "CareerFlow"}</h1>
+      <h1>{activeProfile?.name ?? "Progress Ledger"}</h1>
       <p class="lede">
         {#if activeProfile}
           A quiet overview of progress, resources, and upcoming academic work.
@@ -361,7 +361,7 @@
       <div>
         <h2>Could not load the overview</h2>
         <p>
-          CareerFlow could not read this profile's dashboard data. Nothing has
+          Progress Ledger could not read this profile's dashboard data. Nothing has
           been changed.
           <button type="button" class="cf-btn secondary sm" onclick={() => load()}>Try again</button>
         </p>
@@ -451,7 +451,7 @@
          SPACE BUNNY DIRECTION. The reference pairs its ranked "Decide" queue
          with a seven-column load readout, because those answer two different
          questions: "what should I do first" and "is this week survivable".
-         CareerFlow had only the first, so a user could see a queue of three
+         Progress Ledger had only the first, so a user could see a queue of three
          urgent items with no way to tell whether that was a heavy week or a
          normal one — and therefore no way to decide whether to negotiate the
          deadline instead of just working through it.

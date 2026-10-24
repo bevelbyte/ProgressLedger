@@ -2,14 +2,14 @@ import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/sv
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ResearchLedger from "../src/features/browser/components/ResearchLedger.svelte";
 
-afterEach(() => { cleanup(); delete window.careerflow; });
+afterEach(() => { cleanup(); delete window.progressLedger; });
 
 function bridge() {
   const api = {
     listSources: vi.fn(async () => [{ id: 1, title: "Research article", url: "https://example.test/article", canonicalUrl: "https://example.test/article", domain: "example.test", keptCount: 1, savedAt: "2026-10-11 10:00:00" }]),
     listCaptures: vi.fn(async () => [{ id: 2, sourceId: 1, sourceUrl: "https://example.test/article", sourceTitle: "Research article", kind: "clip", text: "A kept passage", createdAt: "2026-10-11 10:01:00" }]),
   };
-  window.careerflow = { research: api };
+  window.progressLedger = { research: api };
   return api;
 }
 
@@ -65,7 +65,7 @@ describe("Research ledger", () => {
   it("preserves passage text and reports failure when capture persistence rejects", async () => {
     const api = bridge();
     api.capture = vi.fn(async () => ({ ok: false, reason: "storage-unavailable" }));
-    window.careerflow.research = api;
+    window.progressLedger.research = api;
     render(ResearchLedger, { props: { profileId: 4, researchPageId: "bp-23" } });
     const passage = await screen.findByTestId("research-passage-text");
     await fireEvent.input(passage, { target: { value: "Keep this text if storage fails." } });

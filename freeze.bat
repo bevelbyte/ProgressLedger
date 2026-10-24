@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ============================================================
-echo   CareerFlow -- Freeze Current Accepted Version
+echo   Progress Ledger -- Freeze Current Accepted Version
 echo ============================================================
 echo.
 

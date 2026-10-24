@@ -7,7 +7,7 @@ import { verifyIpcSender } from "./ipc-auth.js";
 /**
  * Register a sender-authenticated IPC handler.
  * Rejected senders receive the same structured error envelope used by the
- * rest of CareerFlow rather than executing the privileged callback.
+ * rest of Progress Ledger rather than executing the privileged callback.
  */
 export function safeHandle(channel, handler, opts = {}) {
   ipcMain.handle(channel, async (event, ...args) => {

@@ -2,7 +2,7 @@
  * First run — Atlas §5.7.
  *
  * Roughly fifteen Electron specs (phase5/phase6/phase7/phase8/phase10,
- * packaged-smoke, credential-*, real-donut-e2e) cannot do anything until they
+ * packaged-smoke, credential-*) cannot do anything until they
  * have dismissed first run, and they all dismiss it the same way:
  *
  *     const overlay   = win.locator('.onboarding-overlay');
@@ -47,7 +47,7 @@ function installIpc({ fail = null } = {}) {
     dataChanged += 1;
   };
   window.addEventListener("cf:data-changed", onChange);
-  window.careerflow = {
+  window.progressLedger = {
     profiles: {
       add: vi.fn(async (name, slug) => {
         await Promise.resolve();
@@ -90,7 +90,7 @@ afterEach(() => {
   onChange = null;
   completeOnboarding();
   localStorage.clear();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 describe("first run — the dismissal contract", () => {
@@ -118,7 +118,7 @@ describe("first run — the dismissal contract", () => {
     expect(q(".onboarding-overlay")).toBeFalsy();
     expect(onComplete).toHaveBeenCalledTimes(1);
     // Skipping is a real decision: it must not show the flow again.
-    expect(localStorage.getItem("careerflow_onboarding_complete")).toBe("true");
+    expect(localStorage.getItem("progressledger_v2_onboarding_complete")).toBe("true");
   });
 
   it("replaces Skip with Complete on the final step", async () => {
@@ -133,7 +133,7 @@ describe("first run — the dismissal contract", () => {
     await fireEvent.click(complete);
     await flush();
     expect(onboarding.active).toBe(false);
-    expect(localStorage.getItem("careerflow_onboarding_complete")).toBe("true");
+    expect(localStorage.getItem("progressledger_v2_onboarding_complete")).toBe("true");
   });
 
   it("runs three steps, not six", async () => {

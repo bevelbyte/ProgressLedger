@@ -6,7 +6,7 @@
 // is clickable to expand the full per-file diff. A status filter lets the
 // user focus on added / modified / deleted files.
 //
-// The renderer NEVER has a path. It calls window.careerflow.diff.workingTree
+// The renderer NEVER has a path. It calls window.progressLedger.diff.workingTree
 // with (profileId, agentId); the main process resolves the per-agent
 // projectRoot and invokes the existing shell_git_diff tool.
 
@@ -95,7 +95,7 @@ async function refresh() {
   loading = true;
   error = null;
   try {
-    const r = await window.careerflow.diff.workingTree(profileId, agentId);
+    const r = await window.progressLedger.diff.workingTree(profileId, agentId);
     if (!r || !r.ok) {
       error = (r && r.error && r.error.message) || "Couldn't load diff";
       sections = [];

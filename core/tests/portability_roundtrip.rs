@@ -13,7 +13,7 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use careerflow_core::portability::{export_profile_conn, import_bundle_conn};
+use progress_ledger_core::portability::{export_profile_conn, import_bundle_conn};
 
 fn setup_test_db() -> Result<Connection> {
     let conn = Connection::open_in_memory()?;
@@ -531,7 +531,7 @@ fn format_v1_bundle_imports_academic_tree_and_resources_only() -> Result<()> {
         conn.query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get::<_, i64>(0))?;
 
     let manifest = json!({
-        "format": "careerflow.profile",
+        "format": "progressledger.profile",
         "profile": { "name": "Old Export", "slug": "old-export" },
         "tracks": [{
             "name": "BA",
@@ -615,7 +615,7 @@ fn unknown_version_is_rejected_without_touching_db() -> Result<()> {
         conn.query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get::<_, i64>(0))?;
 
     let manifest = json!({
-        "format": "careerflow.profile", "version": 99,
+        "format": "progressledger.profile", "version": 99,
         "profile": { "name": "X", "slug": "x" }, "tracks": []
     });
     let out_path = temp_bundle_path();
@@ -650,7 +650,7 @@ fn corrupt_and_truncated_archives_leave_db_unchanged() -> Result<()> {
     // Truncated valid zip.
     let good = temp_bundle_path();
     let manifest = serde_json::json!({
-        "format": "careerflow.profile", "version": 2,
+        "format": "progressledger.profile", "version": 2,
         "profile": {"name":"T","slug":"t"}, "tracks": []
     });
     let file = fs::File::create(&good).unwrap();
@@ -694,7 +694,7 @@ fn malformed_relationship_rolls_back_entire_import() -> Result<()> {
 
     // Course references a subject key that does not exist in the bundle.
     let manifest = json!({
-        "format": "careerflow.profile", "version": 2,
+        "format": "progressledger.profile", "version": 2,
         "profile": { "name": "Bad Ref", "slug": "bad-ref" },
         "tracks": [{
             "name": "T",
@@ -757,7 +757,7 @@ fn attachment_materialization_failure_rolls_back_database_and_files() -> std::re
     fs::write(root.join("1").join("1.pdf"), b"pre-existing")?;
 
     let manifest = json!({
-        "format": "careerflow.profile",
+        "format": "progressledger.profile",
         "version": 2,
         "profile": { "name": "Attachment Failure", "slug": "attachment-failure" },
         "tracks": [{
@@ -819,7 +819,7 @@ fn missing_referenced_attachment_rolls_back_database() -> Result<()> {
 
     let conn = setup_test_db()?;
     let manifest = json!({
-        "format": "careerflow.profile",
+        "format": "progressledger.profile",
         "version": 2,
         "profile": { "name": "Missing Attachment", "slug": "missing-attachment" },
         "tracks": [{
@@ -860,7 +860,7 @@ fn repeated_import_suffixes_slug_and_preserves_every_copy() -> Result<()> {
     let conn = setup_test_db()?;
 
     let manifest = json!({
-        "format": "careerflow.profile", "version": 2,
+        "format": "progressledger.profile", "version": 2,
         "profile": { "name": "Twin", "slug": "twin" },
         "tracks": [{
             "name": "T",

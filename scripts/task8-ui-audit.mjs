@@ -20,7 +20,7 @@ mkdirSync(OUT, { recursive: true });
 
 const app = await electron.launch({
   args: [process.cwd(), `--user-data-dir=${mkdtempSync(join(tmpdir(), "cf-t8-"))}`],
-  env: { ...process.env, CAREERFLOW_E2E: "1" },
+  env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
 });
 const win = await app.firstWindow();
 await win.waitForLoadState("domcontentloaded");
@@ -58,7 +58,7 @@ console.log("Initial state:", JSON.stringify(initialState));
 // ══════════════════════════════════════════════════════════════════════════════
 console.log("\n=== B. Seed Data ===");
 const seeded = await win.evaluate(async () => {
-  const cf = window.careerflow;
+  const cf = window.progressLedger;
   const created = await cf.profiles.add("UI Audit Student", "ui-audit");
   const p = created?.profile || created;
   const pid = p?.id ?? p?.profileId;
@@ -114,7 +114,7 @@ const seeded = await win.evaluate(async () => {
 
     // Add a project
     try {
-      await cf.projects.add(pid, "CareerFlow UI Audit", "mini", "In progress audit of all UI surfaces");
+      await cf.projects.add(pid, "Progress Ledger UI Audit", "mini", "In progress audit of all UI surfaces");
     } catch {}
 
     return { ok: true, pid, subjects: subIds.length };

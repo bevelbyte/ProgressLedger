@@ -1,10 +1,9 @@
 //! Database layer - organized into logical modules for maintainability.
 //!
-//! This module provides the core database operations for CareerFlow, organized
+//! This module provides the core database operations for Progress Ledger, organized
 //! by feature domain. Each sub-module handles a specific area of functionality.
 
 mod academic;
-pub mod browser_manager;
 mod career;
 mod goals;
 mod project_mode;
@@ -74,16 +73,16 @@ pub fn log_debug(level: &str, message: &str) {
         if cwd.join("package.json").exists() {
             let logs_dir = cwd.join("logs");
             let _ = std::fs::create_dir_all(&logs_dir);
-            log_path = Some(logs_dir.join("careerflow.log"));
+            log_path = Some(logs_dir.join("progress-ledger-v2.log"));
         }
     }
 
     let path = log_path.unwrap_or_else(|| {
         if let Ok(mut root) = attach_root() {
             root.pop();
-            root.join("careerflow.log")
+            root.join("progress-ledger-v2.log")
         } else {
-            std::path::PathBuf::from("careerflow.log")
+            std::path::PathBuf::from("progress-ledger-v2.log")
         }
     });
 
@@ -105,7 +104,7 @@ pub fn log_debug(level: &str, message: &str) {
 /// SQLite's formatted error includes the offending column + value, which
 /// would let a renderer probe extract schema/constraint details and
 /// adjacent stored values. We collapse to a stable coded message; full
-/// details remain available in `careerflow.log` (stderr) for diagnosis.
+/// details remain available in `progress-ledger-v2.log` (stderr) for diagnosis.
 pub(crate) fn to_err(e: rusqlite::Error) -> Error {
     use rusqlite::{Error::SqliteFailure, ErrorCode};
     let _ = e; // detail is logged but not returned to the renderer
@@ -266,8 +265,8 @@ pub struct VerifyDbResult {
 }
 
 /// Flush a legacy SQLite WAL into the main database file before a filesystem
-/// migration copies it. A migration that copies only `careerflow.db` while a
-/// committed write still lives in `careerflow.db-wal` silently loses data.
+/// migration copies it. A migration that copies only `progress-ledger-v2.db` while a
+/// committed write still lives in `progress-ledger-v2.db-wal` silently loses data.
 #[napi]
 pub fn checkpoint_db(db_path: String) -> Result<()> {
     let conn = Connection::open(&db_path).map_err(|e| {

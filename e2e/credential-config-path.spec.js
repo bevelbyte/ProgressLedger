@@ -36,9 +36,9 @@ async function launchIsolated(userDataDir) {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: "1",
-      CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-      CAREERFLOW_E2E_USER_DATA: userDataDir,
+      PROGRESSLEDGER_V2_E2E: "1",
+      PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+      PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     },
     timeout: 60_000,
   });
@@ -77,12 +77,12 @@ test("credential store path: UI save writes the store and reads back sanitized; 
     // selectProfile() schedules a 500ms view-flip to Subjects — wait it out.
     await win.waitForTimeout(900);
     const profileId = await win.evaluate(() =>
-      window.careerflow.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))),
+      window.progressLedger.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))),
     );
     expect(profileId).toBeGreaterThan(0);
 
     const created = await win.evaluate(([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({
+      window.progressLedger.projectMode.createProject({
         profileId: pid,
         name: "Cred Path",
         description: "credential path e2e",
@@ -94,7 +94,7 @@ test("credential store path: UI save writes the store and reads back sanitized; 
 
     // Fresh project: nothing stored yet -> config is null (not an error).
     const before = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(before.ok).toBe(true);
     expect(before.config).toBeNull();
 
@@ -134,7 +134,7 @@ test("credential store path: UI save writes the store and reads back sanitized; 
 
     // Read-back boundary: sanitized view only — no apiKey anywhere.
     const after = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(after.ok).toBe(true);
     expect(after.config.endpoint).toBe(ENDPOINT);
     expect(after.config.model).toBe(MODEL);
@@ -150,7 +150,7 @@ test("credential store path: UI save writes the store and reads back sanitized; 
     await win.locator('[data-testid="provider-clear"]').click();
     await expect(win.locator('[data-testid="provider-key-set"]')).toHaveCount(0, { timeout: 15_000 });
     const cleared = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(cleared.config == null || cleared.config.hasKey === false).toBe(true);
     if (existsSync(secretsFile)) {
       expect(readFileSync(secretsFile, "utf8")).not.toContain(FIXTURE_KEY);

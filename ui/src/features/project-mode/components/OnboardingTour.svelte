@@ -13,7 +13,7 @@
 
   import { Hand, ListChecks, Wrench, Target, Plug, Brain } from "lucide-svelte";
 
-  const STORAGE_KEY = "careerflow_project_mode_tour_complete";
+  const STORAGE_KEY = "progressledger_v2_project_mode_tour_complete";
 
   let { visible = false, onClose } = $props();
 

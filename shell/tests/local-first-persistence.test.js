@@ -26,13 +26,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-const corePath = path.join(REPO_ROOT, "core", "careerflow_core.win32-x64-msvc.node");
+const corePath = path.join(REPO_ROOT, "core", "progress_ledger_core.win32-x64-msvc.node");
 assert.ok(fs.existsSync(corePath), `Native core not built: ${corePath}`);
 const requireCJS = createRequire(import.meta.url);
 const core = requireCJS(corePath);
 
 const suiteTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-local-first-"));
-const dbPath = path.join(suiteTmpDir, "careerflow.db");
+const dbPath = path.join(suiteTmpDir, "progress-ledger-v2.db");
 
 test("local-first persistence and cross-feature integration suite", async (t) => {
   // 1. Initialize local SQLite DB (WAL, FK=ON, migrations 1..24)

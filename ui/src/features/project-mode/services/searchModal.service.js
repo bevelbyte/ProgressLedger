@@ -49,20 +49,20 @@ export const searchModalService = {
       // empty. When the Runs console has no active project there is nothing
       // legitimate to list, so report that honestly instead of asking.
       (async () => {
-        const m = window.careerflow && window.careerflow.memory;
+        const m = window.progressLedger && window.progressLedger.memory;
         if (!m || typeof m.list !== "function") return { result: [] };
         if (typeof projectId !== "number") return { result: [] };
         return m.list(profileId, projectId, {});
       })(),
       // Skills
       (async () => {
-        const e = window.careerflow && window.careerflow.extensions;
+        const e = window.progressLedger && window.progressLedger.extensions;
         if (!e || typeof e.listSkills !== "function") return { skills: [] };
         return e.listSkills();
       })(),
       // Tools
       (async () => {
-        const p = window.careerflow && window.careerflow.projectTools;
+        const p = window.progressLedger && window.progressLedger.projectTools;
         if (!p || typeof p.list !== "function") return { tools: [] };
         return p.list();
       })(),
@@ -72,7 +72,7 @@ export const searchModalService = {
       // argument was always rejected and the modal's plugin group was
       // permanently empty.
       (async () => {
-        const e = window.careerflow && window.careerflow.extensions;
+        const e = window.progressLedger && window.progressLedger.extensions;
         if (!e || typeof e.listPlugins !== "function") return { plugins: [] };
         return e.listPlugins(profileId);
       })(),

@@ -5,13 +5,13 @@ import { createContext } from "../src/shell/workspace/model.js";
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 describe("Research page identity", () => {
   it("keeps the explicitly selected source page bound while the Research ledger tab is active", async () => {
     const capture = vi.fn(async () => ({ ok: true }));
-    window.careerflow = {
+    window.progressLedger = {
       research: {
         listSources: vi.fn(async () => []),
         listCaptures: vi.fn(async () => []),

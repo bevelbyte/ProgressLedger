@@ -23,7 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const requireCJS = createRequire(import.meta.url);
-const core = requireCJS(path.join(REPO_ROOT, "core", "careerflow_core.win32-x64-msvc.node"));
+const core = requireCJS(path.join(REPO_ROOT, "core", "progress_ledger_core.win32-x64-msvc.node"));
 
 // Mock the agent loop so we don't boot the real one.
 const startCalls = [];

@@ -18,7 +18,7 @@ function nativePath(filename) {
   if (!source.includes(anchor)) throw new Error("NAPI-RS loader anchor not found");
   source = source.replace(anchor, helper);
 }
-source = source.replaceAll("join(__dirname, 'careerflow_core", "nativePath('careerflow_core");
-source = source.replace(/require\('\.\/(careerflow_core\.[^']+\.node)'\)/g, "require(nativePath('$1'))");
-source = source.replace(/require\(nativePath\('(careerflow_core\.[^']+\.node)'\)\)+/g, "require(nativePath('$1'))");
+source = source.replaceAll("join(__dirname, 'progress_ledger_core", "nativePath('progress_ledger_core");
+source = source.replace(/require\('\.\/(progress_ledger_core\.[^']+\.node)'\)/g, "require(nativePath('$1'))");
+source = source.replace(/require\(nativePath\('(progress_ledger_core\.[^']+\.node)'\)\)+/g, "require(nativePath('$1'))");
 writeFileSync(file, source);

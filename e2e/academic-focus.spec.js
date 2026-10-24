@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
 
 /**
- * Phase 8 E2E: drive the real Electron + real CareerFlow core, seed data
+ * Phase 8 E2E: drive the real Electron + real Progress Ledger core, seed data
  * through the real IPC surface, and verify the Dashboard's "Focus Now"
  * section surfaces the right subject for the right reason.
  *
@@ -42,14 +42,14 @@ async function launchApp() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-focus-"));
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, CAREERFLOW_E2E: "1" },
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win, userDataDir };
 }
 
@@ -69,11 +69,11 @@ async function seedProfile(win, name) {
   return win.evaluate(
     async ([profileName, yesterday, tenDaysAgo]) => {
       const slug = `focus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const p = await window.careerflow.profiles.add(profileName, slug);
+      const p = await window.progressLedger.profiles.add(profileName, slug);
       const pid = p.id;
-      const trackId = await window.careerflow.academic.addTrack(pid, "B.Tech");
-      const semId = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
-      const msId = await window.careerflow.academic.addMilestone(pid, semId, "Subjects");
+      const trackId = await window.progressLedger.academic.addTrack(pid, "B.Tech");
+      const semId = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
+      const msId = await window.progressLedger.academic.addMilestone(pid, semId, "Subjects");
       return { pid, trackId, semId, msId };
     },
     [name, YESTERDAY, TEN_DAYS_AGO],
@@ -82,28 +82,28 @@ async function seedProfile(win, name) {
 
 async function addSubject(win, pid, msId, name) {
   return win.evaluate(
-    async ([p, mid, n]) => window.careerflow.academic.addSubject(p, mid, n, null),
+    async ([p, mid, n]) => window.progressLedger.academic.addSubject(p, mid, n, null),
     [pid, msId, name],
   );
 }
 
 async function addDeadline(win, pid, subjectId, date, title) {
   return win.evaluate(
-    async ([p, sid, d, t]) => window.careerflow.deadlines.add(p, sid, d, "exam", t, ""),
+    async ([p, sid, d, t]) => window.progressLedger.deadlines.add(p, sid, d, "exam", t, ""),
     [pid, subjectId, date, title],
   );
 }
 
 async function addCard(win, pid, subjectId) {
   return win.evaluate(
-    async ([p, sid]) => window.careerflow.cards.create(p, sid, "Q", "A"),
+    async ([p, sid]) => window.progressLedger.cards.create(p, sid, "Q", "A"),
     [pid, subjectId],
   );
 }
 
 async function logSession(win, pid, subjectId) {
   return win.evaluate(
-    async ([p, sid]) => window.careerflow.sessions.add(p, sid, 20),
+    async ([p, sid]) => window.progressLedger.sessions.add(p, sid, 20),
     [pid, subjectId],
   );
 }
@@ -181,14 +181,14 @@ test("Focus Now: study inactivity surfaces 'no study in Nd' for stale subjects",
       // session because datetime('now','localtime') honours the wall
       // clock the test runs on.
       const iso = `${tenDaysAgo} 10:00:00`;
-      await window.careerflow.sessions.add(p, sid, 25, iso, null, "");
+      await window.progressLedger.sessions.add(p, sid, 25, iso, null, "");
       // Add a second session on a different subject so the profile has
       // "hasAnySession" = true and the inactivity signal is meaningful.
-      const profile = (await window.careerflow.profiles.list())[0];
-      const tree = await window.careerflow.academic.tree(profile.id);
+      const profile = (await window.progressLedger.profiles.list())[0];
+      const tree = await window.progressLedger.academic.tree(profile.id);
       const ms = tree[0].semesters[0].milestones[0];
-      const otherId = await window.careerflow.academic.addSubject(p, ms.id, "Other Subj", null);
-      await window.careerflow.sessions.add(p, otherId, 10, null, null, "");
+      const otherId = await window.progressLedger.academic.addSubject(p, ms.id, "Other Subj", null);
+      await window.progressLedger.sessions.add(p, otherId, 10, null, null, "");
     },
     [pid, subjectId, TEN_DAYS_AGO],
   );
@@ -218,7 +218,7 @@ test("Focus Now: subject deletion drops the recommendation", async () => {
   await expect(focus.getByText("Doomed")).toBeVisible();
 
   // Delete the subject and reload.
-  await win.evaluate(async ([p, sid]) => window.careerflow.academic.deleteSubject(p, sid), [pid, subjectId]);
+  await win.evaluate(async ([p, sid]) => window.progressLedger.academic.deleteSubject(p, sid), [pid, subjectId]);
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
   await selectProfile(win, "Deleter");
@@ -241,7 +241,7 @@ test("Focus Now: subject rename propagates to the recommendation", async () => {
 
   // Rename via the existing academic API.
   await win.evaluate(
-    async ([p, sid]) => window.careerflow.academic.updateSubject(p, sid, "NewName", null),
+    async ([p, sid]) => window.progressLedger.academic.updateSubject(p, sid, "NewName", null),
     [pid, subjectId],
   );
   await win.reload();
@@ -268,7 +268,7 @@ test("Focus Now: completing a deadline updates the recommendation", async () => 
 
   // Mark the deadline complete.
   await win.evaluate(
-    async ([p, did]) => window.careerflow.deadlines.setCompletion(p, did, true),
+    async ([p, did]) => window.progressLedger.deadlines.setCompletion(p, did, true),
     [pid, deadlineId],
   );
   await win.reload();
@@ -322,14 +322,14 @@ test("Focus Now: restart persistence — recommendation survives an Electron res
   {
     const app = await electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
     const win = await app.firstWindow();
     await win.waitForLoadState("domcontentloaded");
-    await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+    await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
     await win.reload();
     await win.waitForLoadState("domcontentloaded");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
     const { pid, msId } = await seedProfile(win, "Restart Student");
     const subjectId = await addSubject(win, pid, msId, "Persisted");
@@ -348,11 +348,11 @@ test("Focus Now: restart persistence — recommendation survives an Electron res
   {
     const app = await electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
     const win = await app.firstWindow();
     await win.waitForLoadState("domcontentloaded");
-    await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+    await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
     await selectProfile(win, "Restart Student");
     const focus = win.locator(".focus-now");
     await expect(focus.getByText("Persisted")).toBeVisible();

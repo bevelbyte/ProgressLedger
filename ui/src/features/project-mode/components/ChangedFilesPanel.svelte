@@ -10,12 +10,12 @@
   // panels read as a pair.
   //
   // Data sources (NO new IPC channels — see the task constraints):
-  //   1. window.careerflow.diff.workingTree(profileId, agentId)
+  //   1. window.progressLedger.diff.workingTree(profileId, agentId)
   //      → { ok, result: { diff, truncated } }
   //      We run `git diff` through the existing shell_git_diff tool and
   //      parse the `diff --git` sections. That gives us the file list,
   //      the action (created / modified / deleted), and the +N/-M counts.
-  //   2. window.careerflow.projectIntel.list(profileId, projectId)
+  //   2. window.progressLedger.projectIntel.list(profileId, projectId)
   //      → { ok, result: { entries: [{ path, size, mtime, language }] } }
   //      Best-effort mtime lookup for the "written at" column. The file
   //      index is populated when the project is indexed, so this column
@@ -88,14 +88,14 @@
       indexError = "Open a project first — indexing needs a project.";
       return;
     }
-    if (!window.careerflow.projectIntel || !window.careerflow.projectIntel.index) {
+    if (!window.progressLedger.projectIntel || !window.progressLedger.projectIntel.index) {
       indexError = "Indexing is not available in this build.";
       return;
     }
     indexing = true;
     indexError = null;
     try {
-      const res = await window.careerflow.projectIntel.index(profileId, projectId, "full");
+      const res = await window.progressLedger.projectIntel.index(profileId, projectId, "full");
       // A failure must STAY a failure. Reporting success here when the main
       // process refused (ownership, root-mismatch, walk error) would put the
       // panel back into exactly the dishonest state this control exists to end.
@@ -233,16 +233,16 @@
     try {
       // Both lookups are independent; race them so a slow index never
       // delays the file list, and a missing index never hides it.
-      const diffPromise = window.careerflow.diff
-        ? window.careerflow.diff.workingTree(profileId, agentId).catch((e) => ({
+      const diffPromise = window.progressLedger.diff
+        ? window.progressLedger.diff.workingTree(profileId, agentId).catch((e) => ({
             ok: false,
             error: { message: (e && e.message) || "diff failed" },
           }))
         : Promise.resolve({ ok: false, error: { message: "diff API unavailable" } });
 
       let indexPromise = Promise.resolve({ ok: true, result: { entries: [] } });
-      if (projectId != null && window.careerflow.projectIntel && window.careerflow.projectIntel.list) {
-        indexPromise = window.careerflow.projectIntel
+      if (projectId != null && window.progressLedger.projectIntel && window.progressLedger.projectIntel.list) {
+        indexPromise = window.progressLedger.projectIntel
           .list(profileId, projectId, { max: maxIndexedFiles })
           // An index lookup that FAILS must stay a failure. The old
           // `.catch(() => ({ ok: true, result: { entries: [] } }))` rewrote an

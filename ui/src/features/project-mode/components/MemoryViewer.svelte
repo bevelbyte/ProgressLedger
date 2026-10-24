@@ -1,7 +1,7 @@
 <script>
   // MemoryViewer -- browse the agent's persistent + transient memory.
   //
-  // Read-only panel. On mount calls window.careerflow.memory.list() which
+  // Read-only panel. On mount calls window.progressLedger.memory.list() which
   // hits the main-process `memory:list` IPC handler. The handler returns
   // a flat combined list across three scopes:
   //
@@ -60,7 +60,7 @@
     }
     loading = true;
     try {
-      const res = await window.careerflow.memory.list(profileId, projectId, {});
+      const res = await window.progressLedger.memory.list(profileId, projectId, {});
       if (res && res.ok && Array.isArray(res.result)) {
         entries = res.result;
       } else {

@@ -1,7 +1,7 @@
-// Managed downloads for the CareerFlow-owned embedded browser.
+// Managed downloads for the Progress Ledger-owned embedded browser.
 // Approved decision D: downloads land in `<workspace>/downloads`.
 //
-// WHAT THIS IS. One manager instance watches the session(s) a CareerFlow browser
+// WHAT THIS IS. One manager instance watches the session(s) a Progress Ledger browser
 // view actually uses and decides, for every incoming download, (a) whether it may
 // happen at all, (b) what safe NAME it gets, (c) which absolute path inside the
 // managed directory it is written to, and (d) when it stops. It is the only place
@@ -29,7 +29,7 @@
 //     loops `location = "..."`.
 //   * The session watched is the browser partition's own session. Web content
 //     never runs in `session.defaultSession` (it carries the app CSP injection
-//     and the privileged `careerflow://` origin), so this can never observe or
+//     and the privileged `progressledger-v2://` origin), so this can never observe or
 //     redirect an application download.
 //
 // SCOPE. This is the runtime/security foundation only. There is deliberately no

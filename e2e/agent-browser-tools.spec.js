@@ -75,13 +75,13 @@ function startScriptedProvider() {
 async function launchWithoutDonut(userDataDir, absentSettingsDir) {
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
-    CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-    CAREERFLOW_DONUT_SETTINGS_DIR: absentSettingsDir,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentSettingsDir,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env,
@@ -89,15 +89,15 @@ async function launchWithoutDonut(userDataDir, absentSettingsDir) {
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   return { app, win };
 }
 
 async function createAgent(win, userDataDir, providerEndpoint, projectRootPath) {
   const profile = await win.evaluate(() =>
-    window.careerflow.profiles.add("R7 Unsupported Browser Tools", `r7-browser-tools-${Date.now()}`));
+    window.progressLedger.profiles.add("R7 Unsupported Browser Tools", `r7-browser-tools-${Date.now()}`));
   const project = await win.evaluate(([profileId, rootPath]) =>
-    window.careerflow.projectMode.createProject({
+    window.progressLedger.projectMode.createProject({
       profileId,
       name: "R7 Browser Boundary",
       description: "Verify retired Donut page-control tools fail closed",
@@ -107,7 +107,7 @@ async function createAgent(win, userDataDir, providerEndpoint, projectRootPath) 
   const projectId = typeof project === "number" ? project : project?.id;
   expect(Number(projectId)).toBeGreaterThan(0);
   const createdAgent = await win.evaluate(([profileId, projectId]) =>
-    window.careerflow.projectMode.createAgent(profileId, projectId, "Call each legacy browser tool and report its actual result."),
+    window.progressLedger.projectMode.createAgent(profileId, projectId, "Call each legacy browser tool and report its actual result."),
   [profile.id, Number(projectId)]);
   const agentId = typeof createdAgent === "number" ? createdAgent : createdAgent?.id;
   expect(Number(agentId)).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ async function createAgent(win, userDataDir, providerEndpoint, projectRootPath) 
 async function waitForTerminalAgent(win, profileId, agentId) {
   const deadline = Date.now() + 90_000;
   while (Date.now() < deadline) {
-    const raw = await win.evaluate(([pid, aid]) => window.careerflow.projectMode.getAgent(pid, aid), [profileId, agentId]);
+    const raw = await win.evaluate(([pid, aid]) => window.progressLedger.projectMode.getAgent(pid, aid), [profileId, agentId]);
     const agent = raw?.agent || raw;
     if (agent && ["completed", "failed", "cancelled"].includes(agent.state)) return agent;
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -134,7 +134,7 @@ async function waitForTerminalAgent(win, profileId, agentId) {
 }
 
 async function listMessages(win, profileId, agentId) {
-  const raw = await win.evaluate(([pid, aid]) => window.careerflow.projectMode.listMessages(pid, aid), [profileId, agentId]);
+  const raw = await win.evaluate(([pid, aid]) => window.progressLedger.projectMode.listMessages(pid, aid), [profileId, agentId]);
   return raw?.messages || raw?.result || raw;
 }
 
@@ -151,7 +151,7 @@ test("real agent loop rejects all retired Donut page-control tools without fake 
     app = launched.app;
     const { win } = launched;
 
-    const metadata = await win.evaluate(() => window.careerflow.projectTools.list());
+    const metadata = await win.evaluate(() => window.progressLedger.projectTools.list());
     expect(metadata.ok).toBe(true);
     const tools = new Map(metadata.tools.map((tool) => [tool.name, tool]));
     for (const name of TOOL_NAMES) {
@@ -161,7 +161,7 @@ test("real agent loop rejects all retired Donut page-control tools without fake 
     }
 
     const workspaceRefusals = await win.evaluate(async () => {
-      const ws = window.careerflow.browserWorkspace;
+      const ws = window.progressLedger.browserWorkspace;
       return Promise.all([
         ws.state(),
         ws.launch("unused-profile", 1),
@@ -200,7 +200,7 @@ test("real agent loop rejects all retired Donut page-control tools without fake 
       { text: "All legacy browser tool results have been checked." },
     ];
     const started = await win.evaluate(([profileId, agentId]) =>
-      window.careerflow.projectMode.startAgent(profileId, agentId), [agent.profileId, agent.agentId]);
+      window.progressLedger.projectMode.startAgent(profileId, agentId), [agent.profileId, agent.agentId]);
     expect(started.ok, JSON.stringify(started)).toBe(true);
     const terminal = await waitForTerminalAgent(win, agent.profileId, agent.agentId);
     expect(terminal.state).toBe("completed");
@@ -224,7 +224,7 @@ test("real agent loop rejects all retired Donut page-control tools without fake 
 
     // Donut is genuinely absent for this run: the app booted without a stub,
     // and unsupported tools did not use the Local API profile-open path.
-    expect(await win.evaluate(() => window.careerflow.donut.getStatus())).toMatchObject({ available: false });
+    expect(await win.evaluate(() => window.progressLedger.donut.getStatus())).toMatchObject({ available: false });
   } finally {
     if (app) await app.close().catch(() => {});
     await new Promise((resolve) => provider.server.close(resolve));

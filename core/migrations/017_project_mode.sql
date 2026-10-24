@@ -1,6 +1,6 @@
 -- 017_project_mode.sql — Project Mode foundation (schema version 17).
 --
--- Project Mode is CareerFlow's agentic project workspace: a user gives the
+-- Project Mode is Progress Ledger's agentic project workspace: a user gives the
 -- agent a goal; the agent plans, uses tools, executes, verifies, and reports.
 -- This migration adds the smallest persistent model that supports a
 -- long-running, multi-step, resumable agent session.

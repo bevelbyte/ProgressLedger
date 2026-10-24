@@ -30,9 +30,9 @@
 
   // Defensive namespace lookup, mirroring projectModeService.listTools():
   // the surface may be absent in older main processes / under test harnesses
-  // that mock only part of window.careerflow.
+  // that mock only part of window.progressLedger.
   async function fetchHealth() {
-    const ns = window.careerflow && window.careerflow.projectMode;
+    const ns = window.progressLedger && window.progressLedger.projectMode;
     const fn = ns && ns.getProviderHealth;
     if (typeof fn !== "function") {
       providers = [];

@@ -16,8 +16,8 @@ export function register({ core, win }) {
   safeHandle("diagnostics:export-report", async (_e, options = {}) => {
     const report = await buildDiagnosticsReport(core, { includeNetwork: Boolean(options.includeNetwork) });
     const res = await dialog.showSaveDialog(win(), {
-      title: "Export CareerFlow Diagnostics",
-      defaultPath: `careerflow-diagnostics-${stampForFile()}.json`,
+      title: "Export Progress Ledger Diagnostics",
+      defaultPath: `progressledger-diagnostics-${stampForFile()}.json`,
       filters: [{ name: "Diagnostics JSON", extensions: ["json"] }],
     });
     if (res.canceled || !res.filePath) return { exported: false };

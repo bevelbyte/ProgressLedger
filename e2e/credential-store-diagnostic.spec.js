@@ -1,4 +1,4 @@
-// Actual CareerFlow application — malformed credential store, explained and
+// Actual Progress Ledger application — malformed credential store, explained and
 // repaired through the SUPPORTED provider-configuration path.
 //
 // Context (defect D-1): when <userData>/pm-secrets.json exists but is not valid
@@ -52,9 +52,9 @@ async function launchIsolated(userDataDir) {
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      CAREERFLOW_E2E: "1",
-      CAREERFLOW_E2E_DISABLE_SYSTEM_FALLBACK: "1",
-      CAREERFLOW_E2E_USER_DATA: userDataDir,
+      PROGRESSLEDGER_V2_E2E: "1",
+      PROGRESSLEDGER_V2_E2E_DISABLE_SYSTEM_FALLBACK: "1",
+      PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     },
     timeout: 60_000,
   });
@@ -122,12 +122,12 @@ test("actual app: malformed credential store is explained, repaired via the supp
     await win.locator("article.profile-card.active").waitFor({ state: "visible", timeout: 15_000 });
     await win.waitForTimeout(900); // selectProfile() schedules a 500ms view flip
     profileId = await win.evaluate(() =>
-      window.careerflow.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))),
+      window.progressLedger.profiles.list().then((rows) => Math.max(...rows.map((r) => r.id))),
     );
     expect(profileId).toBeGreaterThan(0);
 
     const created = await win.evaluate(([pid, rootPath]) =>
-      window.careerflow.projectMode.createProject({
+      window.progressLedger.projectMode.createProject({
         profileId: pid,
         name: "D1 Store",
         description: "malformed store e2e",
@@ -140,7 +140,7 @@ test("actual app: malformed credential store is explained, repaired via the supp
     // The store is malformed, so the supported read path reports WHY instead of
     // looking merely empty.
     const malformedRead = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(malformedRead.ok).toBe(true);
     expect(malformedRead.config).toBeTruthy();
     expect(malformedRead.config.hasKey).toBe(false);
@@ -182,7 +182,7 @@ test("actual app: malformed credential store is explained, repaired via the supp
 
     // Sanitized read-back over the real IPC boundary.
     const repaired = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(repaired.config.endpoint).toBe(ENDPOINT);
     expect(repaired.config.model).toBe(MODEL);
     expect(repaired.config.hasKey).toBe(true);
@@ -201,7 +201,7 @@ test("actual app: malformed credential store is explained, repaired via the supp
 
     // The configuration (and its sanitized resolution) survives a real restart.
     const afterRestart = await win.evaluate(([pid, prid]) =>
-      window.careerflow.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
+      window.progressLedger.projectMode.getProviderConfig(pid, prid), [profileId, projectId]);
     expect(afterRestart.ok).toBe(true);
     expect(afterRestart.config).toBeTruthy();
     expect(afterRestart.config.hasKey).toBe(true);

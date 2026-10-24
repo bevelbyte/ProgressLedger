@@ -8,7 +8,7 @@ import Database from "better-sqlite3";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
-const packagedExe = resolve(projectRoot, "release", "acceptance-test", "win-unpacked", "CareerFlow.exe");
+const packagedExe = resolve(projectRoot, "release", "acceptance-test", "win-unpacked", "Progress Ledger.exe");
 
 function cleanupDir(dir) {
   if (!dir) return;
@@ -33,24 +33,24 @@ test.describe("Packaged Application Acceptance", () => {
       let app = await electron.launch({
         executablePath: packagedExe,
         args: [`--user-data-dir=${userDataDir}`],
-        env: { ...process.env, CAREERFLOW_E2E: "1" },
+        env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
       });
 
       let win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
 
       // Verify onboarding / startup
-      await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+      await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
       await win.reload();
       await win.waitForLoadState("domcontentloaded");
 
       // 2. Verify core initialization
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
-      const pingRes = await win.evaluate(() => window.careerflow.ping());
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
+      const pingRes = await win.evaluate(() => window.progressLedger.ping());
       expect(pingRes).toBeTruthy();
 
       // 3. Verify native N-API addon is loaded in packaged app
-      const initialProfiles = await win.evaluate(() => window.careerflow.profiles.list());
+      const initialProfiles = await win.evaluate(() => window.progressLedger.profiles.list());
       expect(Array.isArray(initialProfiles)).toBe(true);
       expect(initialProfiles.length).toBe(0);
 
@@ -61,7 +61,7 @@ test.describe("Packaged Application Acceptance", () => {
 
       // 5. Create a student profile
       const newProfile = await win.evaluate(async () => {
-        return await window.careerflow.profiles.add("Packaged Ada", `pkg-ada-${Date.now()}`);
+        return await window.progressLedger.profiles.add("Packaged Ada", `pkg-ada-${Date.now()}`);
       });
       expect(newProfile.id).toBeDefined();
 
@@ -72,13 +72,13 @@ test.describe("Packaged Application Acceptance", () => {
 
       // 7. Verify embedded browser surface initialized
       const browserState = await win.evaluate(async () => {
-        return await window.careerflow.browser.state();
+        return await window.progressLedger.browser.state();
       });
       expect(browserState).toBeDefined();
 
 
       // 8. Verify security boundary: no direct CDP in renderer
-      const hasCdp = await win.evaluate(() => typeof window.careerflow.cdp !== "undefined");
+      const hasCdp = await win.evaluate(() => typeof window.progressLedger.cdp !== "undefined");
       expect(hasCdp).toBe(false);
 
       // 9. Graceful shutdown
@@ -88,13 +88,13 @@ test.describe("Packaged Application Acceptance", () => {
       app = await electron.launch({
         executablePath: packagedExe,
         args: [`--user-data-dir=${userDataDir}`],
-        env: { ...process.env, CAREERFLOW_E2E: "1" },
+        env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
       });
       win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
-      await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+      await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
-      const persistedProfiles = await win.evaluate(() => window.careerflow.profiles.list());
+      const persistedProfiles = await win.evaluate(() => window.progressLedger.profiles.list());
       expect(persistedProfiles.some((p) => p.name === "Packaged Ada")).toBe(true);
 
       await app.close();
@@ -111,11 +111,11 @@ test.describe("Packaged Application Acceptance", () => {
 
     try {
       // 1. Prepare legacy source data
-      const sourceDb = join(userDataDir, "careerflow.db");
+      const sourceDb = join(userDataDir, "progress-ledger-v2.db");
       writeFileSync(sourceDb, "LEGACY_SOURCE_DATA_TEST_PACKAGED_V0");
 
       // 2. Prepare occupied destination with sentinel files
-      const destDb = join(destDir, "careerflow.db");
+      const destDb = join(destDir, "progress-ledger-v2.db");
       const sentinelDbContent = "DESTINATION_SENTINEL_DB_PACKAGED_DO_NOT_TOUCH";
       writeFileSync(destDb, sentinelDbContent);
 
@@ -135,9 +135,9 @@ test.describe("Packaged Application Acceptance", () => {
         args: [`--user-data-dir=${userDataDir}`],
         env: {
           ...process.env,
-          CAREERFLOW_MIGRATION_TEST: "1",
-          CAREERFLOW_E2E_USER_DATA: userDataDir,
-          CAREERFLOW_MIGRATION_TEST_TARGET: destDir,
+          PROGRESSLEDGER_V2_MIGRATION_TEST: "1",
+          PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+          PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET: destDir,
         },
       });
 
@@ -145,7 +145,7 @@ test.describe("Packaged Application Acceptance", () => {
       await win.waitForLoadState("domcontentloaded");
 
       // Verify migration wizard is presented
-      await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to CareerFlow");
+      await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to Progress Ledger");
 
       // Browse to the occupied directory and attempt migration
       await win.locator("#btn-browse").click();
@@ -179,7 +179,7 @@ test.describe("Packaged Application Acceptance", () => {
 
     try {
       // 1. Prepare valid legacy database using SQLite
-      const sourceDbPath = join(userDataDir, "careerflow.db");
+      const sourceDbPath = join(userDataDir, "progress-ledger-v2.db");
       const db = new Database(sourceDbPath);
       db.exec(`
         CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY);
@@ -200,16 +200,16 @@ test.describe("Packaged Application Acceptance", () => {
         args: [`--user-data-dir=${userDataDir}`],
         env: {
           ...process.env,
-          CAREERFLOW_MIGRATION_TEST: "1",
-          CAREERFLOW_E2E_USER_DATA: userDataDir,
-          CAREERFLOW_MIGRATION_TEST_TARGET: destDir,
+          PROGRESSLEDGER_V2_MIGRATION_TEST: "1",
+          PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
+          PROGRESSLEDGER_V2_MIGRATION_TEST_TARGET: destDir,
         },
       });
 
       const win = await app.firstWindow();
       await win.waitForLoadState("domcontentloaded");
 
-      await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to CareerFlow");
+      await expect(win.locator("#screen-welcome h1")).toHaveText("Welcome to Progress Ledger");
 
       await win.locator("#btn-browse").click();
       await expect(win.locator("#dir-input")).toHaveValue(destDir);
@@ -222,7 +222,7 @@ test.describe("Packaged Application Acceptance", () => {
 
 
       // Verify destination filesystem
-      const targetDb = join(destDir, "careerflow.db");
+      const targetDb = join(destDir, "progress-ledger-v2.db");
       const targetWs = join(destDir, "workspace.json");
       const targetAttach = join(destDir, "attachments", "legacy_file.txt");
 

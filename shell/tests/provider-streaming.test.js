@@ -275,7 +275,7 @@ test("provider: tool_calls envelope WITHOUT function wrapper is extracted", asyn
 // Phase 13 — transient empty-body 400 retry (bounded)
 // ---------------------------------------------------------------------------
 //
-// Live evidence (Phase 12 runs 4-6, CAREERFLOW_DEBUG_HTTP_DIR dumps):
+// Live evidence (Phase 12 runs 4-6, PROGRESSLEDGER_V2_DEBUG_HTTP_DIR dumps):
 // b.ai intermittently returns HTTP 400 with an EMPTY body for provably
 // well-formed requests (identical shapes succeed on other runs). A
 // genuine malformed-request 400 carries a JSON error body. The provider

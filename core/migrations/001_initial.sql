@@ -1,4 +1,4 @@
--- 001_initial.sql— baseline CareerFlow schema (schema version 1).
+-- 001_initial.sql— baseline Progress Ledger schema (schema version 1).
 -- Mirrors the original hand-built schema from init_db(). The migration runner
 -- executes this inside a transaction and sets PRAGMA user_version afterwards,
 -- so do NOT put PRAGMA journal_mode / foreign_keys here (the runner owns those).

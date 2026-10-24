@@ -57,9 +57,6 @@ export const APPROVAL_REQUIRED = new Set([
   "fs_write",
   "test_run",
   "build_run",
-  // The legacy browser_* names are now READ-only compatibility refusals:
-  // their registered tools return feature-not-supported without any browser
-  // side effect, so they must not prompt for approval before refusing.
 ]);
 
 /**

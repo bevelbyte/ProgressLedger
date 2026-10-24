@@ -22,30 +22,30 @@ test("semester status is declared, persisted, and independent of marks/SGPA", as
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   // ---- Run 1: create a track+semester, declare Completed, then add a course ----
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const first = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Sem Status", `semstatus-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add("Sem Status", `semstatus-${Date.now()}`);
     const pid = p.id;
-    const trackId = await window.careerflow.academic.addTrack(pid, "B.Tech (CSE)");
-    const semId = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
+    const trackId = await window.progressLedger.academic.addTrack(pid, "B.Tech (CSE)");
+    const semId = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
 
     // Default status straight after creation.
-    let tree = await window.careerflow.academic.tree(pid);
+    let tree = await window.progressLedger.academic.tree(pid);
     const defaultStatus = tree[0].semesters[0].status;
 
     // Declare "Completed" while the semester has NO graded courses yet.
-    await window.careerflow.academic.setSemesterStatus(pid, semId, "Completed");
+    await window.progressLedger.academic.setSemesterStatus(pid, semId, "Completed");
 
     // Now add a partially-graded course (40/100) — this would derive "In Progress".
-    await window.careerflow.courses.add({
+    await window.progressLedger.courses.add({
       profileId: pid,
       semesterLabel: "Semester 1",
       courseName: "Algorithms",
@@ -57,9 +57,9 @@ test("semester status is declared, persisted, and independent of marks/SGPA", as
       isHypothetical: false,
     });
 
-    tree = await window.careerflow.academic.tree(pid);
+    tree = await window.progressLedger.academic.tree(pid);
     const afterCourse = tree[0].semesters[0].status;
-    const sgpa = await window.careerflow.courses.sgpa(pid, "Semester 1");
+    const sgpa = await window.progressLedger.courses.sgpa(pid, "Semester 1");
     return { pid, semId, defaultStatus, afterCourse, sgpa: sgpa.sgpa };
   });
 
@@ -74,17 +74,17 @@ test("semester status is declared, persisted, and independent of marks/SGPA", as
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const reloaded = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const sem = tree[0].semesters[0];
     // Remove the course (a course-data change) and re-read status.
-    const courses = await window.careerflow.courses.list(pid, "Semester 1");
-    for (const c of courses) await window.careerflow.courses.remove(pid, c.id);
-    const tree2 = await window.careerflow.academic.tree(pid);
+    const courses = await window.progressLedger.courses.list(pid, "Semester 1");
+    for (const c of courses) await window.progressLedger.courses.remove(pid, c.id);
+    const tree2 = await window.progressLedger.academic.tree(pid);
     return { persisted: sem.status, afterCourseRemoval: tree2[0].semesters[0].status };
   });
 

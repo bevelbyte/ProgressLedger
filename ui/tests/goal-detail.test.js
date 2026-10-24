@@ -40,7 +40,7 @@ function makeGoal(over = {}) {
 
 function setupIpc(events = []) {
   globalThis.window = {
-    careerflow: {
+    progressLedger: {
       goals: {
         listEvents: vi.fn(async () => {
           await Promise.resolve();

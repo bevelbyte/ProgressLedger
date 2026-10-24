@@ -4,18 +4,18 @@
 
 export const syncAutomationService = {
   async getAutomation() {
-    return await window.careerflow.sync.getAutomation();
+    return await window.progressLedger.sync.getAutomation();
   },
 
   async updateAutomation(patch) {
-    return await window.careerflow.sync.updateAutomation(patch);
+    return await window.progressLedger.sync.updateAutomation(patch);
   },
 
   async runNow() {
-    return await window.careerflow.sync.runNow();
+    return await window.progressLedger.sync.runNow();
   },
 
   onAutomationResult(callback) {
-    return window.careerflow.sync.onAutomationResult?.(callback);
+    return window.progressLedger.sync.onAutomationResult?.(callback);
   }
 };

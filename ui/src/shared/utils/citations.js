@@ -1,5 +1,5 @@
 /**
- * Citation and Source Reference Engine for CareerFlow.
+ * Citation and Source Reference Engine for Progress Ledger.
  *
  * Provides citation formatting (Markdown, Inline, APA, IEEE) and grounds
  * quoted passages in actual extracted document text with verified page numbers.
@@ -63,7 +63,7 @@ export function locatePassagePage(rawText, passage) {
  * @param {string} [source.author] - Author name or organization
  * @param {string|number} [source.year] - Publication or creation year
  * @param {string} [source.url] - URL for web sources
- * @param {number} [source.resourceId] - Local CareerFlow resource ID
+ * @param {number} [source.resourceId] - Local Progress Ledger resource ID
  * @param {string} [source.passage] - Quoted passage or text excerpt
  * @param {number} [source.page] - Verified page number
  * @param {string} [style="markdown"] - Citation style ("markdown" | "inline" | "apa" | "ieee")

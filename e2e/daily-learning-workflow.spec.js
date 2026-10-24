@@ -51,7 +51,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
   const launchApp = () =>
     electron.launch({
       args: [root, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1", CAREERFLOW_DONUT_SETTINGS_DIR: absentDonutDir },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentDonutDir },
     });
 
   let app = await launchApp();
@@ -59,17 +59,17 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
 
   try {
     await win.waitForLoadState("domcontentloaded");
-    await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+    await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
     await win.reload();
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     // Bootstrap Student Profile and Academic Structure
     const seed = await win.evaluate(async () => {
-      const p = await window.careerflow.profiles.add("Daily Student", `student-${Date.now()}`);
-      const trackId = await window.careerflow.academic.addTrack(p.id, "B.Tech Computer Science");
-      const semId = await window.careerflow.academic.addSemester(p.id, trackId, "Semester 5");
-      const msId = await window.careerflow.academic.addMilestone(p.id, semId, "Distributed Systems");
-      const subjectId = await window.careerflow.academic.addSubject(p.id, msId, "Distributed Systems", "CS405");
+      const p = await window.progressLedger.profiles.add("Daily Student", `student-${Date.now()}`);
+      const trackId = await window.progressLedger.academic.addTrack(p.id, "B.Tech Computer Science");
+      const semId = await window.progressLedger.academic.addSemester(p.id, trackId, "Semester 5");
+      const msId = await window.progressLedger.academic.addMilestone(p.id, semId, "Distributed Systems");
+      const subjectId = await window.progressLedger.academic.addSubject(p.id, msId, "Distributed Systems", "CS405");
       return { profileId: p.id, subjectId };
     });
 
@@ -177,8 +177,8 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
 
     const attached = await win.evaluate(
       async ({ profileId, subjectId, pdfPath }) => {
-        const id = await window.careerflow.resources.attachFile ?
-          await window.careerflow.resources.list({ profileId, subjectId }) : [];
+        const id = await window.progressLedger.resources.attachFile ?
+          await window.progressLedger.resources.list({ profileId, subjectId }) : [];
         return id;
       },
       { profileId: seed.profileId, subjectId: seed.subjectId, pdfPath: mockPdfPath },
@@ -187,7 +187,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
     // Add study note
     const noteId = await win.evaluate(
       async ({ profileId, subjectId }) => {
-        return await window.careerflow.resources.addNote(
+        return await window.progressLedger.resources.addNote(
           profileId,
           subjectId,
           "CAP Theorem Notes",
@@ -201,7 +201,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
     // Search via FTS5
     const searchHits = await win.evaluate(
       async ({ profileId }) => {
-        return await window.careerflow.resources.search(profileId, "partition");
+        return await window.progressLedger.resources.search(profileId, "partition");
       },
       { profileId: seed.profileId },
     );
@@ -214,7 +214,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
     // =========================================================================
     await win.evaluate(
       async ({ profileId, id }) => {
-        await window.careerflow.resources.updateNote(
+        await window.progressLedger.resources.updateNote(
           profileId,
           id,
           "CAP Theorem Notes v2",
@@ -226,7 +226,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
 
     const updatedNote = await win.evaluate(
       async ({ profileId, id }) => {
-        return await window.careerflow.resources.get({ profileId, id });
+        return await window.progressLedger.resources.get({ profileId, id });
       },
       { profileId: seed.profileId, id: noteId },
     );
@@ -242,7 +242,7 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
     await win.locator('[data-testid="browser-go"]').click();
 
     // Page state fails gracefully with error state, Electron main remains alive and healthy
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     // Return to Study: study notes and local data remain 100% accessible
     await win.locator('[data-ctx="study"]').click();
@@ -253,8 +253,8 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
     // =========================================================================
     // Verify pre-restart record counts
     const preRestart = await win.evaluate(async (profileId) => {
-      const sources = await window.careerflow.research.listSources(profileId);
-      const captures = await window.careerflow.research.listCaptures(profileId);
+      const sources = await window.progressLedger.research.listSources(profileId);
+      const captures = await window.progressLedger.research.listCaptures(profileId);
       return { sourceCount: sources.length, captureCount: captures.length };
     }, seed.profileId);
 
@@ -268,15 +268,15 @@ test("Daily learning workflow: study, multi-browsing, research ledger, notes, an
 
     await win.waitForLoadState("domcontentloaded");
     await win.reload();
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     // Verify post-restart persistence in SQLite
     const postRestart = await win.evaluate(
       async ({ profileId, subjectId, noteId }) => {
-        const sources = await window.careerflow.research.listSources(profileId);
-        const captures = await window.careerflow.research.listCaptures(profileId);
-        const note = await window.careerflow.resources.get({ profileId, id: noteId });
-        const subjectsTree = await window.careerflow.academic.tree(profileId);
+        const sources = await window.progressLedger.research.listSources(profileId);
+        const captures = await window.progressLedger.research.listCaptures(profileId);
+        const note = await window.progressLedger.resources.get({ profileId, id: noteId });
+        const subjectsTree = await window.progressLedger.academic.tree(profileId);
         const tracks = Array.isArray(subjectsTree) ? subjectsTree : (subjectsTree?.tracks ?? []);
         return {
           sourceCount: sources.length,

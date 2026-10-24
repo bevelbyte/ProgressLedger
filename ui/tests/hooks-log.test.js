@@ -54,14 +54,14 @@ function setupIpc({ executions = [], emitter = undefined } = {}) {
   const res = { executions };
   if (emitter !== undefined) res.emitter = emitter;
   const listExecutions = vi.fn().mockResolvedValue(res);
-  window.careerflow = {
+  window.progressLedger = {
     hooks: { listExecutions },
   };
   return { listExecutions };
 }
 
 beforeEach(() => {
-  window.careerflow = undefined;
+  window.progressLedger = undefined;
 });
 
 afterEach(() => {

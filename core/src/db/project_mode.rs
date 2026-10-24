@@ -1559,7 +1559,7 @@ mod concurrency_tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let db_path = std::env::temp_dir().join(format!("careerflow-pm-message-{stamp}.db"));
+        let db_path = std::env::temp_dir().join(format!("progressledger-pm-message-{stamp}.db"));
         init_db(db_path.to_string_lossy().into_owned()).expect("init db");
 
         let (profile_id, agent_id) = with_db(|conn| {

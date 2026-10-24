@@ -1,6 +1,5 @@
-// The retired browser_* compatibility tools are read-only refusals, not
-// browser mutations. They must fail locally without a misleading approval
-// prompt; unrelated tool approval and token guarantees remain unchanged.
+// Tool approval and token guarantees: dangerous static tools stay gated,
+// dynamic-tool rules stay unchanged, and tokens stay single-use and bound.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -12,21 +11,9 @@ import {
   APPROVAL_TOKEN_TTL_MS,
   _resetApprovalTokens,
 } from "../src/services/project-tools/security.js";
-import { UNSUPPORTED_DONUT_TOOL_NAMES } from "../src/services/browser-workspace-tools.js";
 
 test.beforeEach(() => _resetApprovalTokens());
 test.afterEach(() => _resetApprovalTokens());
-
-test("retired Donut browser-control compatibility tools do not require approval", () => {
-  for (const name of UNSUPPORTED_DONUT_TOOL_NAMES) {
-    assert.equal(APPROVAL_REQUIRED.has(name), false, `${name} is not in the approval set`);
-    assert.equal(
-      requiresToolApproval(name, { name, permission: "READ" }),
-      false,
-      `${name} fails locally without an approval dialog`,
-    );
-  }
-});
 
 test("dangerous static tools remain approval-gated", () => {
   for (const name of ["exec_run", "fs_write", "test_run", "build_run"]) {

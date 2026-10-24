@@ -60,14 +60,14 @@
 
   async function loadObligations(pid) {
     const results = await Promise.allSettled([
-      window.careerflow.deadlines.list(pid),
-      window.careerflow.cards.all(pid),
+      window.progressLedger.deadlines.list(pid),
+      window.progressLedger.cards.all(pid),
       // `mistakes.list` takes an OPTIONS OBJECT, not a bare profileId (see
       // shell/src/preload.cjs:76). Passing a bare id here resolves against
       // `profileId` of the destructured arg, which is undefined, so the query
       // would silently return nothing and the strip would quietly under-report
       // open mistakes forever.
-      window.careerflow.mistakes.list({ profileId: pid }),
+      window.progressLedger.mistakes.list({ profileId: pid }),
     ]);
     const [d, c, m] = results;
     obligationDeadlines = d.status === "fulfilled" && Array.isArray(d.value) ? d.value : [];
@@ -247,7 +247,7 @@
   <!-- OWED HERE -- the obligation-first band.
 
      SPACE BUNNY DIRECTION. In the reference, a Space leads with what it still
-     owes you, not with an inventory of what it contains. CareerFlow's subject
+     owes you, not with an inventory of what it contains. Progress Ledger's subject
      index did the opposite: it listed subjects, their marks and their status,
      and never once mentioned that four of them had work outstanding. A student
      opening Spaces is usually asking "what is this costing me", so that is now

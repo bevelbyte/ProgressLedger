@@ -6,16 +6,16 @@
  * whose height is that day's committed load, the day label, the load figure,
  * and either "N items" or "clean". Two panels side by side answer two different
  * questions -- "what should I do first" and "is this week survivable" -- and
- * neither can answer the other. CareerFlow had only the first.
+ * neither can answer the other. Progress Ledger had only the first.
  *
  * WHY THE LOAD IS A COUNT AND NOT MINUTES. The reference measures minutes
- * because it schedules real sessions. CareerFlow's deadline rows carry no
+ * because it schedules real sessions. Progress Ledger's deadline rows carry no
  * estimate field, so inventing one would be fabrication on the front door. A
  * day's load is therefore its number of open items, and the figure under the
  * bar is that count. Honest, and still the thing the user is asking about.
  *
  * Date semantics are LOCAL calendar, matching today.js and the rest of
- * CareerFlow (SQLite date('now','localtime')). Days are compared as
+ * Progress Ledger (SQLite date('now','localtime')). Days are compared as
  * YYYY-MM-DD strings, never as UTC instants, so "today" respects the user's
  * midnight boundary.
  */

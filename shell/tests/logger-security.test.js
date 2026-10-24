@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { initLogger, writeLog } from "../src/services/logger.js";
 
 test("diagnostic logger redacts credential-shaped values and secret keys", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "careerflow-logger-security-"));
-  const file = join(dir, "careerflow.log");
+  const dir = await mkdtemp(join(tmpdir(), "progressledger-logger-security-"));
+  const file = join(dir, "progress-ledger-v2.log");
   try {
     initLogger(file);
     await writeLog("info", "provider configured sk-abcdefghijklmnopqrstuvwxyz", {

@@ -10,7 +10,6 @@ import assert from "node:assert/strict";
 import { STATES, canTransition, AgentEventBus, AGENT_EVENTS, cancelAgent, getRun, listActiveRuns, startAgent } from "../src/services/agent/loop.js";
 import { PROJECT_TOOLS, listTools, getTool } from "../src/services/project-tools/index.js";
 import { PERMISSIONS, APPROVAL_REQUIRED } from "../src/services/project-tools/security.js";
-import { registerUnsupportedDonutTools } from "../src/services/browser-workspace-tools.js";
 
 // ----------------------------------------------------------------------------
 // State machine
@@ -127,9 +126,7 @@ test("tools: every registered tool has a name, description, permission, timeoutM
 });
 
 test("tools: APPROVAL_REQUIRED is a subset of the registry", () => {
-  // Retired Donut page-control names remain registered as honest refusals.
-  // This mirrors the production IPC registrar; no browser operations are wired.
-  registerUnsupportedDonutTools();
+  // The approval set must reference only tools that exist in the registry.
   const names = new Set(listTools().map((t) => t.name));
   for (const n of APPROVAL_REQUIRED) {
     assert.ok(names.has(n), `APPROVAL_REQUIRED references unknown tool ${n}`);

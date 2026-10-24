@@ -121,12 +121,12 @@ const PAGE_HTML = `<!doctype html>
           }
           case "nav-view-source": attempt("view-source:https://example.com/"); break;
           case "nav-mailto": attempt("mailto:someone@example.invalid"); break;
-          case "nav-careerflow": attempt("careerflow://app/index.html"); break;
+          case "nav-progressledger": attempt("progressledger-v2://app/index.html"); break;
           case "nav-javascript": attempt("javascript:void(0)"); break;
 
           // window.open() is the broadest sweep available: it reaches
           // setWindowOpenHandler for MOST schemes (measured: data:, mailto:,
-          // careerflow:), whereas a page navigation is stopped inside Chromium
+          // progressLedger:), whereas a page navigation is stopped inside Chromium
           // before any event fires for some of them. Both are page-initiated
           // and both must fail closed.
           case "open-mailto":
@@ -134,9 +134,9 @@ const PAGE_HTML = `<!doctype html>
               window.open("mailto:someone@example.invalid", "_blank");
             } catch (e) { report("auto", { threw: String(e) }); }
             break;
-          case "open-careerflow":
+          case "open-progressledger":
             try {
-              window.open("careerflow://app/index.html", "_blank");
+              window.open("progressledger-v2://app/index.html", "_blank");
             } catch (e) { report("auto", { threw: String(e) }); }
             break;
           case "open-data":
@@ -327,13 +327,13 @@ async function launch() {
   const userDataDir = mkdtempSync(join(tmpdir(), "cf-r2-"));
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     // Donut absent: no stub, and a settings directory that is not there.
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -350,28 +350,28 @@ async function launch() {
     if (w) w.setContentSize(1600, 1000);
   });
 
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   // Record main's own push stream: every refusal, every denial. Installed AFTER
   // the boot reload so it is not wiped by it.
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
   return { app, win };
 }
 
 /**
- * Seed one CareerFlow profile through the app's own bridge, then select it
+ * Seed one Progress Ledger profile through the app's own bridge, then select it
  * through the app's own profile card. The browser partition is derived from
  * this profile's id (approved decision B), so the id has to be a REAL row.
  */
 async function seedAndSelectProfile(win) {
   const pid = await win.evaluate(async () => {
-    const created = await window.careerflow.profiles.add("R2 Security", "r2-security");
+    const created = await window.progressLedger.profiles.add("R2 Security", "r2-security");
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   });
@@ -379,10 +379,10 @@ async function seedAndSelectProfile(win) {
 
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   await win.evaluate(() => {
     window.__cfEvents = [];
-    window.careerflow.browser.onEvent((event) => window.__cfEvents.push(event));
+    window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
   await win.locator('button.nav-item:has-text("Profiles")').first().click();
@@ -476,14 +476,14 @@ async function assertDonutAbsent(app) {
   const donut = await app.evaluate(() => {
     let dirExists = null;
     try {
-      dirExists = require("node:fs").existsSync(process.env.CAREERFLOW_DONUT_SETTINGS_DIR);
+      dirExists = require("node:fs").existsSync(process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR);
     } catch {
       dirExists = false;
     }
     return {
-      stubEnv: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+      stubEnv: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
       recorder: globalThis.__cfDonutE2E ?? null,
-      settingsDir: process.env.CAREERFLOW_DONUT_SETTINGS_DIR ?? null,
+      settingsDir: process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR ?? null,
       settingsDirExists: dirExists,
     };
   });
@@ -502,7 +502,7 @@ async function assertDonutAbsent(app) {
    * escape is that the DOCUMENT SURVIVES, still on its own origin, and that main
    * never recorded the new URL.
    *
-   * `mailto:` and `careerflow:` DO reach `will-frame-navigate`, and are covered
+   * `mailto:` and `progressLedger:` DO reach `will-frame-navigate`, and are covered
    * by the dedicated per-scheme tests below rather than here — because their
    * events are dispatched asynchronously and a shared loop would race them.
    *
@@ -583,7 +583,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
       ["blob:https://example.com/abc", "blocked-scheme"],
       ["view-source:https://example.com/", "blocked-scheme"],
       ["mailto:someone@example.invalid", "blocked-scheme"],
-      ["careerflow://app/index.html", "blocked-scheme"],
+      ["progressledger-v2://app/index.html", "blocked-scheme"],
     ]) {
       await navigateTo(win, target);
       // The user is TOLD, with the reason — a refusal is never a silent drop.
@@ -655,7 +655,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
    */
   for (const [program, scheme] of [
     ["nav-mailto", "mailto:"],
-    ["nav-careerflow", "careerflow:"],
+    ["nav-progressledger", "progressLedger:"],
   ]) {
     test(`a page navigating itself to ${scheme} is refused by name at the frame gate`, async () => {
       await seedAndSelectProfile(win);
@@ -693,7 +693,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
     for (const [program, scheme] of [
       ["open-data", "data:"],
       ["open-mailto", "mailto:"],
-      ["open-careerflow", "careerflow:"],
+      ["open-progressledger", "progressLedger:"],
     ]) {
       const before = (await blockedEvents(win)).length;
       await navigateTo(win, programUrl(origin.origin, program));
@@ -724,7 +724,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // MEASURED, NOT ASSUMED: a server 302 to `file:` / `data:` is stopped
     // INSIDE Chromium before `will-redirect` is emitted (the navigation simply
-    // fails), whereas a 302 to `mailto:` or `careerflow:` IS dispatched and
+    // fails), whereas a 302 to `mailto:` or `progressLedger:` IS dispatched and
     // therefore reaches the gate. So `mailto:` is the case that proves the
     // main-process `will-redirect` guard is really installed and bites, and
     // `file:`/`data:` are proven by "the page did not move".
@@ -895,7 +895,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // --- The bridge surface itself: pinned, so a channel that could grant a
     //     permission (or name a session/partition) cannot appear unnoticed. ---
-    const surface = await win.evaluate(() => Object.keys(window.careerflow.browser).sort());
+    const surface = await win.evaluate(() => Object.keys(window.progressLedger.browser).sort());
     expect(surface).toEqual(
       [
         "cancelDownload",
@@ -919,11 +919,11 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
       "data:text/html,x",
       "blob:https://example.com/x",
       "view-source:https://example.com/",
-      "careerflow://app/index.html",
+      "progressledger-v2://app/index.html",
       "not-a-url",
     ]) {
       const res = await win.evaluate(
-        (spec) => window.careerflow.browser.navigate(spec.pageId, spec.url),
+        (spec) => window.progressLedger.browser.navigate(spec.pageId, spec.url),
         { pageId, url: target },
       );
       expect(res.ok, `${target} must be refused`).toBe(false);
@@ -934,7 +934,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // --- A page cannot be CREATED onto a forbidden destination either. ---
     const created = await win.evaluate(
-      (spec) => window.careerflow.browser.createPage(spec.profileId, spec.url),
+      (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url),
       { profileId, url: "data:text/html,<h1>smuggled</h1>" },
     );
     expect(created.ok, "createPage must refuse the scheme").toBe(false);
@@ -943,7 +943,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // --- An opaque id is required: no page id, no operation. ---
     const unknown = await win.evaluate(
-      (url) => window.careerflow.browser.navigate("bp-999", url),
+      (url) => window.progressLedger.browser.navigate("bp-999", url),
       "https://example.com",
     );
     expect(unknown.ok).toBe(false);
@@ -951,7 +951,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // --- No channel grants a permission, and the renderer cannot name one. ---
     const permissionShaped = await win.evaluate(() =>
-      Object.keys(window.careerflow.browser).filter((k) =>
+      Object.keys(window.progressLedger.browser).filter((k) =>
         /permission|grant|allow|session|partition/i.test(k),
       ),
     );

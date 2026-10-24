@@ -1,12 +1,12 @@
 /**
  * CGPA feature service — the ONLY renderer path to course/grade-scale data.
- * Thin wrapper over the typed preload bridge (window.careerflow.courses.*),
+ * Thin wrapper over the typed preload bridge (window.progressLedger.courses.*),
  * which routes through IPC to the Rust courses module and SQLite. No
  * calculation logic lives here or in the UI: SGPA/CGPA come from Rust.
  */
 export const cgpaService = {
   listCourses(profileId, semesterLabel = null) {
-    return window.careerflow.courses.list(profileId, semesterLabel);
+    return window.progressLedger.courses.list(profileId, semesterLabel);
   },
 
   /**
@@ -15,7 +15,7 @@ export const cgpaService = {
    *   marksObtained?:number|null, maxMarks?:number|null, isHypothetical?:boolean}} input
    */
   addCourse(input) {
-    return window.careerflow.courses.add(input);
+    return window.progressLedger.courses.add(input);
   },
 
   /**
@@ -24,26 +24,26 @@ export const cgpaService = {
    *   marksObtained?:number|null, maxMarks?:number|null, subjectId?:number|null}} input
    */
   updateCourse(input) {
-    return window.careerflow.courses.update(input);
+    return window.progressLedger.courses.update(input);
   },
 
   removeCourse(profileId, courseId) {
-    return window.careerflow.courses.remove(profileId, courseId);
+    return window.progressLedger.courses.remove(profileId, courseId);
   },
 
   sgpa(profileId, semesterLabel) {
-    return window.careerflow.courses.sgpa(profileId, semesterLabel);
+    return window.progressLedger.courses.sgpa(profileId, semesterLabel);
   },
 
   cgpa(profileId) {
-    return window.careerflow.courses.cgpa(profileId);
+    return window.progressLedger.courses.cgpa(profileId);
   },
 
   getGradeScale(profileId) {
-    return window.careerflow.courses.getGradeScale(profileId);
+    return window.progressLedger.courses.getGradeScale(profileId);
   },
 
   setGradeScale(profileId, bands) {
-    return window.careerflow.courses.setGradeScale(profileId, bands);
+    return window.progressLedger.courses.setGradeScale(profileId, bands);
   },
 };

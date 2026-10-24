@@ -1,7 +1,7 @@
 <script>
   // DiffView — shows `git diff` output for the active project.
   //
-  // The renderer NEVER has a path. It calls window.careerflow.diff.workingTree
+  // The renderer NEVER has a path. It calls window.progressLedger.diff.workingTree
   // with (profileId, agentId); the main process resolves the per-agent
   // projectRoot from the registry and invokes the existing shell_git_diff
   // tool (with the assertInsideProjectRoot sandbox already in place).
@@ -26,7 +26,7 @@
     loading = true;
     error = null;
     try {
-      const r = await window.careerflow.diff.workingTree(profileId, agentId, { staged });
+      const r = await window.progressLedger.diff.workingTree(profileId, agentId, { staged });
       if (!r || !r.ok) {
         error = (r && r.error && r.error.message) || "Couldn't load diff";
         diff = "";

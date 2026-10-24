@@ -45,7 +45,7 @@ function namespace() {
 }
 
 function installIpc() {
-  window.careerflow = {
+  window.progressLedger = {
     projectMode: {
       listProjects: vi.fn(async () => []),
       listMessages: vi.fn(async () => []),
@@ -96,7 +96,7 @@ async function mount() {
 beforeEach(() => {
   installIpc();
   resetStore();
-  projectModeStore.projects = [{ id: 5, name: "CareerFlow", description: "Desktop app" }];
+  projectModeStore.projects = [{ id: 5, name: "Progress Ledger", description: "Desktop app" }];
   projectModeStore.activeProjectId = 5;
   projectModeStore.activeAgentId = 9;
 });
@@ -104,7 +104,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   resetStore();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 describe("Runs console — regions", () => {

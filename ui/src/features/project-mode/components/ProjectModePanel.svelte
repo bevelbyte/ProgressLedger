@@ -35,7 +35,7 @@ import { projectModeStore, loadProjects, selectProject } from "../stores/project
         ) {
           await loadProjects(profileId);
         }
-        const agent = await window.careerflow.projectMode.getAgent(profileId, pendingAgentId);
+        const agent = await window.progressLedger.projectMode.getAgent(profileId, pendingAgentId);
         if (cancelled) return;
         if (agent && agent.ok !== false) {
           const projectId = agent.projectId ?? agent.project_id;
@@ -85,7 +85,7 @@ import { projectModeStore, loadProjects, selectProject } from "../stores/project
 
   // Onboarding tour state. Auto-shows on first visit if the localStorage
   // flag is missing. Can be re-opened from the Help menu.
-  const TOUR_KEY = "careerflow_project_mode_tour_complete";
+  const TOUR_KEY = "progressledger_v2_project_mode_tour_complete";
   let showTour = $state(false);
 
   function openTour() {

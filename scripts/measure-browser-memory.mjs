@@ -3,7 +3,7 @@
  * measure-browser-memory.mjs — Bounded browser registry and memory benchmark.
  *
  * Measures process memory usage (RSS, heapTotal, heapUsed, external) under
- * simulated browser page lifecycle events, verifying that CareerFlow's bounded
+ * simulated browser page lifecycle events, verifying that Progress Ledger's bounded
  * 10-page live-budget and registry allocations remain strictly bounded without
  * heap runaways or unbounded event accumulation.
  */
@@ -61,7 +61,7 @@ class BoundedBrowserRegistry {
 
 async function runBenchmark() {
   console.log("=================================================");
-  console.log(" CareerFlow Bounded Browser Memory Benchmark");
+  console.log(" Progress Ledger Bounded Browser Memory Benchmark");
   console.log("=================================================\n");
 
   if (global.gc) {

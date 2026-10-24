@@ -24,16 +24,16 @@ test("Research sources and passages persist, deduplicate, and return to the exis
   try {
     app = await electron.launch({
       args: [root, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1", CAREERFLOW_DONUT_SETTINGS_DIR: absentDonutDir },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentDonutDir },
     });
     const win = await app.firstWindow();
     await win.waitForLoadState("domcontentloaded");
-    await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+    await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
     await win.reload();
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     const profile = await win.evaluate(async () => {
-      const result = await window.careerflow.profiles.add("Research Contract", `research-e2e-${Date.now()}`);
+      const result = await window.progressLedger.profiles.add("Research Contract", `research-e2e-${Date.now()}`);
       const value = result?.profile || result;
       return value?.id ?? value?.profileId ?? result;
     });
@@ -80,7 +80,7 @@ test("Research sources and passages persist, deduplicate, and return to the exis
     await win.evaluate(() => window.dispatchEvent(new CustomEvent("cf:navigate", { detail: { view: "research-ledger" } })));
     await expect(win.getByTestId("research-ledger-page")).toBeVisible();
     await expect(win.locator("[data-capture-id]")).toHaveCount(1);
-    await expect.poll(async () => await win.evaluate(async (profileId) => (await window.careerflow.research.listCaptures(Number(profileId))).length, Number(profile))).toBe(1);
+    await expect.poll(async () => await win.evaluate(async (profileId) => (await window.progressLedger.research.listCaptures(Number(profileId))).length, Number(profile))).toBe(1);
   } finally {
     await app?.close();
     await new Promise((resolve) => server.close(resolve));
@@ -103,16 +103,16 @@ test("Research rejects invalid IPC inputs and real SQLite write failures without
   try {
     app = await electron.launch({
       args: [root, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1", CAREERFLOW_DONUT_SETTINGS_DIR: absentDonutDir },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: absentDonutDir },
     });
     const win = await app.firstWindow();
     await win.waitForLoadState("domcontentloaded");
-    await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+    await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
     await win.reload();
-    await expect.poll(async () => win.evaluate(() => window.careerflow.ping())).toMatch(/CareerFlow core online/i);
+    await expect.poll(async () => win.evaluate(() => window.progressLedger.ping())).toMatch(/Progress Ledger core online/i);
 
     const profileId = await win.evaluate(async () => {
-      const result = await window.careerflow.profiles.add("Research Failure Contract", `research-failure-${Date.now()}`);
+      const result = await window.progressLedger.profiles.add("Research Failure Contract", `research-failure-${Date.now()}`);
       const value = result?.profile || result;
       return value?.id ?? value?.profileId ?? result;
     });
@@ -132,7 +132,7 @@ test("Research rejects invalid IPC inputs and real SQLite write failures without
 
     // These calls use the real preload -> IPC -> Main validation -> native path.
     const invalid = await win.evaluate(async ({ profileId, pageId }) => {
-      const api = window.careerflow.research;
+      const api = window.progressLedger.research;
       const rejected = async (fn) => {
         try {
           const result = await fn();
@@ -147,12 +147,12 @@ test("Research rejects invalid IPC inputs and real SQLite write failures without
       };
     }, { profileId, pageId });
     expect(invalid).toEqual({ badKind: true, empty: true, oversized: true, invalidPage: true });
-    expect(await win.evaluate(async (id) => (await window.careerflow.research.listCaptures(Number(id))).length, profileId)).toBe(0);
+    expect(await win.evaluate(async (id) => (await window.progressLedger.research.listCaptures(Number(id))).length, profileId)).toBe(0);
 
     // Open only the disposable E2E workspace DB. SQLite triggers force a genuine
     // native write failure while all normal Main ownership checks, N-API calls
     // and the production Rust transaction remain in path.
-    const dbPath = join(userDataDir, "careerflow.db");
+    const dbPath = join(userDataDir, "progress-ledger-v2.db");
     await expect.poll(() => require("node:fs").existsSync(dbPath)).toBe(true);
     db = new Database(dbPath, { timeout: 5000 });
     db.pragma("busy_timeout = 5000");
@@ -160,12 +160,12 @@ test("Research rejects invalid IPC inputs and real SQLite write failures without
     db.exec("CREATE TRIGGER e2e_reject_research_source BEFORE INSERT ON research_sources BEGIN SELECT RAISE(ABORT, 'e2e-source-write-failure'); END;");
     await win.getByTestId("research-save-source").click();
     await expect(win.locator('[data-testid="research-ledger"] [role="status"]')).toContainText("Source was not saved");
-    expect(await win.evaluate(async (id) => (await window.careerflow.research.listSources(Number(id))).length, profileId)).toBe(0);
+    expect(await win.evaluate(async (id) => (await window.progressLedger.research.listSources(Number(id))).length, profileId)).toBe(0);
     db.exec("DROP TRIGGER e2e_reject_research_source;");
     await win.getByTestId("research-save-source").click();
     await expect(win.getByTestId("research-save-source")).toBeDisabled();
     await expect(win.getByText("Source saved to Research")).toBeVisible();
-    expect(await win.evaluate(async (id) => (await window.careerflow.research.listSources(Number(id))).length, profileId)).toBe(1);
+    expect(await win.evaluate(async (id) => (await window.progressLedger.research.listSources(Number(id))).length, profileId)).toBe(1);
 
     await expect(win.getByTestId("browser-surface")).toBeVisible();
     await expect(win.getByTestId("research-kept-count")).toHaveText("");
@@ -175,14 +175,14 @@ test("Research rejects invalid IPC inputs and real SQLite write failures without
     await expect(win.locator('[data-testid="research-ledger"] [role="status"]')).toContainText("Passage was not saved");
     await expect(win.getByTestId("research-passage-text")).toHaveValue("Keep this exact passage if persistence fails.");
     await expect(win.getByTestId("research-kept-count")).toHaveText("");
-    expect(await win.evaluate(async (id) => (await window.careerflow.research.listCaptures(Number(id))).length, profileId)).toBe(0);
+    expect(await win.evaluate(async (id) => (await window.progressLedger.research.listCaptures(Number(id))).length, profileId)).toBe(0);
 
     db.exec("DROP TRIGGER e2e_reject_research_capture;");
     await win.getByTestId("research-keep-passage").click();
     await expect(win.getByText("Keep this exact passage if persistence fails.", { exact: true })).toBeVisible();
     await expect(win.getByTestId("research-passage-text")).toHaveValue("");
     await expect(win.getByTestId("research-kept-count")).toHaveText("1 kept");
-    expect(await win.evaluate(async (id) => (await window.careerflow.research.listCaptures(Number(id))).length, profileId)).toBe(1);
+    expect(await win.evaluate(async (id) => (await window.progressLedger.research.listCaptures(Number(id))).length, profileId)).toBe(1);
 
     // A query failure is induced by hiding the real capture table in this
     // disposable database. The renderer's existing successful rows/count must

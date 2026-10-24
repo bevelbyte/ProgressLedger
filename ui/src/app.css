@@ -1,5 +1,5 @@
 /* ============================================================================
-   CareerFlow — Atlas design system
+   Progress Ledger — Atlas design system
    Source of truth: docs/DESIGN-ATLAS.md. Do not add ad-hoc hex values in
    components; use these tokens.
 
@@ -12,6 +12,32 @@
      4. Primitives (atl-* and cf-*)
      5. Motion
    ========================================================================== */
+
+/* Bundled fonts — offline, no webfont fetch at runtime.
+   Inter Variable (latin, normal + italic) from @fontsource-variable/inter
+   as installed in the Progress Ledger repo (OFL-1.1); Cascadia Mono
+   (Regular) from C:\Windows\Fonts (OFL-1.1). */
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-latin-wght-italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cascadia Mono";
+  src: url("./assets/fonts/CascadiaMono.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* ======================================================================
@@ -33,7 +59,7 @@
   --atlas-hover: #212127; /* legacy alias -> raise */
 
   /* Row hover is a wash, not a surface step, so it works on any of the above */
-  --atlas-wash: rgba(255, 255, 255, 0.032);
+  --atlas-wash: rgba(255, 255, 255, 0.05);
   --atlas-wash-2: rgba(255, 255, 255, 0.06);
   --atlas-wash-3: rgba(255, 255, 255, 0.1);
 
@@ -60,7 +86,7 @@
 
   /* ---- Signal: AMBER — "you". The human's time and attention. ----
      RETUNED from Iris (#8b7cf6, a decorative violet) to the Workbench hue.
-     CareerFlow is a study-and-career instrument: deadlines, focus, study time
+     Progress Ledger is a study-and-career instrument: deadlines, focus, study time
      and obligations are what the user actually acts on, so the single brand
      colour is spent on the human's own time rather than on chrome. See
      --atlas-machine below for the operator's cyan. */
@@ -110,7 +136,7 @@
      section head, which is what made the old header blocks read flat. */
   --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system,
     BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo,
+  --font-mono: "Cascadia Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo,
     Consolas, monospace;
 
   --text-micro: 10px;

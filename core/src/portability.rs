@@ -5,7 +5,7 @@
 //!
 //! FORMAT CONTRACT
 //! ---------------
-//! `manifest.format`  = "careerflow.profile" (all versions)
+//! `manifest.format`  = "progressledger.profile" (all versions)
 //! `manifest.version` = absent | 1 : LEGACY — academic tree + notes/PDFs ONLY
 //!                      2         : COMPLETE whole-profile backup
 //! Writer always emits version 2. Reader accepts 1 and 2 explicitly; anything
@@ -52,7 +52,7 @@ impl AtomicOutput {
         let name = out_path
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("careerflow.cfprofile");
+            .unwrap_or("progressledger.cfprofile");
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -135,7 +135,7 @@ fn replace_file(temp_path: &Path, out_path: &Path) -> std::io::Result<()> {
     }
 }
 
-pub const FORMAT_NAME: &str = "careerflow.profile";
+pub const FORMAT_NAME: &str = "progressledger.profile";
 const VERSION_V1: i64 = 1;
 const FORMAT_VERSION_V2: i64 = 2;
 
@@ -640,70 +640,6 @@ pub fn export_profile_conn(
             }));
         }
     }
-    // ---- browser manager (schema v15+) ----
-    // Metadata + shortcuts are portable user content. The machine-local Donut
-    // profile binding lives in workspace JSON and is deliberately NOT exported.
-    let mut browsers_json: Vec<Value> = Vec::new();
-    {
-        let mut bp_stmt = conn
-            .prepare(
-                "SELECT local_id, display_name, position, enabled, created_at, last_used_at
-                 FROM browser_profiles
-                 WHERE cf_profile_id = ?1
-                 ORDER BY position ASC, created_at ASC",
-            )
-            .map_err(toe)?;
-        let mut bp_rows: Vec<(String, String, i32, i32, String, Option<String>)> = Vec::new();
-        for row in bp_stmt
-            .query_map(params![profile_id], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, i32>(2)?,
-                    row.get::<_, i32>(3)?,
-                    row.get::<_, String>(4)?,
-                    row.get::<_, Option<String>>(5)?,
-                ))
-            })
-            .map_err(toe)?
-        {
-            bp_rows.push(row.map_err(toe)?);
-        }
-        drop(bp_stmt);
-        for (local_id, display_name, position, enabled, created_at, last_used_at) in bp_rows {
-            let mut sc_stmt = conn
-                .prepare(
-                    "SELECT label, url, position, created_at, pinned FROM browser_shortcuts
-                     WHERE browser_profile_id = ?1
-                     ORDER BY position ASC, created_at ASC",
-                )
-                .map_err(toe)?;
-            let mut shortcuts: Vec<Value> = Vec::new();
-            for row in sc_stmt
-                .query_map(params![local_id], |row| {
-                    Ok(json!({
-                        "label": row.get::<_, String>(0)?,
-                        "url": row.get::<_, String>(1)?,
-                        "position": row.get::<_, i32>(2)?,
-                        "createdAt": row.get::<_, String>(3)?,
-                        "pinned": row.get::<_, i32>(4)? != 0,
-                    }))
-                })
-                .map_err(toe)?
-            {
-                shortcuts.push(row.map_err(toe)?);
-            }
-            drop(sc_stmt);
-            browsers_json.push(json!({
-                "displayName": display_name,
-                "position": position,
-                "enabled": enabled != 0,
-                "createdAt": created_at,
-                "lastUsedAt": last_used_at,
-                "shortcuts": shortcuts,
-            }));
-        }
-    }
     let manifest = json!({
         "format": FORMAT_NAME,
         "version": FORMAT_VERSION_V2,
@@ -714,7 +650,6 @@ pub fn export_profile_conn(
         "tracks": tracks_json,
         "projects": proj_json,
         "career": { "goals": goals_json },
-        "browserProfiles": browsers_json,
     });
 
     // Stage the complete archive beside the destination. The existing backup
@@ -985,7 +920,7 @@ mod atomic_output_tests {
     #[test]
     fn failed_staged_export_does_not_replace_existing_backup() {
         let dir = std::env::temp_dir().join(format!(
-            "careerflow-atomic-export-{}-{}",
+            "progressledger-atomic-export-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1622,64 +1557,6 @@ fn import_v2(
         ));
     }
 
-    // ---- browser manager (schema v15+): metadata + shortcuts are portable;
-    // ---- the machine-local Donut binding is NOT (fresh ids, unmapped).
-    for (idx, b) in manifest["browserProfiles"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .enumerate()
-    {
-        let new_local = format!("imp-{}-{}", new_pid, idx + 1);
-        conn.execute(
-            "INSERT INTO browser_profiles
-               (local_id, cf_profile_id, display_name, position, enabled, created_at, last_used_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![
-                new_local,
-                new_pid,
-                str_or(b, "displayName", "Browser"),
-                b["position"]
-                    .as_i64()
-                    .map(|v| v as i32)
-                    .unwrap_or(idx as i32 + 1),
-                b["enabled"].as_bool().unwrap_or(true) as i32,
-                str_or(b, "createdAt", ""),
-                str_or(b, "lastUsedAt", ""),
-            ],
-        )
-        .map_err(toe)?;
-        for (si, sc) in b["shortcuts"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default()
-            .iter()
-            .enumerate()
-        {
-            conn.execute(
-                "INSERT INTO browser_shortcuts
-                   (browser_profile_id, label, url, position, created_at, pinned)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![
-                    new_local,
-                    str_or(sc, "label", ""),
-                    str_or(sc, "url", ""),
-                    sc["position"]
-                        .as_i64()
-                        .map(|v| v as i32)
-                        .unwrap_or(si as i32 + 1),
-                    str_or(sc, "createdAt", ""),
-                    if sc["pinned"].as_bool().unwrap_or(false) {
-                        1i32
-                    } else {
-                        0i32
-                    },
-                ],
-            )
-            .map_err(toe)?;
-        }
-    }
 
     Ok(ImportOutcome {
         result: ImportResult {

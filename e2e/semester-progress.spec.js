@@ -19,37 +19,37 @@ test("semester overview aggregates academic/study/deadlines and survives restart
   const launch = () =>
     electron.launch({
       args: [projectRoot, `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, CAREERFLOW_E2E: "1" },
+      env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
     });
 
   let app = await launch();
   let win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const setup = await win.evaluate(async () => {
-    const p = await window.careerflow.profiles.add("Sem Progress", `semp-${Date.now()}`);
+    const p = await window.progressLedger.profiles.add("Sem Progress", `semp-${Date.now()}`);
     const pid = p.id;
-    const trackId = await window.careerflow.academic.addTrack(pid, "B.Tech");
-    const semId = await window.careerflow.academic.addSemester(pid, trackId, "Semester 1");
-    const msId = await window.careerflow.academic.addMilestone(pid, semId, "Subjects");
-    const algo = await window.careerflow.academic.addSubject(pid, msId, "Algorithms", "CS201");
-    const net = await window.careerflow.academic.addSubject(pid, msId, "Networks", "CS202");
+    const trackId = await window.progressLedger.academic.addTrack(pid, "B.Tech");
+    const semId = await window.progressLedger.academic.addSemester(pid, trackId, "Semester 1");
+    const msId = await window.progressLedger.academic.addMilestone(pid, semId, "Subjects");
+    const algo = await window.progressLedger.academic.addSubject(pid, msId, "Algorithms", "CS201");
+    const net = await window.progressLedger.academic.addSubject(pid, msId, "Networks", "CS202");
 
     // Algorithms graded 80/100 @4cr; Networks left ungraded.
-    await window.careerflow.courses.add({
+    await window.progressLedger.courses.add({
       profileId: pid, semesterLabel: "Semester 1", courseName: "Algorithms",
       credits: 4, grade: null, gradePoints: null, marksObtained: 80, maxMarks: 100, isHypothetical: false,
     });
-    await window.careerflow.academic.setSubjectStatus(pid, algo, "done");
+    await window.progressLedger.academic.setSubjectStatus(pid, algo, "done");
 
     // Study only Algorithms.
-    await window.careerflow.sessions.add(pid, algo, 45);
+    await window.progressLedger.sessions.add(pid, algo, 45);
     // Overdue deadline on Networks.
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    await window.careerflow.deadlines.add(pid, net, yesterday, "assignment", "Lab Report", "");
+    await window.progressLedger.deadlines.add(pid, net, yesterday, "assignment", "Lab Report", "");
 
-    const ov = await window.careerflow.resources.semesterOverview({ profileId: pid, semesterId: semId });
+    const ov = await window.progressLedger.resources.semesterOverview({ profileId: pid, semesterId: semId });
     return { pid, semId, algo, net, ov };
   });
 
@@ -77,14 +77,14 @@ test("semester overview aggregates academic/study/deadlines and survives restart
   app = await launch();
   win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
   const reloaded = await win.evaluate(async () => {
-    const profiles = await window.careerflow.profiles.list();
+    const profiles = await window.progressLedger.profiles.list();
     const pid = profiles[profiles.length - 1].id;
-    const tree = await window.careerflow.academic.tree(pid);
+    const tree = await window.progressLedger.academic.tree(pid);
     const semId = tree[0].semesters[0].id;
-    return window.careerflow.resources.semesterOverview({ profileId: pid, semesterId: semId });
+    return window.progressLedger.resources.semesterOverview({ profileId: pid, semesterId: semId });
   });
   expect(reloaded.academic.sgpa).toBeCloseTo(9.0, 5);
   expect(reloaded.study.totalMinutes).toBe(45);

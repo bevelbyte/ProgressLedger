@@ -1,6 +1,6 @@
 // Goals — thin wrapper around the IPC namespace.
 
-const ns = () => window.careerflow && window.careerflow.goals;
+const ns = () => window.progressLedger && window.progressLedger.goals;
 
 function call(method, ...args) {
   const n = ns();

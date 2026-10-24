@@ -5,7 +5,7 @@
  * tab strip, so every navigation threw away the column you were reading and
  * there was nowhere to put a second body of work. This module is the real
  * model, adapted from the proven Space Bunny v2 shell
- * (CareerFlow-Frontend-Lab/src/shell/workspace.ts) onto CareerFlow's own
+ * (Progress Ledger-Frontend-Lab/src/shell/workspace.ts) onto Progress Ledger's own
  * destinations:
  *
  *   Context   a body of simultaneous work (Desk, Study, Library, Operator,

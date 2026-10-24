@@ -2,7 +2,7 @@
 //
 // Phase 1 of the approved D2-D6 plan. This module answers the questions that
 // must never depend on a live WebContents: which URLs may be loaded, which
-// partition a CareerFlow profile owns, and what a rendered rectangle is allowed
+// partition a Progress Ledger profile owns, and what a rendered rectangle is allowed
 // to be. Keeping it pure is deliberate and follows the repo's existing
 // convention (`ui/src/shell/workspace/model.js` is pure and testable in plain
 // Node): the security decisions below are the ones a reviewer must be able to
@@ -16,7 +16,7 @@
 
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-/** Schemes that may be loaded into a CareerFlow browser view. */
+/** Schemes that may be loaded into a Progress Ledger browser view. */
 export const ALLOWED_SCHEMES = Object.freeze(["https:", "http:"]);
 
 /** Non-http destinations that are still legitimate to show. */
@@ -33,10 +33,9 @@ const REASON = Object.freeze({
 export const URL_REASONS = REASON;
 
 /**
- * Query parameters that never belong in a renderer-visible URL. Same doctrine as
- * `sanitizeRendererUrl` in services/cdp-adapter.js (which guards the Donut CDP
- * surface): credentials, known token parameters and the fragment are stripped
- * before a URL is handed to the UI layer.
+ * Query parameters that never belong in a renderer-visible URL. Credentials,
+ * known token parameters and the fragment are stripped before a URL is handed
+ * to the UI layer.
  */
 const SECRET_QUERY_KEYS = new Set([
   "token",
@@ -123,7 +122,7 @@ export function schemeOf(raw) {
 }
 
 /**
- * A CareerFlow profile id is a positive integer in the local database. It is
+ * A Progress Ledger profile id is a positive integer in the local database. It is
  * validated before it is ever concatenated into a partition name, because
  * `session.fromPartition` input is a security boundary, not a display string.
  */
@@ -141,13 +140,13 @@ export function validateProfileId(value) {
 }
 
 /**
- * One persistent browser partition per CareerFlow PROFILE (approved decision B).
+ * One persistent browser partition per Progress Ledger PROFILE (approved decision B).
  *
  * Workspace contexts map to no browser storage at all: contexts are ephemeral
  * layout bodies that can be created and dissolved, and tying cookies to them
  * would either discard logins on dissolve or leak them into a new context.
  * `session.defaultSession` is never used for web content — it carries the app's
- * own CSP injection and the privileged `careerflow://` origin.
+ * own CSP injection and the privileged `progressledger-v2://` origin.
  *
  * @returns {string|null} null when the profile id is not valid
  */

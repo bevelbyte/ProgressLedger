@@ -32,7 +32,7 @@ import {
   splitPane,
 } from "../src/shell/workspace/model.js";
 
-const PING = "CareerFlow core online";
+const PING = "Progress Ledger core online";
 
 /** A context with `views` open in one pane, for the pane-grid tests. */
 function ctxWith(...views) {
@@ -48,7 +48,7 @@ function isoDay(offset) {
   ).padStart(2, "0")}`;
 }
 
-function makeCareerflow(overrides = {}) {
+function makeProgressLedger(overrides = {}) {
   const resolved = (value) => async () => value;
   const base = {
     ping: async () => PING,
@@ -71,8 +71,8 @@ function makeCareerflow(overrides = {}) {
     projectMode: { onEvent: () => () => {} },
     update: { check: resolved({ state: "idle" }), onStatus: () => () => {} },
   };
-  window.careerflow = { ...base, ...overrides };
-  return window.careerflow;
+  window.progressLedger = { ...base, ...overrides };
+  return window.progressLedger;
 }
 
 /** jsdom has no ResizeObserver; a page tab mounts BrowserSurface, which needs one. */
@@ -90,13 +90,13 @@ beforeEach(() => {
   ws.__resetWorkspace();
   __resetBrowserForTests();
   globalThis.ResizeObserver = FakeResizeObserver;
-  localStorage.setItem("careerflow_onboarding_complete", "true");
-  makeCareerflow();
+  localStorage.setItem("progressledger_v2_onboarding_complete", "true");
+  makeProgressLedger();
 });
 
 afterEach(() => {
   cleanup();
-  delete window.careerflow;
+  delete window.progressLedger;
 });
 
 // ---------------------------------------------------------------------------
@@ -777,7 +777,7 @@ describe("spine — the obligation readout", () => {
   });
 
   it("counts real deadlines from the existing deadlines channel", async () => {
-    window.careerflow.deadlines.list = async () => [
+    window.progressLedger.deadlines.list = async () => [
       { id: 1, title: "Late", deadlineDate: isoDay(-2), category: "assignment" },
       { id: 2, title: "Now", deadlineDate: isoDay(0), category: "exam" },
       { id: 3, title: "Later", deadlineDate: isoDay(30), category: "exam" },
@@ -810,7 +810,7 @@ describe("spine — the obligation readout", () => {
   });
 
   it("shows an unreadable deadline count as unknown, not as zero", async () => {
-    window.careerflow.deadlines.list = async () => {
+    window.progressLedger.deadlines.list = async () => {
       throw new Error("core offline");
     };
     render(Spine, { props: { profileId: 1 } });
@@ -822,7 +822,7 @@ describe("spine — the obligation readout", () => {
 
   it("fetches nothing without a profile", async () => {
     const list = vi.fn(async () => []);
-    window.careerflow.deadlines.list = list;
+    window.progressLedger.deadlines.list = list;
     render(Spine, { props: { profileId: null } });
     expect(await screen.findByTitle("Due today — not loaded")).toBeInTheDocument();
     expect(list).not.toHaveBeenCalled();

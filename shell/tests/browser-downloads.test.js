@@ -1,4 +1,4 @@
-// Managed downloads for the CareerFlow-owned embedded browser — approved
+// Managed downloads for the Progress Ledger-owned embedded browser — approved
 // decision D (`<workspace>/downloads`).
 //
 // WHAT IS PROVEN HERE. That the download foundation is a SECURITY boundary, not

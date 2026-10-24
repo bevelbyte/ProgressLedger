@@ -15,7 +15,7 @@ const projectRoot = join(__dirname, "..");
  * WHAT THIS SPEC PROVES, AND WHY IT CANNOT BE PROVEN IN jsdom.
  *
  * Approved decision B settled the model: ONE persistent browser partition per
- * CareerFlow PROFILE, derived in the MAIN process from the profile id
+ * Progress Ledger PROFILE, derived in the MAIN process from the profile id
  * (`services/browser/policy.js: partitionFor`), and workspace contexts map to NO
  * browser storage at all. The unit suites (`shell/tests/browser-policy.test.js`,
  * `browser-registry.test.js`) prove the pure decisions — that `partitionFor(7)`
@@ -130,21 +130,21 @@ function stateUrl(origin, tag, write) {
  * Launch the real app against a SPECIFIC user-data dir.
  *
  * Both `--user-data-dir` (Chromium's profile dir, so `Partitions/<name>` is
- * stable) and `CAREERFLOW_E2E_USER_DATA` (Electron's `app.getPath("userData")`,
+ * stable) and `PROGRESSLEDGER_V2_E2E_USER_DATA` (Electron's `app.getPath("userData")`,
  * where the workspace DB lives) point at the SAME directory, which is what makes
- * "relaunch with the same dir" a genuine restart of ONE CareerFlow install
+ * "relaunch with the same dir" a genuine restart of ONE Progress Ledger install
  * rather than a fresh one with a coincidentally equal partition name.
  */
 async function launch(userDataDir) {
   const env = {
     ...process.env,
-    CAREERFLOW_E2E: "1",
-    CAREERFLOW_E2E_USER_DATA: userDataDir,
+    PROGRESSLEDGER_V2_E2E: "1",
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     // Donut absent: no stub, and a settings directory that is not there.
-    CAREERFLOW_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
+    PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
-  delete env.CAREERFLOW_E2E_DONUT_STUB;
-  delete env.CAREERFLOW_E2E_DONUT_MODE;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
+  delete env.PROGRESSLEDGER_V2_E2E_DONUT_MODE;
 
   const app = await electron.launch({
     args: [projectRoot, `--user-data-dir=${userDataDir}`],
@@ -152,15 +152,15 @@ async function launch(userDataDir) {
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
-  await win.evaluate(() => localStorage.setItem("careerflow_onboarding_complete", "true"));
+  await win.evaluate(() => localStorage.setItem("progressledger_v2_onboarding_complete", "true"));
   await reloadShell(win);
 
   // Donut really is absent, asserted rather than assumed: the settings directory
   // does not exist, no stub was injected, and no collaboration recorder exists.
   expect(existsSync(ABSENT_DONUT_DIR), "the Donut settings dir must not exist").toBe(false);
   const donut = await app.evaluate(() => ({
-    settingsDir: process.env.CAREERFLOW_DONUT_SETTINGS_DIR ?? null,
-    stub: process.env.CAREERFLOW_E2E_DONUT_STUB ?? null,
+    settingsDir: process.env.PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR ?? null,
+    stub: process.env.PROGRESSLEDGER_V2_E2E_DONUT_STUB ?? null,
     recorder: globalThis.__cfDonutE2E ?? null,
   }));
   expect(donut.settingsDir).toBe(ABSENT_DONUT_DIR);
@@ -172,11 +172,11 @@ async function launch(userDataDir) {
 async function reloadShell(win) {
   await win.reload();
   await win.waitForLoadState("domcontentloaded");
-  await expect(win.getByText(/CareerFlow core online/i)).toBeVisible();
+  await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 }
 
 /**
- * Seed one CareerFlow profile through the app's own bridge. The browser
+ * Seed one Progress Ledger profile through the app's own bridge. The browser
  * partition is derived from this profile's id, so the id has to be a REAL row in
  * the local database — which is also what the `browser:create-page` ownership
  * gate checks before any partition is minted.
@@ -184,7 +184,7 @@ async function reloadShell(win) {
 async function addProfile(win, name) {
   const id = await win.evaluate(async (profileName) => {
     const slug = profileName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const created = await window.careerflow.profiles.add(profileName, slug);
+    const created = await window.progressLedger.profiles.add(profileName, slug);
     const p = created?.profile || created;
     return p?.id ?? p?.profileId ?? (typeof created === "number" ? created : null);
   }, name);
@@ -199,7 +199,7 @@ async function addProfile(win, name) {
  */
 async function createPage(win, profileId, url) {
   const res = await win.evaluate(
-    (spec) => window.careerflow.browser.createPage(spec.profileId, spec.url),
+    (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url),
     { profileId, url },
   );
   expect(res?.ok, `createPage refused: ${JSON.stringify(res)}`).toBe(true);
@@ -208,7 +208,7 @@ async function createPage(win, profileId, url) {
 
 async function goto(win, pageId, url) {
   const res = await win.evaluate(
-    (spec) => window.careerflow.browser.navigate(spec.pageId, spec.url),
+    (spec) => window.progressLedger.browser.navigate(spec.pageId, spec.url),
     { pageId, url },
   );
   expect(res?.ok, `navigate refused: ${JSON.stringify(res)}`).toBe(true);
@@ -296,7 +296,7 @@ const activeContextName = (win) =>
     return el ? el.textContent.replace(/\s+/g, " ").trim() : null;
   });
 
-test.describe("R1 browser session/profile isolation — CareerFlow-owned browser, Donut absent", () => {
+test.describe("R1 browser session/profile isolation — Progress Ledger-owned browser, Donut absent", () => {
   let origin;
 
   test.beforeEach(async () => {
@@ -343,10 +343,10 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
       );
 
       // --- The renderer cannot mint, name or steer a partition. ---
-      // The ownership gate: an id that is not a real CareerFlow profile gets no
+      // The ownership gate: an id that is not a real Progress Ledger profile gets no
       // partition and no page…
       const unknown = await win.evaluate(() =>
-        window.careerflow.browser.createPage(999999, "about:blank"),
+        window.progressLedger.browser.createPage(999999, "about:blank"),
       );
       expect(unknown.ok).toBe(false);
       expect(unknown.reason).toBe("unknown-profile");
@@ -354,7 +354,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
       // bridge has no partition parameter at all, so this can only ever be read
       // as a profile id, and it is not one.
       const steered = await win.evaluate(() =>
-        window.careerflow.browser.createPage("1;persist:cf-browser-2", "about:blank"),
+        window.progressLedger.browser.createPage("1;persist:cf-browser-2", "about:blank"),
       );
       expect(steered.ok).toBe(false);
       expect(steered.reason).toBe("unknown-profile");
@@ -394,7 +394,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
     }
   });
 
-  test("profile A keeps its cookie and localStorage after CareerFlow restarts", async () => {
+  test("profile A keeps its cookie and localStorage after Progress Ledger restarts", async () => {
     const userDataDir = mkdtempSync(join(tmpdir(), "cf-r1-persist-"));
     let app = null;
     let win = null;
@@ -424,7 +424,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
 
       // The profile row survived with the same id, so main derives the same
       // partition name for it…
-      const rows = await win.evaluate(() => window.careerflow.profiles.list());
+      const rows = await win.evaluate(() => window.progressLedger.profiles.list());
       expect(
         rows.some((r) => String(r.id) === String(pid)),
         `profile ${pid} must survive the restart`,
@@ -454,7 +454,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
     }
   });
 
-  test("two CareerFlow contexts in ONE profile share exactly one browser storage boundary", async () => {
+  test("two Progress Ledger contexts in ONE profile share exactly one browser storage boundary", async () => {
     const { app, win } = await launch(mkdtempSync(join(tmpdir(), "cf-r1-ctx-")));
     try {
       const pid = await addProfile(win, "R1 Context Profile");
@@ -471,7 +471,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
         .first()
         .getAttribute("data-page-id");
 
-      // Switch to a DIFFERENT CareerFlow context and open a page there.
+      // Switch to a DIFFERENT Progress Ledger context and open a page there.
       await win.locator('button.ctx-chip[data-ctx="desk"]').first().click();
       await expect.poll(() => activeContextName(win), { timeout: 15_000 }).toBe("Desk");
       await openPageTab(win);
@@ -492,7 +492,7 @@ test.describe("R1 browser session/profile isolation — CareerFlow-owned browser
       expect(pages.some((p) => p.id === studyPageId)).toBe(true);
 
       // The renderer never receives the partition string, in either context.
-      const mirror = await win.evaluate(() => window.careerflow.browser.state());
+      const mirror = await win.evaluate(() => window.progressLedger.browser.state());
       expect(mirror.pages.length).toBe(2);
       for (const page of mirror.pages) {
         expect(page.partition).toBeUndefined();
