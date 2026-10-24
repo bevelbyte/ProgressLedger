@@ -1,0 +1,48 @@
+appId: com.careerflow.app
+productName: CareerFlow
+copyright: "Copyright © 2026 CareerFlow"
+
+directories:
+  output: release/acceptance-test
+
+asar: true
+asarUnpack:
+  - core/*.node
+  - node_modules/better-sqlite3/**/*.node
+
+files:
+  - package.json
+  - shell/**/*
+  - ui/dist/**/*
+  - core/index.js
+  - core/index.d.ts
+  - core/package.json
+  - core/*.node
+  - core/migrations/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+  artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+  requestedExecutionLevel: asInvoker
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: CareerFlow
+  uninstallDisplayName: CareerFlow
+
+publish:
+  provider: github
+  owner: your-github-username
+  repo: CareerFlow
+  releaseType: release

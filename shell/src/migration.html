@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CareerFlow Workspace Setup</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 30px;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 500;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #b3b3b3;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+    .screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+    }
+    .screen.active {
+      display: flex;
+    }
+    .actions {
+      margin-top: auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    button {
+      background-color: #3a3a3a;
+      color: white;
+      border: 1px solid #4a4a4a;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #4a4a4a;
+    }
+    button.primary {
+      background-color: #0066cc;
+      border-color: #0077ee;
+    }
+    button.primary:hover:not(:disabled) {
+      background-color: #0077ee;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background-color: #2a2a2a;
+      border: 1px solid #4a4a4a;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .progress-container {
+      margin-top: 20px;
+    }
+    .progress-bar-bg {
+      background-color: #2a2a2a;
+      border-radius: 4px;
+      height: 8px;
+      width: 100%;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar-fill {
+      background-color: #0066cc;
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .status-text {
+      color: #b3b3b3;
+      font-size: 13px;
+    }
+    .error-box {
+      display: none;
+      background-color: rgba(220, 53, 69, 0.1);
+      border: 1px solid #dc3545;
+      color: #ff6b6b;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="screen-welcome" class="screen active">
+    <h1>Welcome to CareerFlow</h1>
+    <p>Please select a directory to store your workspace (database, files, and browser profile). If you have existing data, it will be automatically migrated to this new location.</p>
+    
+    <div id="error-message" class="error-box"></div>
+    
+    <div class="input-group">
+      <input type="text" id="dir-input" readonly placeholder="No directory selected">
+      <button id="btn-browse">Browse...</button>
+    </div>
+    
+    <div class="actions">
+      <button id="btn-quit">Quit</button>
+      <button id="btn-continue" class="primary" disabled>Continue</button>
+    </div>
+  </div>
+
+  <div id="screen-progress" class="screen">
+    <h1 id="progress-title">Setting up Workspace...</h1>
+    <p>Please wait while we initialize your workspace. Do not close the application.</p>
+    
+    <div class="progress-container">
+      <div class="progress-bar-bg">
+        <div id="progress-fill" class="progress-bar-fill"></div>
+      </div>
+      <div id="status-text" class="status-text">Starting...</div>
+    </div>
+    
+    <div class="actions" style="margin-top: 40px;">
+      <button id="btn-cancel-migration">Cancel</button>
+    </div>
+  </div>
+
+  <script src="migration.js"></script>
+</body>
+</html>

@@ -1,0 +1,1417 @@
+/* ============================================================================
+   CareerFlow — Atlas design system
+   Source of truth: docs/DESIGN-ATLAS.md. Do not add ad-hoc hex values in
+   components; use these tokens.
+
+   Structure of this file:
+     1. Atlas tokens (--atlas-*)      canonical, use these in new code
+     2. Legacy aliases                Meridian (--bg-*, --surface-*, --fg-*,
+                                      --accent, --cf-*) mapped onto Atlas so
+                                      un-migrated components adopt the identity
+     3. Base + reset
+     4. Primitives (atl-* and cf-*)
+     5. Motion
+   ========================================================================== */
+
+:root {
+  /* ======================================================================
+     1. ATLAS TOKENS
+     ====================================================================== */
+
+  /* ---- Surfaces: warm graphite, dark → light ----
+     RETUNED to the Space Bunny "Workbench" ladder. Six steps, each ~+3%
+     luminance. Shadows never separate surfaces — the hairline does that job.
+     The ladder gained two steps (overlay/active) because overlays, menus and
+     the pressed/selected state could previously only borrow a row-hover wash,
+     which made them read as "the same card, lighter" instead of "above". */
+  --atlas-void: #0a0a0c; /* scrims, overscroll */
+  --atlas-base: #0e0e11; /* app background */
+  --atlas-chrome: #131317; /* chrome bars, rail, title bar */
+  --atlas-panel: #1a1a1f; /* cards, list rows, panels */
+  --atlas-raise: #212127; /* inputs, nested panels, hover */
+  --atlas-overlay: #282830; /* menus, popovers, dialogs, pressed */
+  --atlas-hover: #212127; /* legacy alias -> raise */
+
+  /* Row hover is a wash, not a surface step, so it works on any of the above */
+  --atlas-wash: rgba(255, 255, 255, 0.032);
+  --atlas-wash-2: rgba(255, 255, 255, 0.06);
+  --atlas-wash-3: rgba(255, 255, 255, 0.1);
+
+  /* Anything that sits *behind* the product: modal scrims, dock backdrops,
+     overlay washes. Warm, never neutral black. */
+  --atlas-scrim: rgba(8, 8, 10, 0.68);
+
+  /* ---- Ink: four levels. Every text colour is one of these. ----
+     --atlas-ink-3 was #746f68, which measures ~3.3:1 on the panel surfaces and
+     fails the 4.5:1 body-text bar. It is used for exactly the things a person
+     skims to orient by — view subtitles, section eyebrows, the status bar — so
+     it was lifted to #979189 (4.8:1). Meaningful meta text must not be
+     decorative-grey. --atlas-ink-4 is new and is the only level allowed to be
+     quiet: disabled states, placeholders, decorative rules. */
+  --atlas-ink: #ece9e4; /* primary text, titles */
+  --atlas-ink-2: #a5a19a; /* body, labels */
+  --atlas-ink-3: #979189; /* secondary/meta, mono eyebrows — 4.5:1 minimum */
+  --atlas-ink-4: #7a756d; /* disabled, placeholder, decorative rules ONLY */
+
+  /* ---- Lines: hairlines do the structural work in this product ---- */
+  --atlas-line: #1f1f25; /* default hairline, row separators */
+  --atlas-line-2: #2b2b33; /* emphasised hairline, section dividers */
+  --atlas-line-3: #3a3a44; /* control borders, input outlines */
+
+  /* ---- Signal: AMBER — "you". The human's time and attention. ----
+     RETUNED from Iris (#8b7cf6, a decorative violet) to the Workbench hue.
+     CareerFlow is a study-and-career instrument: deadlines, focus, study time
+     and obligations are what the user actually acts on, so the single brand
+     colour is spent on the human's own time rather than on chrome. See
+     --atlas-machine below for the operator's cyan. */
+  --atlas-signal: #e0a35c;
+  --atlas-signal-2: #f0bd86;
+  --atlas-signal-soft: rgba(224, 163, 92, 0.13);
+  --atlas-signal-softer: rgba(224, 163, 92, 0.07);
+  --atlas-signal-ink: #0a0a0c;
+
+  /* ---- Machine: CYAN — "the operator". Runs, tool calls, approvals.
+     NEW. This is the second half of the two-hue meaning system
+     ("chrome is neutral, hue means something"): anything the agent did or is
+     blocked on is cyan, anything the human owes is amber, and everything that
+     is merely navigation stays neutral. Without it every approval, run and
+     tool call had to borrow amber and the signal stopped meaning anything. */
+  --atlas-machine: #6ea8c9;
+  --atlas-machine-2: #94c6e2;
+  --atlas-machine-soft: rgba(110, 168, 201, 0.13);
+  --atlas-machine-softer: rgba(110, 168, 201, 0.07);
+  --atlas-machine-ink: #0a0a0c;
+
+  /* Ink for text placed ON any filled semantic surface (signal/ok/warn/bad).
+     Those fills are light so they can double as text and hairlines on the dark
+     base, which means white on them is ~1.8:1. Never use the page ink here. */
+  --atlas-on-fill: #0a0a0c;
+
+  /* ---- Semantic: state only, never decoration ---- */
+  --atlas-ok: #6fae7d;
+  --atlas-ok-2: #8fc79a;
+  --atlas-ok-bg: rgba(111, 174, 125, 0.13);
+  --atlas-ok-line: rgba(111, 174, 125, 0.3);
+  --atlas-warn: #d9a441;
+  --atlas-warn-ink: #e5ba6a;
+  --atlas-warn-bg: rgba(217, 164, 65, 0.13);
+  --atlas-warn-line: rgba(217, 164, 65, 0.3);
+  --atlas-bad: #d97066;
+  --atlas-bad-2: #e59087;
+  --atlas-bad-bg: rgba(217, 112, 102, 0.13);
+  --atlas-bad-line: rgba(217, 112, 102, 0.32);
+  --atlas-info: #8f92b8;
+  --atlas-info-bg: rgba(143, 146, 184, 0.13);
+  --atlas-info-line: rgba(143, 146, 184, 0.3);
+
+  /* ---- Typography: two families. Sans for language, mono for the machine. ----
+     --text-2xl/--text-3xl were both 20px ("page titles no longer shout"); the
+     Workbench ladder restores real separation between a view title and a
+     section head, which is what made the old header blocks read flat. */
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system,
+    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo,
+    Consolas, monospace;
+
+  --text-micro: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --text-3xl: 24px; /* alias: page titles no longer shout */
+  --text-metric: 26px;
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-body: 1.55;
+  --tracking-eyebrow: 0.09em;
+
+  /* ---- Spacing (4px grid) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ---- Radius: instrument-sharp. Nothing is a pill except a status dot. ---- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
+
+  /* ---- Control + row metrics ---- */
+  --ctl-h-sm: 26px;
+  --ctl-h: 30px;
+  --ctl-h-lg: 34px;
+  --row-h: 28px;
+  --table-row-h: 30px;
+
+  /* ---- Elevation: one hairline highlight + a soft shadow ---- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 6px 20px rgba(0, 0, 0, 0.42);
+  --shadow-3: 0 20px 56px rgba(0, 0, 0, 0.55);
+  --lift: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+  /* ---- Motion ---- */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 110ms;
+  --dur-med: 160ms;
+  --dur-slow: 220ms;
+
+  /* ---- Shell metrics (single source for the shell geometry) ----
+     The Space Bunny shell is three stacked bars over a pane:
+        titlebar  · context strip  · pane header (tabs)
+     then the work surface, then the status strip. The rail is narrow and
+     numeric rather than a wide list of words. */
+  --shell-titlebar-h: 46px;
+  --shell-strip-h: 38px;
+  --shell-context-h: 52px;
+  /* The context strip: the workspace's top row (which body of work am I in).
+     Distinct from --shell-strip-h, which sizes the title bar's command strip. */
+  --shell-ctxstrip-h: 34px;
+  --shell-panehead-h: 34px;
+  --shell-status-h: 26px;
+  --shell-rail-w: 216px;
+  --shell-rail-w-collapsed: 56px;
+
+  /* The narrow, numeric rail. Space Bunny's left column is an instrument
+     readout -- icon, count, caption -- not a menu of words. */
+  --shell-rail-w-slim: 64px;
+
+  /* ---- Z-index layers ---- */
+  --z-dock: 40;
+  --z-drawer: 50;
+  --z-overlay: 60;
+  --z-dialog: 70;
+  --z-toast: 80;
+
+  /* ======================================================================
+     1b. DENSITY
+     Space Bunny shipped a real density control and it is worth keeping:
+     "compact" tightens row heights and paddings everywhere. It is a genuine
+     change in geometry, not a font-size trick, so the type ladder above stays
+     fixed and only the vertical rhythm moves.
+
+     [data-density="compact"] is set on <html> by SettingsHub and read by every
+     row, panel and tab below. Anything that hardcodes a pixel height instead
+     of a --*-h token will not respond -- that is the bug this design is
+     specifically meant to prevent.
+     ====================================================================== */
+  --density-row-h: 28px;
+  --density-gap: 12px;
+  --density-pad: 16px;
+
+  color-scheme: dark;
+
+[data-density="compact"] {
+  --ctl-h-sm: 22px;
+  --ctl-h: 26px;
+  --ctl-h-lg: 30px;
+  --row-h: 24px;
+  --table-row-h: 26px;
+  --density-row-h: 24px;
+  --density-gap: 8px;
+  --density-pad: 12px;
+  --shell-titlebar-h: 42px;
+  --shell-strip-h: 34px;
+  --shell-context-h: 46px;
+  --shell-ctxstrip-h: 30px;
+  --shell-panehead-h: 30px;
+}
+
+  /* ======================================================================
+     2. LEGACY ALIASES (Meridian → Atlas)
+
+     Migration bridge: un-migrated components keep rendering, but with Atlas
+     values. New code uses --atlas-* only. Removal tracked in the ledger.
+     ====================================================================== */
+
+  /* Surfaces */
+  --bg-base: var(--atlas-base);
+  --bg-main: var(--atlas-base);
+  --bg-raised: var(--atlas-chrome);
+  --bg-sidebar: var(--atlas-chrome);
+  --surface-1: var(--atlas-panel);
+  --surface: var(--atlas-panel);
+  --surface-2: var(--atlas-raise);
+  --surface-raised: var(--atlas-raise);
+  --surface-3: var(--atlas-hover);
+  --bg-card: var(--atlas-hover);
+  --bg-hover: var(--atlas-wash);
+  --bg-active: var(--atlas-wash-2);
+
+  /* Ink */
+  --fg: var(--atlas-ink);
+  --text-main: var(--atlas-ink);
+  --fg-secondary: var(--atlas-ink-2);
+  --text-secondary: var(--atlas-ink-2);
+  --fg-muted: var(--atlas-ink-3);
+  --text-muted: var(--atlas-ink-3);
+
+  /* Lines */
+  --border: var(--atlas-line);
+  --border-strong: var(--atlas-line-2);
+
+  /* Accent */
+  --accent: var(--atlas-signal);
+  --accent-hover: var(--atlas-signal-2);
+  --accent-strong: var(--atlas-signal-2);
+  --accent-soft: var(--atlas-signal-soft);
+  --accent-softer: var(--atlas-signal-softer);
+  --accent-ink: var(--atlas-signal-ink);
+
+  /* Semantic */
+  --success: var(--atlas-ok);
+  --success-bg: var(--atlas-ok-bg);
+  --color-success: var(--atlas-ok);
+  --color-success-bg: var(--atlas-ok-bg);
+  --warning: var(--atlas-warn);
+  --warning-bg: var(--atlas-warn-bg);
+  --warning-border: var(--atlas-warn-line);
+  --color-warning: var(--atlas-warn);
+  --color-warning-bg: var(--atlas-warn-bg);
+  --danger: var(--atlas-bad);
+  --danger-bg: var(--atlas-bad-bg);
+  --color-danger: var(--atlas-bad);
+  --color-danger-bg: var(--atlas-bad-bg);
+
+  /* Motion */
+  --trans-fast: var(--dur-fast) var(--ease);
+  --trans-normal: var(--dur-med) var(--ease);
+  --trans-slow: var(--dur-slow) var(--ease);
+
+  /* Deprecated --cf-* family (FocusNowPanel et al.) */
+  --cf-surface: var(--atlas-panel);
+  --cf-surface-2: var(--atlas-raise);
+  --cf-border: var(--atlas-line);
+  --cf-fg: var(--atlas-ink);
+  --cf-muted: var(--atlas-ink-3);
+  --cf-accent: var(--atlas-signal);
+
+  /* ----------------------------------------------------------------------
+     Homegrown families that shipped with hard-coded fallbacks.
+
+     Components written before the design system used `var(--panel-border,
+     var(--atlas-line))` and friends. Every one of those fallbacks is a stale
+     GitHub-dark hex, so an undefined token did not fail loudly — it silently
+     rendered a *different product's* palette (a cooler, bluer dark) inside
+     Atlas surfaces. Defining the names here makes the fallbacks dead code and
+     pulls those regions onto the real palette without editing 34 components.
+     ---------------------------------------------------------------------- */
+
+  /* GitHub-dark era shorthand */
+  --panel-border: var(--atlas-line);
+  --surface-hover: var(--atlas-hover);
+  --surface-active: var(--atlas-hover);
+  --mono: var(--font-mono);
+  --bg-secondary: var(--atlas-raise);
+  --bg-tertiary: var(--atlas-hover);
+  --text-primary: var(--atlas-ink);
+
+  /* --color-* family (goals, plan view, provider picker) */
+  --color-bg: var(--atlas-base);
+  --color-surface: var(--atlas-panel);
+  --color-surface-2: var(--atlas-raise);
+  --color-border: var(--atlas-line);
+  --color-border-strong: var(--atlas-line-2);
+  --color-text: var(--atlas-ink);
+  --color-text-muted: var(--atlas-ink-3);
+  --color-muted: var(--atlas-ink-3);
+  --color-accent: var(--atlas-signal);
+  --color-accent-hover: var(--atlas-signal-2);
+  --color-accent-bg: var(--atlas-signal-soft);
+  --color-accent-soft: var(--atlas-signal-soft);
+  --color-accent-text: var(--atlas-signal-ink);
+  --color-link: var(--atlas-signal-2);
+  --color-error: var(--atlas-bad);
+  --color-error-bg: var(--atlas-bad-bg);
+  --color-success: var(--atlas-ok);
+  --color-success-bg: var(--atlas-ok-bg);
+  --color-success-hover: var(--atlas-ok-2);
+  --color-warning: var(--atlas-warn);
+  --color-warning-bg: var(--atlas-warn-bg);
+  --color-warning-border: var(--atlas-warn-line);
+
+  /* Meridian-era gaps */
+  --text-base: var(--text-md);
+  --text-on-accent: var(--atlas-signal-ink);
+
+  /* Diff rendering (Changes tab, project diff) — semantic, never decorative */
+  --atlas-diff-add: var(--atlas-ok);
+  --atlas-diff-del: var(--atlas-bad);
+}
+
+/* ============================================================================
+   3. BASE
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  background: var(--atlas-base);
+  color: var(--atlas-ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+/* Atlas focus: a signal ring that follows the control's radius. */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[role='option']:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--atlas-signal);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--atlas-signal-soft);
+  color: var(--atlas-ink);
+}
+
+/* Numerals align in every column of data. */
+.metric,
+.tabular,
+time,
+kbd,
+.cf-kbd,
+.atl-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mono micro-label — the Atlas instrument voice. Used for section labels,
+   metric labels, table headers and status readouts. Never for body text. */
+.atl-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-3);
+  line-height: 1.4;
+}
+
+.atl-label.on-ink {
+  color: var(--atlas-ink-2);
+}
+
+/* Hairline rule — the Atlas separator. Replaces card borders in dense regions. */
+.atl-rule {
+  height: 1px;
+  background: var(--atlas-line);
+  border: 0;
+  flex-shrink: 0;
+}
+
+/* Hide number input spinners/arrows globally */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Slim, quiet scrollbars: visible enough to signal scrollability, subtle
+   enough to keep the instrument feel. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--atlas-line-2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--atlas-line-2);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--atlas-ink-3);
+  background-clip: content-box;
+}
+
+/* ============================================================================
+   4. PRIMITIVES
+
+   Opt-in global classes. Components compose their own scoped styles on top;
+   scoped rules win on specificity.
+
+   The Space Bunny primitives below are the ones worth keeping as first-class
+   product concepts rather than one-off experiment chrome. Each is used by more
+   than one view, which is the test for whether something belongs here.
+   ========================================================================== */
+
+/* ---- Section header: "Decide  Ranked by what it costs you if it slips" -------
+   Space Bunny's single strongest typographic move. A verb or noun in display
+   type, immediately followed by a muted plain-language clause that says WHY this
+   section exists. It replaced the generic "Overview / Details" headings that
+   made every view look like a form.
+
+   Deliberately NOT a heading element: a view already opens with its own title,
+   so a second heading of the same rank makes the outline announce the view
+   twice and gives role-based queries two candidates for one name. */
+.atl-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: 10px;
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+.atl-section-lead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.atl-section-name {
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--atlas-ink);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.atl-section-why {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-3);
+  line-height: var(--lh-snug);
+  min-width: 0;
+}
+
+.atl-section-aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--atlas-ink-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Stacked sections: a header row above a full-width body ----------------
+
+   `.atl-section` is a flex ROW -- a lead on the left, an aside on the right.
+   That is correct for a header-only section, but a section that also carries a
+   body (the week instrument, a chart, a table) needs the body on its own full
+   line. Without this the body became the section's third flex child and was
+   squeezed to whatever width remained, which pushed a seven-column grid into
+   the right edge with a dead gap beside it.
+
+   `--stacked` makes the section a column and promotes the header row to its
+   own flex line. The lead/aside rules are unchanged, so a stacked section and
+   a plain one still look identical above the body. */
+.atl-section--stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.atl-section--stacked > .atl-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Narrow windows: the header row would otherwise push the aside past the
+   viewport, since the aside refuses to shrink. Let it wrap instead. */
+@media (max-width: 900px) {
+  .atl-section--stacked > .atl-section-head {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---- Metric strip: label above, value below --------------------------------
+   Space Bunny's stat row. The label is a quiet mono eyebrow and the value is
+   the only large thing, so a row of six of them scans as six numbers without
+   six competing headings. */
+.atl-metrics {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--density-gap);
+}
+
+.atl-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.atl-metric-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--atlas-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atl-metric-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--atlas-ink);
+  line-height: 1.1;
+}
+
+.atl-metric-note {
+  font-size: var(--text-xs);
+  color: var(--atlas-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atl-metric-value.tone-warn { color: var(--atlas-warn-ink); }
+.atl-metric-value.tone-bad { color: var(--atlas-bad); }
+.atl-metric-value.tone-ok { color: var(--atlas-ok); }
+.atl-metric-value.tone-machine { color: var(--atlas-machine-2); }
+
+/* ---- Ranked row: "1  Revise heap operations for the midterm" ----------------
+   Space Bunny's Desk ranks obligations by what they cost if they slip, and
+   shows the rank as a large quiet numeral in a tinted gutter. The numeral is
+   the point: it makes "which of these three is worst" answerable pre-read. */
+.atl-rank {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--radius-md);
+  background: var(--atlas-panel);
+  border: 1px solid var(--atlas-line);
+  overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.atl-rank:hover {
+  border-color: var(--atlas-line-2);
+  background: var(--atlas-raise);
+}
+
+.atl-rank-gutter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  flex: 0 0 40px;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-ink-3);
+  background: var(--atlas-raise);
+  border-right: 1px solid var(--atlas-line);
+}
+
+.atl-rank[data-tone="bad"] .atl-rank-gutter {
+  color: var(--atlas-bad);
+  background: var(--atlas-bad-bg);
+}
+.atl-rank[data-tone="warn"] .atl-rank-gutter {
+  color: var(--atlas-warn-ink);
+  background: var(--atlas-warn-bg);
+}
+.atl-rank[data-tone="signal"] .atl-rank-gutter {
+  color: var(--atlas-signal-2);
+  background: var(--atlas-signal-soft);
+}
+
+.atl-rank-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  min-height: var(--density-row-h);
+}
+
+.atl-rank-text { min-width: 0; }
+
+.atl-rank-title {
+  font-size: var(--text-md);
+  font-weight: 550;
+  color: var(--atlas-ink);
+  line-height: var(--lh-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atl-rank-meta {
+  font-size: var(--text-xs);
+  color: var(--atlas-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atl-rank-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* ---- Approval band ----------------------------------------------------------
+   Space Bunny pins the single most important pending action to the top of the
+   pane, above the content, with the verdict buttons on the right. It is a
+   machine-cyan band because the thing is the operator's, not the human's --
+   the human's obligations are amber, the agent's asks are cyan. */
+.atl-approval {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 10px 14px;
+  border: 1px solid var(--atlas-machine-soft);
+  border-left: 3px solid var(--atlas-machine);
+  border-radius: var(--radius-md);
+  background: var(--atlas-machine-softer);
+  margin-bottom: var(--space-4);
+}
+
+.atl-approval-body { min-width: 0; flex: 1; }
+
+.atl-approval-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--atlas-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atl-approval-why {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atl-approval-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ---- Provenance / margin block ---------------------------------------------
+   Space Bunny's Reader keeps a right-hand Margin that answers "where did this
+   come from" without leaving the document. Provenance is a definition list, not
+   prose, so it stays scannable. */
+.atl-provenance {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atl-prov-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.atl-prov-key {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--atlas-ink-3);
+}
+
+.atl-prov-val {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Pull quote / kept claim ----------------------------------------------
+   The Reader's "THE CLAIM YOU KEPT" block. A tinted panel with a heavy left
+   rule: it is the one thing in a long document a reader comes back for, so it
+   is the one place where a filled surface is justified. */
+.atl-claim {
+  border-left: 3px solid var(--atlas-signal);
+  background: var(--atlas-signal-softer);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 16px;
+  margin: var(--space-5) 0;
+}
+
+.atl-claim-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--atlas-signal-2);
+  margin-bottom: 6px;
+}
+
+.atl-claim-text {
+  font-size: var(--text-lg);
+  line-height: var(--lh-body);
+  color: var(--atlas-ink);
+}
+
+/* ---- Prose (Reader) ---------------------------------------------------------
+   A real reading measure. Long documents in a wide pane are the most common way
+   a dense app becomes unreadable, so the measure is capped in CSS rather than
+   left to the pane width. */
+.atl-prose {
+  max-width: 68ch;
+  font-size: var(--text-lg);
+  line-height: 1.7;
+  color: var(--atlas-ink-2);
+}
+
+.atl-prose p + p { margin-top: 1.1em; }
+.atl-prose strong { color: var(--atlas-ink); font-weight: 600; }
+
+/* ---- Tag / chip -------------------------------------------------------------
+   Used for statuses, counts and filters. Deliberately quiet: a filled chip is
+   reserved for the single primary action on a surface. */
+.atl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--atlas-line-2);
+  background: var(--atlas-raise);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--atlas-ink-2);
+  white-space: nowrap;
+}
+
+.atl-chip.tone-signal { color: var(--atlas-signal-2); border-color: var(--atlas-signal-soft); background: var(--atlas-signal-softer); }
+.atl-chip.tone-machine { color: var(--atlas-machine-2); border-color: var(--atlas-machine-soft); background: var(--atlas-machine-softer); }
+.atl-chip.tone-ok { color: var(--atlas-ok-2); border-color: var(--atlas-ok-line); background: var(--atlas-ok-bg); }
+.atl-chip.tone-warn { color: var(--atlas-warn-ink); border-color: var(--atlas-warn-line); background: var(--atlas-warn-bg); }
+.atl-chip.tone-bad { color: var(--atlas-bad); border-color: var(--atlas-bad-line); background: var(--atlas-bad-bg); }
+
+/* ---- Buttons ---- */
+.cf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--ctl-h);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.cf-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cf-btn.primary {
+  background: var(--atlas-signal);
+  color: var(--atlas-signal-ink);
+  font-weight: 600;
+}
+
+.cf-btn.primary:hover:not(:disabled) {
+  background: var(--atlas-signal-2);
+}
+
+.cf-btn.secondary {
+  background: var(--atlas-raise);
+  border: 1px solid var(--atlas-line);
+  color: var(--atlas-ink);
+}
+
+.cf-btn.secondary:hover:not(:disabled) {
+  background: var(--atlas-hover);
+  border-color: var(--atlas-line-2);
+}
+
+.cf-btn.ghost {
+  background: transparent;
+  color: var(--atlas-ink-2);
+}
+
+.cf-btn.ghost:hover:not(:disabled) {
+  background: var(--atlas-wash);
+  color: var(--atlas-ink);
+}
+
+.cf-btn.danger {
+  background: var(--atlas-bad-bg);
+  color: var(--atlas-bad);
+}
+
+.cf-btn.danger:hover:not(:disabled) {
+  background: var(--atlas-bad-bg);
+}
+
+.cf-btn.sm {
+  height: var(--ctl-h-sm);
+  padding: 0 9px;
+  font-size: var(--text-sm);
+}
+
+.cf-btn.lg {
+  height: var(--ctl-h-lg);
+  padding: 0 16px;
+  font-size: var(--text-md);
+}
+
+/* ---- Inputs ---- */
+.cf-input,
+.cf-textarea,
+.cf-select {
+  background: var(--atlas-raise);
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--radius-md);
+  color: var(--atlas-ink);
+  font-size: var(--text-md);
+  padding: 0 9px;
+  height: var(--ctl-h);
+  transition: border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.cf-textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 7px 9px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.cf-input::placeholder,
+.cf-textarea::placeholder {
+  color: var(--atlas-ink-3);
+}
+
+.cf-input:focus,
+.cf-textarea:focus,
+.cf-select:focus {
+  outline: none;
+  border-color: var(--atlas-signal);
+  box-shadow: 0 0 0 3px var(--atlas-signal-soft);
+}
+
+.cf-input[aria-invalid='true'],
+.cf-textarea[aria-invalid='true'] {
+  border-color: var(--atlas-bad);
+}
+
+/* ---- Panels (discrete objects only) ----
+   Atlas reserves bordered surfaces for genuinely discrete objects. Dense
+   regions use .atl-rule instead of wrapping everything in a card. */
+.cf-card {
+  background: var(--atlas-panel);
+  border: 1px solid var(--atlas-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.cf-card.clickable {
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.cf-card.clickable:hover {
+  background: var(--atlas-raise);
+  border-color: var(--atlas-line-2);
+}
+
+/* ---- Badges / pills ---- */
+.cf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.cf-badge.neutral {
+  background: var(--atlas-hover);
+  color: var(--atlas-ink-2);
+}
+
+.cf-badge.accent {
+  background: var(--atlas-signal-soft);
+  color: var(--atlas-signal-2);
+}
+
+.cf-badge.success {
+  background: var(--atlas-ok-bg);
+  color: var(--atlas-ok);
+}
+
+.cf-badge.warning {
+  background: var(--atlas-warn-bg);
+  color: var(--atlas-warn);
+}
+
+.cf-badge.danger {
+  background: var(--atlas-bad-bg);
+  color: var(--atlas-bad);
+}
+
+/* ---- kbd ---- */
+.cf-kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--atlas-raise);
+  border: 1px solid var(--atlas-line);
+  border-bottom-width: 2px;
+  color: var(--atlas-ink-2);
+}
+
+/* ---- Empty state ---- */
+.cf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  color: var(--atlas-ink-3);
+  font-size: var(--text-md);
+  text-align: center;
+}
+
+.cf-empty.boxed {
+  border: 1px dashed var(--atlas-line-2);
+  border-radius: var(--radius-lg);
+}
+
+/* ---- Skeleton ---- */
+.cf-skeleton {
+  background: var(--atlas-raise);
+  border-radius: var(--radius-sm);
+  animation: cf-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ---- Live pulse dot ----
+   Machine action is signalled by treatment (pulse + mono label + live rail),
+   never by a second brand hue. */
+.cf-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--atlas-signal);
+  animation: cf-pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes cf-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ---- Screen-reader-only utility ---- */
+.cf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================================
+   5. SHARED VIEW SCAFFOLDING
+
+   Every feature view composes these so page rhythm is identical everywhere.
+   ========================================================================== */
+
+/* A view's outermost element. */
+.atl-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* A titled band inside a view. Separated by a rule, not a card border. */
+.atl-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.atl-band-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--atlas-line);
+}
+
+.atl-band-head h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--atlas-ink);
+}
+
+.atl-band-head .atl-band-note {
+  font-size: var(--text-sm);
+  color: var(--atlas-ink-3);
+}
+
+.atl-band-head .atl-band-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Generic hairline data row. */
+.atl-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--row-h);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.atl-row + .atl-row {
+  border-top: 1px solid var(--atlas-line);
+}
+
+button.atl-row,
+a.atl-row {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.atl-row:hover,
+a.atl-row:hover {
+  background: var(--atlas-wash);
+}
+
+/* ============================================================================
+   5b. WEEK LOAD INSTRUMENT
+   ==========================================================================
+
+   The seven-column load readout that sits beside the Desk's ranked queue. It is
+   deliberately NOT a chart: seven fixed columns, a bar, a figure, and a caption.
+   There are no axes and no gridlines, because a glanceable pressure indicator
+   that looks like a chart invites reading precision it does not have. */
+
+.atl-week {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atl-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.atl-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  /* Cap the row so a day column stays a COLUMN and not a field. Left to fill
+     a 1300px stage, seven 1fr columns became ~180px each -- a single digit
+     marooned in the middle of a large empty cell, and the row stopped reading
+     as a week at a glance. The reference's day columns are narrow. The bar
+     scale is relative, so a narrower row is not a less accurate one. */
+  max-width: 760px;
+}
+
+/* One day. A fixed height plus an internal flex column keeps every bar's
+   BASELINE aligned across the row -- the bars are compared to each other, so
+   they must share a floor even when their heights differ. */
+.atl-week-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+.atl-week-day:hover {
+  background: var(--atlas-wash);
+}
+
+.atl-week-day[data-today='true'] {
+  background: var(--atlas-wash-2);
+  box-shadow: inset 0 -2px 0 var(--atlas-signal);
+}
+
+.atl-week-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--atlas-ink-4);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atl-week-day[data-today='true'] .atl-week-label {
+  color: var(--atlas-signal);
+}
+
+/* The plot area: bars are bottom-aligned inside it. */
+.atl-week-track {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 64px;
+}
+
+.atl-week-bar {
+  width: 100%;
+  max-width: 26px;
+  border-radius: var(--radius-xs) var(--radius-xs) 2px 2px;
+  background: var(--atlas-wash-3);
+  transition: height var(--dur-med) var(--ease);
+}
+
+.atl-week-day[data-tone='light'] .atl-week-bar {
+  background: var(--atlas-signal-softer);
+  box-shadow: inset 0 0 0 1px var(--atlas-signal-soft);
+}
+
+.atl-week-day[data-tone='full'] .atl-week-bar {
+  background: var(--atlas-signal);
+}
+
+.atl-week-day[data-tone='heavy'] .atl-week-bar {
+  background: var(--atlas-bad);
+}
+
+/* An empty day still occupies its column, marked by a stub rather than by
+   nothing at all -- seven absent bars would read as a rendering failure. */
+.atl-week-day[data-tone='clean'] .atl-week-bar {
+  height: 2px !important;
+  background: var(--atlas-line-2);
+}
+
+.atl-week-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-ink);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.atl-week-day[data-tone='heavy'] .atl-week-value {
+  color: var(--atlas-bad-2);
+}
+
+.atl-week-day[data-tone='full'] .atl-week-value {
+  color: var(--atlas-signal-2);
+}
+
+.atl-week-day[data-tone='light'] .atl-week-value,
+.atl-week-day[data-tone='clean'] .atl-week-value {
+  color: var(--atlas-ink-4);
+}
+
+.atl-week-caption {
+  font-size: var(--text-micro);
+  color: var(--atlas-ink-4);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Narrow windows: seven columns stop being readable before they stop fitting,
+   so the figure moves under the caption rather than being dropped. */
+@media (max-width: 900px) {
+  .atl-week-track {
+    height: 48px;
+  }
+}
+
+/* ---- Owed-here band -------------------------------------------------------
+
+   The obligation strip and the per-row owed read-out. Both are STATE, not
+   decoration: a row that is actually late must be findable by colour alone,
+   because "1 late" in a column of small text is easy to scan straight past. */
+
+.owed {
+  margin-bottom: var(--space-4);
+}
+
+/* Four metrics do not need the full stage width. Left to fill it, "LATE / 0"
+   sits alone in a 300px cell and the row stops reading as a strip. The Desk's
+   week instrument is capped for the same reason; this is the same rule applied
+   to a metric row instead of a day row. */
+.owed .atl-metrics {
+  max-width: 720px;
+}
+
+/* The owed column in a subject row. It is a fixed width so the columns either
+   side of it do not reflow as different rows carry different text. */
+.s-owed {
+  min-width: 84px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--atlas-ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An empty cell reserves no visual weight but keeps the column aligned. */
+.s-owed:empty {
+  min-width: 84px;
+}
+
+.s-owed[data-tone='bad'] {
+  color: var(--atlas-bad-2);
+  font-weight: 600;
+}
+
+.s-owed[data-tone='warn'] {
+  color: var(--atlas-warn-ink);
+  font-weight: 600;
+}
+
+.s-owed[data-tone='signal'] {
+  color: var(--atlas-signal-2);
+}
+
+/* A narrow window drops the studied column before the owed one: "studied
+   yesterday" is context, "2 late" is the reason the row is open. */
+@media (max-width: 1100px) {
+  .s-studied {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

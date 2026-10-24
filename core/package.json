@@ -1,0 +1,1 @@
+{ "name": "@careerflow/core", "version": "0.1.0", "main": "index.js", "napi": { "name": "careerflow_core" }, "scripts": { "build": "napi build --platform --release && node ../scripts/patch-core-native-loader.mjs" }, "devDependencies": { "@napi-rs/cli": "^2.18.0" } }

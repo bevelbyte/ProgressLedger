@@ -1,0 +1,23 @@
+{
+  "name": "@careerflow/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.4",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/svelte": "^5.2.0",
+    "jsdom": "^25.0.0",
+    "svelte": "^5.56.4",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "katex": "^0.17.0",
+    "lucide-svelte": "^1.0.1"
+  }
+}

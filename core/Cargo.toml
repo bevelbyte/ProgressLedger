@@ -1,0 +1,29 @@
+[package]
+name = "careerflow_core"
+version = "0.1.0"
+edition = "2021"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
+rusqlite = { version = "0.31.0", features = ["bundled"] }
+pdf-extract = "0.7"
+serde_json = "1"
+chrono = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.24"
+url = "2"
+[build-dependencies]
+napi-build = "2"
+# Integration tests (core/tests/db_schema.rs) exercise the migration SQL + query
+# semantics directly against rusqlite, with no N-API runtime needed — so
+# `cargo test` links and runs cleanly.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+rusqlite = { version = "0.31.0", features = ["bundled"] }
+napi = { version = "2", default-features = false, features = ["napi8"] }
+url = "2"

@@ -1,0 +1,122 @@
+name: nightly-live-llm
+
+# Nightly CI lane for the live LLM provider smoke test
+# (`shell/tests/provider-live.test.js`). This test makes a real HTTP call
+# to an OpenAI-compatible endpoint and is intentionally NOT part of the
+# default `npm test` path that developers run locally.
+#
+# Required secret:
+#   LIVE_LLM_KEY  — a real (read-only / pay-as-you-go) API key for a
+#                   provider that implements the OpenAI chat-completions
+#                   streaming shape. The test uses ~1 prompt / ~100 tokens.
+#
+# Triggered:
+#   - 06:00 UTC every day
+#   - manual run via the Actions tab (workflow_dispatch)
+#
+# The key is injected into a temporary pm-secrets.json under a synthetic
+# userData dir, and `CAREERFLOW_USER_DATA` points the test at it. The
+# secret is never echoed to logs and is removed at the end of the job.
+
+on:
+  schedule:
+    # 6 AM UTC every day
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    name: live OpenAI-compatible provider smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: ${{ runner.os }}-cargo-nightly-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-nightly-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build (core + ui)
+        run: npm run build
+
+      - name: Prepare synthetic userData with pm-secrets.json
+        if: ${{ secrets.LIVE_LLM_KEY != '' }}
+        env:
+          LIVE_LLM_KEY: ${{ secrets.LIVE_LLM_KEY }}
+        run: |
+          set -euo pipefail
+          USER_DATA_DIR="$RUNNER_TEMP/careerflow-userdata"
+          mkdir -p "$USER_DATA_DIR"
+          # The test reads the FIRST entry from pm-secrets.json and uses
+          # its endpoint / apiKey / model. The default OpenAI endpoint is
+          # used here; override OPENAI_BASE_URL when running against a
+          # different compatible provider by editing this file.
+          ENDPOINT="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
+          MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
+          # profileId:projectId -> { endpoint, apiKey, model }
+          cat > "$USER_DATA_DIR/pm-secrets.json" <<JSON
+          {
+            "smoke:nightly": {
+              "endpoint": "$ENDPOINT",
+              "apiKey": "$LIVE_LLM_KEY",
+              "model": "$MODEL"
+            }
+          }
+          JSON
+          echo "Prepared pm-secrets.json at $USER_DATA_DIR"
+
+      - name: Run live provider smoke test
+        if: ${{ secrets.LIVE_LLM_KEY != '' }}
+        env:
+          CAREERFLOW_LIVE_TEST: "1"
+          CAREERFLOW_USER_DATA: ${{ runner.temp }}/careerflow-userdata
+          # Default `npm test` must NOT change; this lane only runs the
+          # single file explicitly with the gate flipped on.
+        run: |
+          set -euo pipefail
+          npm run test:nightly 2>&1 | tee npm-test-output.txt
+
+      - name: Skip notice when LIVE_LLM_KEY is not configured
+        if: ${{ secrets.LIVE_LLM_KEY == '' }}
+        run: |
+          echo "::warning::LIVE_LLM_KEY secret is not configured for this repository."
+          echo "::warning::Configure repo Settings → Secrets → Actions → LIVE_LLM_KEY to enable this lane."
+
+      - name: Upload test results
+        if: always() && ${{ secrets.LIVE_LLM_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-live-llm-results
+          path: |
+            npm-test-output.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Cleanup synthetic userData
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/careerflow-userdata" || true
