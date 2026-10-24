@@ -445,26 +445,9 @@ export async function getNeighbors(profileId, projectId, filePath, depth = 1, ro
 }
 
 export async function relevantFiles(profileId, projectId, query, max = 20, rootPath) {
-  let db;
-
-  if (rootPath) {
-    const conn = getDb(projectId, rootPath, false);
-    if (!conn.ok) return conn;
-    db = conn.db;
-  } else {
-    const dbPath = _dbPathFor(projectId);
-    if (!existsSync(dbPath)) {
-      return {
-        ok: false,
-        error: { code: "not-initialized", message: "Project not indexed" },
-      };
-    }
-    db = dbCache.get(projectId);
-    if (!db) {
-      db = new Database(dbPath, { readonly: true });
-      dbCache.set(projectId, db);
-    }
-  }
+  const conn = getDb(projectId, rootPath, false);
+  if (!conn.ok) return conn;
+  const db = conn.db;
 
   const tokens = String(query || "")
     .toLowerCase()

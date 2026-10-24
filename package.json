@@ -48,5 +48,11 @@
   },
   "overrides": {
     "js-yaml": "4.3.2"
+  },
+  "allowScripts": {
+    "0": "electron",
+    "1": "better-sqlite3",
+    "electron@44.3.0": true,
+    "better-sqlite3@13.0.3": true
   }
 }

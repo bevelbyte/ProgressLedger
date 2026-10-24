@@ -217,3 +217,69 @@ No new design. CareerFlow's design.
 - Do not claim the browser is "undetectable" or "anonymous".
 - If true anti-detect browsing is needed later, a separate optional
   external-tool integration is the way, not this code.
+
+## Phase 1 record (done 2026-10-24, laptop time; all runs via scheduler tasks, each deleted + deletion verified)
+- Install: `npm install` added 442 packages, audited 446, in 43s;
+  27 vulnerabilities (1 low, 5 moderate, 16 high, 5 critical). npm's own
+  summary printed, but the job's later lines never ran: a bare `npm`
+  call inside a .cmd transfers control to npm.cmd and never returns.
+  Lesson: always `call npm` / `call npx` in .cmd files (corebuild and
+  uibuild were already written that way; the install job was not).
+- allowScripts saga (see DECISIONS.md V2-14): hand-edited array form did
+  not satisfy npm; `npm install-scripts approve` rewrote it to object
+  form + updated package-lock.json; `npm rebuild` then exited 0 while
+  doing nothing; Electron's binary came from running its approved
+  install.js directly (dist/electron.exe 246,070,272 bytes, path.txt
+  bare "electron.exe"); better-sqlite3 prebuild verified by load test
+  (SQLITE_OK + FTS5 MATCH). esbuild left unapproved with proof.
+- Log-lock race, proven twice (allowscripts job + VsDevCmd repro): rapid
+  successive `>>` appends to the same log file fail silently when a
+  watcher briefly locks the fresh file, while a later write to a
+  different file (the .done flag) still succeeds — a job can look
+  finished with a truncated log. Rule now in AGENTS.md: one log file per
+  step, exit codes to their own one-write files, grouped outputs via a
+  parenthesized block with a single redirect, .done flag as completion
+  signal, never trust .done alone — read the step logs.
+- Rust core: VsDevCmd + delete prebuilt + `npm install -w @careerflow/core`
+  + `npm run build -w @careerflow/core`, exit 0, output
+  careerflow_core.win32-x64-msvc.node 6,270,976 bytes (same size as the
+  investigation's clean build).
+- UI: `npm run build -w @careerflow/ui`, exit 0, vite 5.4.21, 4027 modules
+  transformed, built in 17.71s, ui/dist/index.html 725 bytes.
+- Tests, full `npm test` rerun after the fix: checks check:ipc,
+  check:napi, check:esm, check:cdp-boundary all pass; shell 1412 tests:
+  1390 pass, 0 fail, 22 skipped; UI vitest 72 files passed; cargo tests
+  all ok (incl. study_session_focus 14/14, subject_identity 7/7);
+  e2e smoke passed (6.7s: profile + degree + subject + Subjects sync);
+  e2e startup passed (2.1s: main boots, Rust core responds).
+- The one baseline failure (fixed, see DECISIONS.md V2-13): shell SF-2
+  relevantFiles served the cache with no caller root (fail-open). Fixed
+  in v2's copy only (original CareerFlow untouched); no test changed.
+  Stale-flag lesson from the rerun: reusing a job's .done/.exit filenames
+  makes a fresh run unreadable until it overwrites them — use fresh
+  filenames per run or delete stale flags first.
+- App run (Playwright driver, 4 passes, shots in task work/shots*):
+  pass 1 empty sweep (38 shots, all 17 nav labels clicked) but profile
+  creation failed (tried on the wrong view) and sidebar clicks alone
+  proved to switch workspace only; pass 2 with profile (24 shots) proved
+  profile creation + auto-transition to Subjects + sidebar collapse to
+  an icon rail + Ctrl+K palette, but Study views still duplicated
+  (workspace-tab matcher caught sidebar "Study Sessions" at y=480);
+  pass 3 with the top-row-band fix (15 shots) proved degree + subject
+  creation and 8 distinct Study views + Research ledger reached via its
+  sidebar button (x=8, y=778, below the visible sidebar area);
+  pass 4 (5 shots) proved the palette is search-only ("browser" = no
+  matches), "+" creates a Scratch workspace, and the Donut-manager
+  "Launch" adds Open/Refresh without opening a page. NO shot shows a
+  real web page: NOT VERIFIED (see DECISIONS.md V2-16).
+- Tunnel outage mid-Phase 1: repeated "Connection closed by UNKNOWN port
+  65535" while the PC and Tailscale were proven up (user's tailscale
+  status screenshot: tuf-a15 100.112.116.73, muse active via relay nyc)
+  and the laptop jobs kept running unaffected. Self-recovered, same as
+  the 2026-10-23 outages. Lesson: on CONNECT rejection, suspect the
+  tunnel path before the PC.
+- Residue: every app/e2e run created %APPDATA%\careerflow (test data
+  only; CareerFlow has no installed app). Deleted before each driver
+  pass and at close-out; Progress Ledger's own data folder was never
+  touched. Temporary driver scripts (e2e/p1-shots*.mjs) are deleted
+  before the Phase 1 commit and are never committed.

@@ -93,3 +93,57 @@ Reason: the task's Section 1.8 rule. A copy of CareerFlow would otherwise
 point at CareerFlow's data by default; the test makes the separation
 provable instead of assumed.
 Date: 2026-10-24 (planned, Phase 0/1).
+
+## V2-13 — SF-2 fail-open fix in relevantFiles (baseline bug, fixed in Phase 1)
+Reason: the baseline shell suite had exactly 1 failure in 1412
+(project-intel-ownership SF-2): relevantFiles served the cache with no
+caller root (its else-branch opened the DB directly), while getFileList,
+getNeighbors, getStats and reindexDelta all fail closed through getDb.
+Fix: relevantFiles now calls getDb unconditionally, like its siblings.
+No test was changed. Targeted file 8/8, full shell 1390 pass / 0 fail.
+The bug is pre-existing at CareerFlow HEAD (v2 source is byte-identical
+to CareerFlow here), not caused by the copy. Fixing the source instead
+of weakening the test keeps the security posture honest.
+Date: 2026-10-24.
+
+## V2-14 — allowScripts recorded by npm's own approve command; npm rebuild does not run these scripts
+Reason: hand-editing package.json's allowScripts array did not satisfy
+npm (rebuild still warned "not yet covered"). npm's approve rewrote it
+to object form (electron@44.3.0 and better-sqlite3@13.0.3 set true) AND
+updated package-lock.json (+30/-3). Even then `npm rebuild` exited 0
+without producing binaries — it does not run these install scripts in
+npm 11.19. Electron's binary was therefore provisioned by running its
+approved install script directly (node node_modules/electron/install.js,
+exit 0: dist/electron.exe 246,070,272 bytes, path.txt bare
+"electron.exe"). better-sqlite3 needs no rebuild: its shipped prebuild
+(prebuilds/win32-x64.node) loads under system Node and FTS5 works
+(proven by load test). esbuild@0.21.5 is explicitly NOT allowed: the UI
+build (vite 5.4.21, 4027 modules, 17.71s) proves its binary arrives via
+@esbuild/win32-x64 without the postinstall.
+Date: 2026-10-24.
+
+## V2-15 — Phase 1 screenshots via a Playwright driver, not SendKeys
+Reason: the driver launches the app the e2e way (static ui/dist,
+CAREERFLOW_E2E=1), verifies the window handle, and screenshots the app
+window per view — more reliable than focus-dependent keystrokes, and it
+satisfies the task's method (window verified, test-mode flag only,
+app-window shots). Navigation model learned: the top tab row switches
+workspace; the second tab row selects the view; a sidebar click alone
+only switches workspace and leaves the last-active tab in front (this
+misled pass 1 into duplicate shots). Sidebar collapse exists ("Collapse
+navigation" button, collapses to an icon rail). The Ctrl+K palette is a
+search palette, not a command runner for browser commands.
+Date: 2026-10-24.
+
+## V2-16 — CareerFlow browser baseline record (Phase 1, record only)
+Reason: the Operator "Browser" tab is the Donut manager (external).
+Without Donut running it shows "No managed browser profiles yet" with
+New browser profile / + Profile / Launch / Open / Refresh; Launch adds
+Open/Refresh but opens no page, shows no address bar and no Capture
+button. Palette search for "browser" returns no matches. "+" creates a
+Scratch workspace tab, not a browser tab. The embedded browser
+(WebContentsView host.js) opening path was NOT found through UI
+navigation in 4 passes; Phase 3 finds it from code (host.js,
+BrowserSurface, workspace model). NO Phase 1 shot shows a real web page
+— recorded as NOT VERIFIED, not claimed.
+Date: 2026-10-24.

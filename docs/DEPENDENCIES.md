@@ -21,17 +21,28 @@ each entry will list the package, version, what it is needed for, and the
 six check results.
 
 ## allowScripts (npm 11 blocks install scripts unless allowed)
-TO BE SET after the Phase 1 install audit. Expected minimal entry: electron
-(its install script places the Electron binary; the investigation proved
-npm 11.19 otherwise leaves the binary missing and a dev run cannot start).
-Every entry here will carry its own reason. Never allow all.
+Recorded by npm's own approve command in Phase 1 (see DECISIONS.md V2-14).
+Never allow all.
+- electron@44.3.0: its install script places the Electron binary. Without
+  it no dev or e2e run can start (proven: binary missing after the first
+  install). Provisioned by running the approved install.js directly after
+  npm rebuild proved to be a no-op.
+- better-sqlite3@13.0.3: its install script is node-gyp rebuild. Approved
+  so the option exists; the shipped prebuild suffices and no rebuild was
+  run (proven by load test under system Node, FTS5 included).
+- esbuild@0.21.5: explicitly NOT allowed. The UI build passes without its
+  postinstall (binary arrives via @esbuild/win32-x64).
 
-## CareerFlow inherited dependencies — audit status
-- npm audit: TO BE AUDITED in Phase 1 (real numbers to be recorded).
-- cargo audit: TO BE AUDITED if possible offline; otherwise recorded as
-  NOT VERIFIED (stated plainly, not guessed).
-- Install scripts, abandoned packages, known vulnerabilities: TO BE FLAGGED
-  in Phase 2. Fix by updating where it is safe; report the rest.
+## CareerFlow inherited dependencies — audit status (Phase 1, real numbers)
+- npm install: 442 packages added, 446 audited, in 43s.
+- npm audit: 27 vulnerabilities (1 low, 5 moderate, 16 high, 5 critical).
+  No fixes applied in Phase 1 (baseline); Phase 2 triages.
+- Deprecated warnings at install: inflight@1.0.6, glob@7.2.3 and glob@10.5.0,
+  whatwg-encoding@3.1.1, lodash.isequal@4.5.0, tar@6.2.1, lucide-svelte@1.0.1
+  ("Please use @lucide/svelte instead").
+- cargo audit: NOT VERIFIED (not run offline; stated plainly, not guessed).
+- Install scripts flagged by npm: better-sqlite3, esbuild (see allowScripts
+  above). Abandoned packages and known vulnerabilities: triage in Phase 2.
 - TypeScript compiler / type-check step for main process and UI: the
   browser code stays TypeScript. If v2 needs a TS step, the smallest tool
   passing all six checks above is added and listed here with reasons.
@@ -39,4 +50,6 @@ Every entry here will carry its own reason. Never allow all.
 
 ## Fonts
 Bundled locally, no CDN (see DECISIONS.md V2-10): Inter + a mono font as
-local files. Exact files and licenses recorded here once bundled in Phase 2.
+local files. Status after Phase 1: NOT VERIFIED — no .woff2/.ttf files
+were found under ui/src at import. Exact files and licenses recorded here
+once bundled in Phase 2.
