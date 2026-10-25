@@ -1088,6 +1088,19 @@ export declare function updateBrowserProfile(localId: string, displayName: strin
  */
 export declare function deleteBrowserProfile(localId: string): boolean
 /**
+ * Pending partition deletes (V2-39). A partition name is validated
+ * exactly like a profile id shape (letters, digits, hyphens only), so a
+ * pending row can never name a path outside Partitions/.
+ */
+export interface PendingBrowserProfileDelete {
+  localId: string
+  partitionName: string
+  workspaceProfileId: number
+}
+export declare function addPendingBrowserProfileDelete(workspaceProfileId: number, localId: string, partitionName: string): boolean
+export declare function listPendingBrowserProfileDeletes(): Array<PendingBrowserProfileDelete>
+export declare function removePendingBrowserProfileDelete(localId: string): boolean
+/**
  * Touch last_used_at (called when a view is created in this profile or
  * the user switches to it, so the manager's "last used" stays honest).
  */

@@ -551,3 +551,197 @@ Product fix (step 5): after a browser profile is created in the UI, the app open
 Test fix (step 6): the isolation driver no longer navigates the old page after creating a profile (the run 10 flaw). createBrowserProfileViaUI only creates and returns the local id; the caller then opens a tab IN that profile via the switcher's per-profile open button, waits for a page id, and asserts from app state (browser.state() pages, matched by the surface's page id) that the active tab's browserProfile.localId equals the profile under test. The assert runs inside capturePage (so every capture is preceded by it) and after every openTabInProfile (so every navigation and every cookie/storage check that follows is in the right profile). A mismatch throws PROFILE MISMATCH with the active and expected ids, failing loudly; a title flip to "Already" can no longer pass a capture in the wrong profile. Post-quit DB checks are grouped by browser_profile_id from the database (not by title), with two new explicit checks: profile-ids-in-db (A, B, D, F ids present as keys) and localstorage-separation (A text has ls=A, B does not). LocalStorage separation is now real: the test server gained /setls, which sets the probe in the loading profile's storage and goes to /state, so A captures both cookie=probe=A and ls=A while B captures neither. IndexedDB separation is NOT separately captured in ledger text (ledger text is page text only); it holds by partition construction (one persist partition per profile), and the final report must say so, not claim a captured IndexedDB check.
 
 Driver hardening (steps 2-3, same change): every log line is timestamped and written synchronously to fd 1, so the job log can no longer hide progress in a buffer (the run 10 lesson); a STEP line is recorded before each profile step; every renderer evaluate is bounded by a 30-second timeout race (evaluate itself has no timeout, and an unbounded evaluate was the only unbounded wait left in the temp-to-C interval); a watchdog interval checks every 30 seconds and, if the log has no new line for 10 minutes or the run has exceeded its hard limit (20 minutes for a proof run, via P3B_HARD_LIMIT_MINUTES), writes a state report (step, profile, reason, last activity, results so far) plus a renderer screenshot if possible, writes TIMED OUT to the log and report, closes the app with a 10-second timeout, and exits with code 2 (the job script then writes TIMED OUT to the log and .done as usual). Exit codes: 0 pass, 1 test failure or driver error, 2 watchdog/hard-limit timeout.
+
+## V2-37 — One options object for page creation (2026-10-25)
+
+Iso11 proved the failure mode: store `openPage` passed arguments
+positionally, so the browser profile id landed in the restore slot and
+the page opened in the wrong profile. The fix removes the ambiguity at
+every layer, not just at the call site:
+- Store `ui/src/shared/stores/browser.svelte.js` `openPage` takes
+  exactly one options object:
+  `createPage({profileId, url, restoreId, browserProfileId})`.
+- Preload `shell/src/preload.cjs` `createPage(options)` copies only
+  defined fields among exactly those four.
+- Main `shell/src/ipc/browser.js` validates at the trust boundary:
+  plain non-array object; keys a subset of the four (unknown key
+  returns `{ok:false, reason:"invalid-create-page"}`); `profileId`
+  required integer; `url` required non-empty string; `restoreId`
+  optional integer (explicit null invalid); `browserProfileId`
+  optional string (shape checked by `resolveProfile`). Validation
+  reads payload fields directly because `readString` coerces numbers
+  to strings.
+- Tests `ui/tests/browser-surface.test.js` gained two tests: one
+  options object with a non-default profile in `browserProfileId`
+  and no restore field; restore and profile in their own fields,
+  never swapped.
+No test was weakened to get here; the positional call was the bug,
+not the test.
+
+## V2-38 — about:blank, per-profile research sources, and the delete freeze evidence (2026-10-25)
+
+Three separate findings, one entry because they were all found by
+the same isolation runs:
+- Iso12: Rust `valid_tab_url` rejected the exact string
+  `"about:blank"`, so `save_browser_tab` threw before insert, main
+  tore the page down and returned generic `tab-state-failed`. Fix:
+  an `about:blank` special case in `core/src/db/research.rs`, plus
+  `detail` propagation so a tab-state failure says why.
+- Iso13: research uniqueness was `(profile_id, canonical_url)` only,
+  so a second profile capturing the same URL overwrote the first
+  profile's row and text. Migration 027 rebuilds
+  `research_sources` (ids preserved, FTS valid) with two partial
+  unique indexes (`WHERE browser_profile_id IS NOT NULL` /
+  `IS NULL`). A plain table UNIQUE failed because SQLite treats
+  NULLs as distinct (shell test expected 1, got 2). Migrations run
+  it via `apply_with_fk_off` (FK OFF during rebuild, verified by
+  `foreign_key_check`, FK ON restored on every path). New Rust test
+  `same_url_in_two_browser_profiles_is_two_sources_with_two_texts`
+  passes (research suite 29). Migration 027 was edited in place
+  during this work only because it was an uncommitted 3B draft never
+  applied to any real database; that is not a precedent for editing
+  a shipped migration.
+- Iso13-16 / Diag2-4 delete freeze, established and no further:
+  the delete handler in main does NOT block (Diag3: whole delete in
+  main ~92 ms, rm did not throw, DB row deleted; post-delete
+  `listProfiles` answered in ~1 ms with the correct count), and
+  after that refresh the renderer sends NO further IPC at all while
+  renderer CDP becomes progressively unresponsive (backdrop poll
+  ~18 s, then DOM count, screenshot and evaluate all time out at
+  10-20 s) with zero console errors or pageerrors. CDP input clicks
+  still worked after delete. The main-evaluate timeout is a
+  consequence of the unresponsive main-window CDP channel, not main
+  IPC blocking. The exact JS/native loop inside the renderer was
+  NOT proven; code reading found no obvious infinite loop, and no
+  specific loop, Rust/DB deadlock, or synchronous rm is recorded as
+  proven. (The freeze itself was later explained by V2-40: main
+  crashed in the pending-delete path, which killed the CDP channel
+  with it. The Diag2-4 evidence above remains the accurate
+  contemporaneous record of what was observed before the crash was
+  identified.)
+- Tab cleanup on profile delete (Iso15 orphans): Rust
+  `delete_browser_profile` runs in `with_immediate_transaction`,
+  first `DELETE FROM browser_tabs WHERE browser_profile_id=?1`,
+  then the profile row. Proven live in Iso16 (no C tab rows) and by
+  Rust test `browser_profile_delete_removes_its_tab_rows` (the other
+  profile's tab row survives).
+- Known gap, not silently fixed: `countKeptResearchPassages`
+  (`shell/src/ipc/research.js`) sums kept passages across browser
+  profiles for the same URL. UI count only; noted for the final
+  report.
+
+## V2-39 — Pending-delete fix for profile deletion (2026-10-25, user-ordered)
+
+The user ordered the exact shape, and the code implements it, part
+by part:
+- Delete closes every live view of the profile first (awaiting
+  each view's clear promise), then `session.clearStorageData()`
+  (a failure here still aborts the delete, fail-closed), then
+  best-effort `clearCache()`, `clearAuthCache()`,
+  `clearHostResolverCache()`, `flushStorageData()` (each guarded by
+  typeof + try/catch).
+- For `persist:` partitions the name is validated
+  (`^[A-Za-z0-9-]+$`) and the folder under `userData/Partitions/`
+  is removed. If the folder cannot be removed while the app runs,
+  the delete records a pending delete via
+  `addPendingBrowserProfileDelete` (recording failure throws
+  `pending-delete-record-failed`, fail-closed); `allowPending` is
+  true only from the delete handler, never from clear-data on a
+  profile that still exists. Delete order is unchanged: optional
+  ledger delete, then clear, then `deleteBrowserProfile` LAST.
+- Migration 028 adds `browser_profile_pending_deletes`
+  (`local_id` PK, `partition_name`, `workspace_profile_id`,
+  `created_at`). Rust adds the pending struct and
+  add/list/remove functions; the pending-add validates the
+  workspace id, the local id, and the partition name (non-empty,
+  <=128 chars, ASCII alphanumerics + hyphens only), so a pending
+  row can never name a path outside `Partitions/`. Startup
+  cleanup runs at registration, before any page can be created in
+  a deleted partition; quit cleanup runs on `before-quit`,
+  synchronous, best effort, never blocking quit. A row is removed
+  only after its folder is gone.
+- Rust tests: `browser_profile_pending_deletes_round_trip`
+  (including forged partition names `"../evil"` and
+  `"pl-browser-1-bp-test-pending;rm"` rejected) and
+  `browser_profile_delete_removes_its_tab_rows` (see V2-38).
+- CamelCase field bug (Diag11): NAPI `#[napi(object)]` structs
+  surface in JS as camelCase (`localId`, `partitionName`). The
+  first cleanup version read `partition_name` / `local_id`, which
+  are `undefined` in JS, so every pending entry was silently
+  skipped. Fixed in both startup and quit cleanup to read
+  `partitionName ?? partition_name`, with a comment saying why.
+- Diag5 loopback finding: `session.setProxy` IS applied to page
+  loads, but Chromium bypasses the proxy for loopback origins
+  (127.0.0.1) regardless of the bypass rule (`<local>` default or
+  a named bypass). A proxy-through test on a loopback origin can
+  never pass; the group-4 test now loads `http://example.com`,
+  which the proxy answers with the via-proxy page.
+- Diag8 active-page finding: a persistent profile has two live
+  pages (a background about:blank page, ready, plus the navigated
+  page). Picking the first page in the profile returns the
+  background page and hides a failure. Fail-closed holds for the
+  active page: a dead-proxy navigation to example.com ends
+  `failed` / `load-failed`, no ledger row lands. Group 5 now picks
+  the navigated page (URL match, else a failed page, else last).
+  The double-page observation itself is unexplained and is noted
+  in the final report, not hidden.
+
+## V2-40 — The rm import that crashed main, and the two test-design fixes (2026-10-25)
+
+- Root cause, proven by Diag16 + a local reproduction:
+  `shell/src/ipc/browser.js` imported `rm` from `node:fs` (the
+  callback API) and awaited it without a callback. That call
+  returns immediately without deleting, and rimraf then throws an
+  uncaught `TypeError: callback is not a function`, which kills
+  main right after window creation. Consequences, all observed:
+  the pending folder was deleted by rimraf before the crash, the
+  pending row was never removed (cleanup never resumed), the
+  renderer CDP channel died with main (firstWindow timeouts,
+  /json/list hanging for 5+ minutes on an accepted connection,
+  app.close timeouts), and orphan renderer processes lingered.
+  Fresh launches never hit it (empty pending list, so
+  `removeDirWithRetry` is never called); every pre-seeded launch
+  and every group-3 restart did (a pending row was present).
+  This single wrong import explained the whole Diag5-16
+  firstWindow block and the "delete freeze" of V2-38: main did
+  not block on delete, it crashed in the delete's cleanup path.
+  Fix: `rm` from `node:fs/promises`, nothing else. Scope check:
+  every other `await rm` site in the shell imports from
+  `fs/promises`; the sync sites use `rmSync`. Only browser.js
+  was wrong, and it was 3B-only code (the delete fix itself).
+  Verified by Diag17 (seeded launch, clean code): window in ~1 s,
+  folder and pending row both gone at 1 s, clean close, 0
+  electrons left. The retry window is now 10 s at startup
+  (background, costs nothing user-visible) and 1 s on the delete
+  path; with the correct rm the first check normally passes at
+  once and the poll is a safety net, not the mechanism.
+- Quit cleanup is best-effort, startup cleanup is the guarantee:
+  a browsed partition's folder is held by its Chromium session
+  until process exit, and `before-quit` runs before session
+  teardown, so `rmSync` at quit cannot remove it on Windows.
+  Groups run 4 records this honestly as
+  `cleared-at-quit=false cleared-at-startup=true`. The security
+  property does not depend on quit removal: the profile row and
+  tab rows are gone at delete time, a deleted id can never open
+  its partition again (resolveProfile rejects it), and a new
+  profile sees no old data (group 3, DB-evidenced). The pending
+  folder between quit and next start is unreachable through the
+  app, and startup removal deletes it before any page can use it.
+- Example heading test fix (run 3 to run 4): the real Example
+  Domain page's extracted text starts with its body paragraph
+  ("This domain is for use in documentation examples..."), not
+  its `<h1>`. Checking the heading in the text was a test-design
+  error; the group-4 direct check now uses the body paragraph
+  (title "Example Domain" in the source row corroborates it).
+  Product behaviour was correct in run 3; the test was wrong.
+- Main-process integration test (user order, rule 7): there is no
+  committed shell test that imports `shell/src/ipc/browser.js`,
+  because it imports `electron` directly and cannot load under
+  plain `node --test`, and no fake Electron shim was invented to
+  pretend otherwise. Committed coverage is the Rust pending/tab
+  tests plus the shell/UI browser tests. The app-level
+  main-process proof, needing no UI interaction, is Diag17
+  (seed via the real core, startup cleanup, window existence,
+  clean close) plus groups run 4. The drivers are temporary and
+  are deleted before the 3B commit; their results are recorded
+  here, in PROGRESS.md, and in V2_REPORT.md.

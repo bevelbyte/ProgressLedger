@@ -72,6 +72,10 @@ const MIGRATIONS: &[(i32, &str)] = &[
         27,
         include_str!("../migrations/027_research_sources_per_browser_profile.sql"),
     ),
+    (
+        28,
+        include_str!("../migrations/028_browser_profile_pending_deletes.sql"),
+    ),
 ];
 
 /// Read the DB's current schema version.

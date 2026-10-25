@@ -615,6 +615,80 @@ pub fn delete_browser_profile(local_id: String) -> Result<bool> {
     })
 }
 
+/// Pending partition deletes (V2-39). A partition name is validated
+/// exactly like a profile id shape (letters, digits, hyphens only), so a
+/// pending row can never name a path outside Partitions/.
+#[napi(object)]
+pub struct PendingBrowserProfileDelete {
+    pub local_id: String,
+    pub partition_name: String,
+    pub workspace_profile_id: i32,
+}
+
+fn valid_partition_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+#[napi]
+pub fn add_pending_browser_profile_delete(
+    workspace_profile_id: i32,
+    local_id: String,
+    partition_name: String,
+) -> Result<bool> {
+    let workspace_profile_id = valid_id(workspace_profile_id, "workspace_profile_id")?;
+    let local_id = valid_browser_profile_id(local_id, "local_id")?;
+    if !valid_partition_name(&partition_name) {
+        return Err(coded(codes::INVALID_INPUT, "invalid partition_name"));
+    }
+    with_db(|conn| {
+        conn.execute(
+            "INSERT INTO browser_profile_pending_deletes (local_id, partition_name, workspace_profile_id) VALUES (?1, ?2, ?3) ON CONFLICT(local_id) DO UPDATE SET partition_name=excluded.partition_name, workspace_profile_id=excluded.workspace_profile_id",
+            params![local_id, partition_name, workspace_profile_id],
+        )
+        .map_err(to_err)?;
+        Ok(true)
+    })
+}
+
+#[napi]
+pub fn list_pending_browser_profile_deletes() -> Result<Vec<PendingBrowserProfileDelete>> {
+    with_db(|conn| {
+        let mut stmt = conn
+            .prepare("SELECT local_id, partition_name, workspace_profile_id FROM browser_profile_pending_deletes ORDER BY created_at")
+            .map_err(to_err)?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok(PendingBrowserProfileDelete {
+                    local_id: r.get(0)?,
+                    partition_name: r.get(1)?,
+                    workspace_profile_id: r.get(2)?,
+                })
+            })
+            .map_err(to_err)?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(to_err)?);
+        }
+        Ok(out)
+    })
+}
+
+#[napi]
+pub fn remove_pending_browser_profile_delete(local_id: String) -> Result<bool> {
+    let local_id = valid_browser_profile_id(local_id, "local_id")?;
+    with_db(|conn| {
+        let changed = conn
+            .execute(
+                "DELETE FROM browser_profile_pending_deletes WHERE local_id=?1",
+                params![local_id],
+            )
+            .map_err(to_err)?;
+        Ok(changed > 0)
+    })
+}
+
 /// Touch last_used_at (called when a view is created in this profile or
 /// the user switches to it, so the manager's "last used" stays honest).
 #[napi]
@@ -887,5 +961,91 @@ mod tests {
             .expect("delete idempotent"));
         let list2 = super::list_browser_profiles(pid).expect("list2");
         assert_eq!(list2.len(), 1);
+    }
+
+    #[test]
+    fn browser_profile_pending_deletes_round_trip() {
+        let path = std::env::temp_dir()
+            .join(format!("pl-v2-test-pending-{}.db", std::process::id()));
+        crate::db::init_db(path.to_string_lossy().into_owned()).expect("init test db");
+        let profile =
+            crate::db::add_profile("Pending Test".to_string(), "pending-test".to_string())
+                .expect("profile");
+        let pid = profile.id;
+        assert!(super::list_pending_browser_profile_deletes().expect("list empty").is_empty());
+        assert!(super::add_pending_browser_profile_delete(
+            pid,
+            "bp-test-pending".to_string(),
+            "pl-browser-1-bp-test-pending".to_string(),
+        ).expect("add pending"));
+        let list = super::list_pending_browser_profile_deletes().expect("list");
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].local_id, "bp-test-pending");
+        assert_eq!(list[0].partition_name, "pl-browser-1-bp-test-pending");
+        // Forged partition names are rejected, never stored.
+        assert!(super::add_pending_browser_profile_delete(
+            pid,
+            "bp-test-pending2".to_string(),
+            "../evil".to_string(),
+        ).is_err());
+        assert!(super::add_pending_browser_profile_delete(
+            pid,
+            "bp-test-pending2".to_string(),
+            "pl-browser-1-bp-test-pending;rm".to_string(),
+        ).is_err());
+        assert!(super::remove_pending_browser_profile_delete("bp-test-pending".to_string()).expect("remove"));
+        assert!(super::list_pending_browser_profile_deletes().expect("list after remove").is_empty());
+        assert!(!super::remove_pending_browser_profile_delete("bp-test-pending".to_string()).expect("remove idempotent"));
+    }
+
+    #[test]
+    fn browser_profile_delete_removes_its_tab_rows() {
+        let path = std::env::temp_dir()
+            .join(format!("pl-v2-test-tabdel-{}.db", std::process::id()));
+        crate::db::init_db(path.to_string_lossy().into_owned()).expect("init test db");
+        let profile =
+            crate::db::add_profile("TabDel Test".to_string(), "tabdel-test".to_string())
+                .expect("profile");
+        let pid = profile.id;
+        let second = super::create_browser_profile(
+            pid,
+            "bp-test-tabdel".to_string(),
+            "TabDel".to_string(),
+            None,
+            None,
+            "".to_string(),
+        )
+        .expect("create");
+        // One tab row in the profile under test, one in another profile
+        // (must survive the delete, proving the cleanup is scoped).
+        crate::db::with_db(|conn| {
+            conn.execute(
+                "INSERT INTO browser_tabs (profile_id, browser_profile_id, url) VALUES (?1, ?2, ?3)",
+                rusqlite::params![pid, "bp-test-tabdel", "https://example.com/a"],
+            ).expect("insert tab a");
+            conn.execute(
+                "INSERT INTO browser_tabs (profile_id, browser_profile_id, url) VALUES (?1, ?2, ?3)",
+                rusqlite::params![pid, "bp-test-other", "https://example.com/b"],
+            ).expect("insert tab b");
+            Ok(())
+        }).expect("insert tabs");
+        assert!(super::delete_browser_profile("bp-test-tabdel".to_string()).expect("delete"));
+        let remaining: i64 = crate::db::with_db(|conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM browser_tabs WHERE browser_profile_id='bp-test-tabdel'",
+                [],
+                |r| r.get(0),
+            ).map_err(crate::db::to_err)
+        }).expect("count tabs");
+        assert_eq!(remaining, 0);
+        let other: i64 = crate::db::with_db(|conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM browser_tabs WHERE browser_profile_id='bp-test-other'",
+                [],
+                |r| r.get(0),
+            ).map_err(crate::db::to_err)
+        }).expect("count other tabs");
+        assert_eq!(other, 1);
+        let _ = second;
     }
 }

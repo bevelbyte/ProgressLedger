@@ -15,7 +15,8 @@ import { safeHandle } from "../security/safe-handle.js";
 // mandatory Donut-independence property for Phase 1, and it is asserted by
 // e2e/browser-page.spec.js.
 
-import { existsSync, mkdirSync, rm } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { app, net, safeStorage, session } from "electron";
@@ -86,6 +87,71 @@ function readString(payload, key) {
 
 export function register(ctx) {
   const host = getBrowserHost(ctx);
+
+  // V2-39 pending partition deletes: remove folders recorded by a
+  // delete that could not remove its folder while running. Runs at
+  // startup, before any page can be created in a deleted partition
+  // (resolveProfile rejects deleted ids, so no new view can recreate
+  // a pending folder before this cleanup runs). A folder that still
+  // cannot be removed stays recorded for the next start; startup is
+  // never blocked by a pending removal.
+  const cleanupPendingDeletes = async () => {
+    let pending = [];
+    try {
+      pending = ctx.core?.listPendingBrowserProfileDeletes?.() ?? [];
+    } catch {
+      return;
+    }
+    for (const entry of Array.isArray(pending) ? pending : []) {
+      // NAPI objects are camelCase in JS (localId, partitionName),
+      // not the Rust snake_case column names. Reading snake_case
+      // here silently skipped every pending entry (group3 run 1:
+      // folder + row both survived a restart with no error).
+      const name = entry?.partitionName ?? entry?.partition_name;
+      const localId = entry?.localId ?? entry?.local_id;
+      if (typeof name !== "string" || !/^[A-Za-z0-9-]+$/.test(name)) continue;
+      if (typeof localId !== "string" || !validateBrowserProfileId(localId)) continue;
+      const dir = join(app.getPath("userData"), "Partitions", name);
+      const removed = await removeDirWithRetry(dir, 10000);
+      if (removed) {
+        try {
+          ctx.core?.removePendingBrowserProfileDelete?.(localId);
+        } catch {}
+      }
+    }
+  };
+  void cleanupPendingDeletes();
+  // Quit, if possible: same cleanup, synchronously, best effort.
+  // A failure here keeps the row for the next start, it never blocks quit.
+  if (!register._quitCleanupRegistered) {
+    register._quitCleanupRegistered = true;
+    try {
+      app.on("before-quit", () => {
+        let pending = [];
+        try {
+          pending = ctx.core?.listPendingBrowserProfileDeletes?.() ?? [];
+        } catch {
+          return;
+        }
+        for (const entry of Array.isArray(pending) ? pending : []) {
+          const name = entry?.partitionName ?? entry?.partition_name;
+          const localId = entry?.localId ?? entry?.local_id;
+          if (typeof name !== "string" || !/^[A-Za-z0-9-]+$/.test(name)) continue;
+          if (typeof localId !== "string" || !validateBrowserProfileId(localId)) continue;
+          const dir = join(app.getPath("userData"), "Partitions", name);
+          try { rmSync(dir, { recursive: true, force: true }); } catch {}
+          if (existsSync(dir)) {
+            try { rmSync(dir, { recursive: true, force: true }); } catch {}
+          }
+          if (!existsSync(dir)) {
+            try {
+              ctx.core?.removePendingBrowserProfileDelete?.(localId);
+            } catch {}
+          }
+        }
+      });
+    } catch {}
+  }
 
   // Tab rows: pageId -> { rowId, profileId, title }. The shell keeps one
   // browser_tabs row per live page so a tab can be restored after a
@@ -173,12 +239,58 @@ export function register(ctx) {
     return { ok: true, full: { ...row, proxyPassword: decryptPassword(row.proxyPasswordEncrypted) }, temporary: false };
   }
 
+  // Diag16 root cause (do not regress): rm MUST come from
+  // node:fs/promises. The node:fs callback rm, awaited without a
+  // callback, returns immediately without deleting and then throws an
+  // uncaught "callback is not a function" from inside rimraf, which
+  // kills main right after window creation -- before cleanup can
+  // remove the pending row -- and leaves orphan renderer processes.
+  // That single wrong import explained every pre-seeded-launch
+  // firstWindow timeout (Diag5-16) and every surviving pending row:
+  // fresh launches never call this path (empty pending list).
+  // Windows delayed deletion (Diag11/Diag12): even with the correct
+  // promise rm, a folder can still be visible to existsSync briefly
+  // after rm resolves, because the directory entry is removed only
+  // when the last handle closes (antivirus scan, Chromium session,
+  // etc.). So removal polls up to maxMs
+  // (startup cleanup: 10 s, where the cleanup runs in the background
+  // and the wait costs nothing user-visible; delete path: 1 s default,
+  // so a truly locked folder still becomes a pending row promptly).
+  // A folder that is still visible after the full poll stays pending
+  // for the next start, and a gone folder's row is removed then.
+  const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function removeDirWithRetry(dir, maxMs = 1000) {
+    try { await rm(dir, { recursive: true, force: true }); } catch {}
+    const steps = Math.max(1, Math.floor(maxMs / 500));
+    for (let i = 0; i < steps; i++) {
+      await sleepMs(500);
+      if (!existsSync(dir)) return true;
+      if (i > 0 && i % 4 === 3) {
+        try { await rm(dir, { recursive: true, force: true }); } catch {}
+      }
+    }
+    return !existsSync(dir);
+  }
+
   // Close every live view of a profile, wipe its session storage, and
   // remove its partition directory. Throws on failure so a delete
   // aborts instead of leaving a half-deleted profile (row gone, data
   // present, or data gone, row present). Temp profiles never reach
   // here (they have no row and no disk data).
-  async function clearProfileData(profileId, profile) {
+  async function clearProfileData(profileId, profile, allowPending = false) {
+    // V2-39 delete fix: close views first, then clear storage, cache,
+    // auth cache and host resolver cache, then flush, then try to
+    // remove the folder. Electron keeps a partition folder locked
+    // while the app runs, and a session that outlives its views can
+    // recreate the folder after a delete (Diag3/Diag4: rm succeeded,
+    // dir back with cache files). So a delete that cannot remove the
+    // folder while running records a pending delete instead of
+    // claiming success: the folder is removed at the next app start
+    // (and at quit if possible), and the pending row is removed only
+    // after the folder is gone. Pending is ONLY for delete, never for
+    // clear-data on a profile that still exists (removing its folder
+    // at next start would wipe data browsed after the clear).
+    // Returns { pendingDelete: boolean }.
     const pages = [];
     try {
       const state = host.state?.();
@@ -196,13 +308,38 @@ export function register(ctx) {
     const partition = partitionForBrowser(profileId, profile);
     if (!partition) throw new Error("bad-partition");
     const sess = session.fromPartition(partition);
+    // User data first: a failure here aborts the delete (fail-closed),
+    // so a row is never deleted while cookies/localStorage/IndexedDB
+    // are still readable in the session.
     await sess.clearStorageData();
+    // Caches next, best effort: a cache failure does not abort, because
+    // the pending folder removal (or a successful rm) removes the
+    // on-disk cache anyway, and no user data rides on these calls.
+    try { if (typeof sess.clearCache === "function") await sess.clearCache(); } catch {}
+    try { if (typeof sess.clearAuthCache === "function") await sess.clearAuthCache(); } catch {}
+    try { if (typeof sess.clearHostResolverCache === "function") await sess.clearHostResolverCache(); } catch {}
+    try { if (typeof sess.flushStorageData === "function") await sess.flushStorageData(); } catch {}
     if (partition.startsWith("persist:")) {
       const name = partition.slice("persist:".length);
       if (!/^[A-Za-z0-9-]+$/.test(name)) throw new Error("bad-partition");
       const dir = join(app.getPath("userData"), "Partitions", name);
-      await rm(dir, { recursive: true, force: true });
+      const removed = await removeDirWithRetry(dir);
+      if (!removed) {
+        if (!allowPending) throw new Error("partition-remove-failed");
+        // Folder still there (locked, or recreated by the session):
+        // record it for next-start removal, and fail closed if even
+        // the record cannot be written (otherwise the folder would
+        // linger with no record to remove it later).
+        try {
+          ctx.core?.addPendingBrowserProfileDelete?.(profileId, profile.localId, name);
+        } catch {
+          throw new Error("pending-delete-record-failed");
+        }
+        return { pendingDelete: true };
+      }
+      return { pendingDelete: false };
     }
+    return { pendingDelete: false };
   }
 
   // Ownership gate: a browser partition belongs to a real Progress Ledger profile.
@@ -545,8 +682,9 @@ export function register(ctx) {
     }
     // Clear first, delete the row last (the spec's order). A clear
     // failure aborts the delete: no half-deleted profile.
+    let clearResult = null;
     try {
-      await clearProfileData(profileId, row);
+      clearResult = await clearProfileData(profileId, row, true);
     } catch {
       return { ok: false, reason: "clear-failed" };
     }
@@ -555,7 +693,7 @@ export function register(ctx) {
     } catch {
       return { ok: false, reason: "delete-failed" };
     }
-    return { ok: true, deletedLedger };
+    return { ok: true, deletedLedger, pendingDelete: clearResult?.pendingDelete === true };
   });
 
   safeHandle("browser:duplicate-profile", (_e, payload) => {

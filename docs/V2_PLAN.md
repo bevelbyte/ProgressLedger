@@ -325,3 +325,45 @@ updates), V2-30 (snippet() dropped), V2-31 (no invented undefined
 arguments), V2-32 (backup research inclusion). Remaining Phase 3
 debt, carried to Phase 5: E2E proof of capture in the running app,
 and the is_active per-tab tracking (deferred to 3B).
+
+## Phase 3B completion record (2026-10-25)
+- Migration 026 + Rust browser_profiles module (27-field profile, validators,
+  ensure_default idempotent, live cap 1..20, ledger count/delete by profile).
+  Verify: "MIG26 VERIFY 0 FAILURES" (job V2P3BMig, all exits 0).
+- Shell: per-workspace eviction, partition naming (legacy cf-browser for
+  defaults, pl-browser for named, pl-temp in-memory), permissions allow-list
+  read fresh per request, per-session language/GPC/DNT/third-party-cookie
+  filtering, WebRTC default_public_interface_only, proxy-deferred load
+  (fail-closed, never direct), clear-on-close wipe, reconfigureProfile.
+- IPC + preload: full profile channels, temp profiles (shell-only, no tab
+  row), safeStorage-encrypted proxy passwords (never to the renderer),
+  clearProfileData (closes views, wipes session, removes the partition dir;
+  a failure aborts the delete), test-proxy (10 s, any HTTP status = success).
+- UI: store profiles + current, surface switcher (dot + name + Temporary
+  mark), profile dialog (new/edit, proxy/language/UA/WebRTC/permissions/
+  privacy/download folder), manager view "browser-profiles" (Operator, rail
+  caption BPROF, allowlisted in App + shell-contracts), tab profile dot,
+  ledger chips (name always, color dot when the profile still exists).
+- UI job V2P3BUI2: checks 0, shell 1181 pass / 0 fail / 22 skipped (1175 + 6
+  new profile tests), UI 70 files / 858 tests pass, build green. (The first
+  UI run caught 3 real issues: Donut-guard comments, the missing allowlist
+  entries, the missing rail caption — all fixed, none by weakening a test.)
+- Isolation (3B-5, app run with throwaway E2E data): [PENDING: ISO report].
+- NOT integration-tested: SOCKS5 (configured via setProxy, not driven end
+  to end — stated in the final report, never claimed). WebRTC: best-effort
+  (vacuous pass if no candidates gather).
+
+- Isolation, proven by groups run 4 (54/54, unelevated, job
+  V2P3BGroups4): separation, temp evaporation, delete (incl.
+  pending cleared at startup, quit best-effort), proxy-only,
+  dead-proxy fail-closed, forged names rejected. Full evidence in
+  V2_REPORT.md and DECISIONS V2-39/V2-40.
+- Root causes found live: the rm-import crash (V2-40), the
+  camelCase pending-field skip (V2-39), the loopback proxy bypass
+  and double-page observations (V2-39), the Example heading test
+  error (V2-40).
+- Full test gate before the commit (job V2P3B3B6Gate, /RL LIMITED
+  /IT, Medium Mandatory Level): build:core 0, build:ui 0, test 0
+  — shell pass 1181, UI 70 files / 861 tests, cargo all suites ok.
+- Temporary drivers (e2e/p3b-*.mjs) deleted before the commit,
+  never committed.

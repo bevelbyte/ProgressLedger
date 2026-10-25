@@ -249,3 +249,35 @@ jobs run via `call` inside it).
 - The backup bundle includes the research ledger and snapshot files
   (V2-32): manifest "research" section, sources/<id>.html entries,
   SHA-256 verified with sha2, export fail-closed, import graceful.
+
+## As-built additions, Phase 3B (2026-10-25)
+
+- Multiple isolated browser profiles (V2-33): one persistent
+  partition per profile, validated ids only. Default adopts the
+  Phase 3 partition `persist:cf-browser-<workspace>`; new profiles
+  get `persist:pl-browser-<workspace>-<localId>`; temporary
+  profiles get in-memory `pl-temp-<uuid>` with no database row.
+  Live cap per workspace (default 5, clamped 1..20) with LRU
+  hibernation inherited from Phase 3.
+- Research sources are per browser profile (migration 027, two
+  partial unique indexes; see V2-38). The ledger keeps a source
+  row when its profile is deleted with the ledger checkbox off;
+  tab rows for the deleted profile are removed transactionally.
+- Deletion (V2-39, V2-40): views closed, session storage wiped
+  (fail-closed), caches flushed, partition folder removed; a
+  folder that survives while running is recorded as a pending
+  delete (migration 028) and removed at next startup (quit
+  removal is best-effort: the session holds the folder until
+  process exit). The pending row is removed only after its folder
+  is gone.
+- Isolation, proven by groups run 4 (54/54, unelevated): cookie,
+  localStorage, sessionStorage, IndexedDB and cache separation
+  between profiles (ledger text from the throwaway database);
+  temporary profile evaporation (no tab row, no profile row, no
+  partition dir); proxy applies only to its profile (non-loopback
+  origins only: Chromium bypasses proxies for loopback, Diag5);
+  dead proxy fails closed (failed/load-failed, no ledger row);
+  forged partition names rejected (`unknown-browser-profile`).
+  Two live pages per persistent profile (background about:blank
+  plus navigated page) is observed and unexplained; state checks
+  must pick the navigated page.
