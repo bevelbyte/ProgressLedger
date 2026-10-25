@@ -89,38 +89,58 @@ export function register(ctx) {
   const host = getBrowserHost(ctx);
 
   // V2-39 pending partition deletes: remove folders recorded by a
-  // delete that could not remove its folder while running. Runs at
-  // startup, before any page can be created in a deleted partition
-  // (resolveProfile rejects deleted ids, so no new view can recreate
-  // a pending folder before this cleanup runs). A folder that still
-  // cannot be removed stays recorded for the next start; startup is
-  // never blocked by a pending removal.
+  // delete that could not remove its folder while running. A folder
+  // that still cannot be removed stays recorded for the next start.
+  // V2-41: this cleanup runs ONLY after the main window is shown.
+  // main.js calls ctx.runPendingDeleteCleanup once, after
+  // createWindow(). It never runs at registration time, so pending
+  // cleanup can never delay or block the first window. It is safe
+  // to run late: resolveProfile rejects deleted ids, so no page can
+  // be created in a deleted partition before cleanup runs. The
+  // whole pass has a 30 second budget; entries left when the budget
+  // runs out stay recorded for the next start, and the result is
+  // logged with counts so a stuck removal is visible, not silent.
   const cleanupPendingDeletes = async () => {
+    const startedAt = Date.now();
+    const budgetMs = 30000;
     let pending = [];
     try {
       pending = ctx.core?.listPendingBrowserProfileDeletes?.() ?? [];
     } catch {
       return;
     }
-    for (const entry of Array.isArray(pending) ? pending : []) {
+    const list = Array.isArray(pending) ? pending : [];
+    let removed = 0;
+    let kept = 0;
+    let skipped = 0;
+    let budgetExceeded = false;
+    for (const entry of list) {
+      if (Date.now() - startedAt > budgetMs) {
+        budgetExceeded = true;
+        break;
+      }
       // NAPI objects are camelCase in JS (localId, partitionName),
       // not the Rust snake_case column names. Reading snake_case
       // here silently skipped every pending entry (group3 run 1:
       // folder + row both survived a restart with no error).
       const name = entry?.partitionName ?? entry?.partition_name;
       const localId = entry?.localId ?? entry?.local_id;
-      if (typeof name !== "string" || !/^[A-Za-z0-9-]+$/.test(name)) continue;
-      if (typeof localId !== "string" || !validateBrowserProfileId(localId)) continue;
+      if (typeof name !== "string" || !/^[A-Za-z0-9-]+$/.test(name)) { skipped++; continue; }
+      if (typeof localId !== "string" || !validateBrowserProfileId(localId)) { skipped++; continue; }
       const dir = join(app.getPath("userData"), "Partitions", name);
-      const removed = await removeDirWithRetry(dir, 10000);
-      if (removed) {
+      const wasRemoved = await removeDirWithRetry(dir, 10000);
+      if (wasRemoved) {
+        removed++;
         try {
           ctx.core?.removePendingBrowserProfileDelete?.(localId);
         } catch {}
+      } else {
+        kept++;
       }
     }
+    console.log(`[pending-delete-cleanup] done: entries=${list.length} removed=${removed} kept=${kept} skipped=${skipped} budgetExceeded=${budgetExceeded} elapsedMs=${Date.now() - startedAt}`);
   };
-  void cleanupPendingDeletes();
+  ctx.runPendingDeleteCleanup = cleanupPendingDeletes;
   // Quit, if possible: same cleanup, synchronously, best effort.
   // A failure here keeps the row for the next start, it never blocks quit.
   if (!register._quitCleanupRegistered) {

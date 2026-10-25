@@ -745,3 +745,76 @@ by part:
   clean close) plus groups run 4. The drivers are temporary and
   are deleted before the 3B commit; their results are recorded
   here, in PROGRESS.md, and in V2_REPORT.md.
+
+## V2-41 — Startup cleanup runs only after the window is shown (2026-10-26, user-ordered follow-up to 3B)
+
+- The pending-delete cleanup used to start at IPC registration,
+  before the main window existed. It was already async (void), so
+  it never awaited the window, but it still ran before first
+  paint and its failure mode (the V2-40 crash) had killed main
+  before the window could be trusted. The user ordered it moved:
+  `register()` now only stores the cleanup on
+  `ctx.runPendingDeleteCleanup`; main calls it once, after
+  `createWindow()`, guarded by a typeof check. It is safe to run
+  late: `resolveProfile` rejects deleted ids, so no page can be
+  created in a deleted partition before cleanup runs.
+- The pass has a 30 second budget (checked before each entry;
+  one entry can run at most 10 s past it) and logs its result:
+  `[pending-delete-cleanup] done: entries=... removed=...
+  kept=... skipped=... budgetExceeded=... elapsedMs=...`. A row
+  left when the budget runs out waits for the next start.
+- Regression test (committed):
+  `shell/tests/browser-startup-cleanup.test.js` — a source-order
+  test in the engine-guard precedent (the IPC module imports
+  Electron, so it cannot load under plain node --test, and no
+  fake shim was invented): cleanup exposed on ctx, no
+  registration-time run, 30 s budget + result log, main calls it
+  after `createWindow()`. Gate job V2P3BV41Gate (LIMITED,
+  Medium): test exit 0, shell pass 1184 (1181 + 3 new), UI 70
+  files / 861 tests, cargo all suites ok.
+- Live proof (Diag19, temporary timestamped main-process file
+  log, reverted after the run — no diagLog line remains in
+  main.js or ipc/browser.js, verified by findstr): four cases,
+  every window under 30 s (seeded no-pending 933 ms, seeded
+  with-pending 839 ms, app-made first 892 ms / relaunch 770 ms,
+  real-flow first 934 ms / restart 818 ms). Case B's log reads,
+  in order: WHENREADY_START, DB_INIT_DONE, REGISTER_DONE,
+  WINDOW_SHOWN 20:23:55.694, CLEANUP_START 55.716 (22 ms after
+  the window), CLEANUP_END 56.297 removed=1. Real flow: delete
+  returned pendingDelete=true while running; after quit +
+  restart, pending rows = 0 and only the default profile row
+  remains. Honest limit: in the real-flow case the folder was
+  already gone when the restart check ran, so that case alone
+  does not distinguish quit cleanup from startup cleanup — the
+  seeded-with-pending case does (its folder survived until the
+  startup pass removed it).
+- Diag18 (items 4+5, 22/22): proxy bypass `"<-loopback>"`
+  removes Chromium's loopback exception — a local /state page
+  through the proxied profile returns the via-proxy page, while
+  the same proxy without the rule loads direct (isolation
+  state) and a profile without a proxy loads direct; example.com
+  stays a second proof (via-proxy vs real body). Dead proxy
+  with `"<-loopback>"` on a local URL: page failed /
+  load-failed, server hit count unchanged (1 to 1), ledger rows
+  0; the control (same dead proxy, no rule) loads direct and
+  raises the hit count (0 to 1), proving the rule is what
+  changed the behaviour. The bypass value passes through to
+  `session.setProxy` unchanged (default `"<local>"`).
+- Item 3 audit, renderer freeze: the store does NOT keep
+  pointing at a deleted profile — `deleteBrowserProfile` refreshes
+  via `loadProfiles`, which resets current to the stored choice
+  if it still exists, else the default, else the first; a stored
+  choice for a deleted id is ignored (the localStorage key
+  lingers but is never followed). No effect depends on the
+  browser profile id: the surface's `loadProfiles` effect keys
+  on the workspace profile id, and the research effect keys on
+  workspace profile / page / URL. No looping effect was found.
+  A debugger-protocol pause of the frozen renderer was NOT run,
+  because the freeze no longer reproduces (groups run 4: the
+  post-delete bridge check passes immediately, and every later
+  step stays responsive) — pausing a healthy renderer cannot
+  produce the frozen stack. PROVEN: main crashed in the delete
+  cleanup path (V2-40) and the CDP channel died with it; the
+  store resets current; no effect loops on delete. INFERRED
+  ONLY, never recorded as proven: whatever renderer-side loop
+  (if any) the dead channel looked like from the outside.

@@ -470,6 +470,13 @@ app.whenReady().then(async () => {
   if (!isDev) setupAutoUpdater(ctx.notify);
 
   createWindow();
+  // V2-41: pending-delete cleanup runs only after the window is
+  // shown, so it can never delay or block the first window. It is
+  // async and budgeted inside the cleanup itself (30 s); a leftover
+  // row simply waits for the next start.
+  if (typeof ctx.runPendingDeleteCleanup === "function") {
+    void ctx.runPendingDeleteCleanup();
+  }
   scheduleAutomation(core, ctx.notify);
 });
 
