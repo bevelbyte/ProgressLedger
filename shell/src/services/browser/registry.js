@@ -17,7 +17,7 @@
 // implement is a bounded set of live pages so a bug cannot fork processes
 // without limit; the cap is raised in later phases of the plan.
 
-import { partitionFor, sanitizeDisplayUrl, validateProfileId, isAllowedUrl } from "./policy.js";
+import { partitionFor, partitionForBrowser, sanitizeDisplayUrl, validateProfileId, validateBrowserProfileId, validateTempProfileId, isAllowedUrl } from "./policy.js";
 
 /** How many live pages this build allows. Phase 3 raises it to 5 and adds LRU hibernation, so background pages sleep instead of refusing new ones. */
 export const MAX_LIVE_PAGES = 5;
@@ -74,6 +74,15 @@ export function createBrowserRegistry(deps = {}) {
       insecure: typeof record.url === "string" && record.url.startsWith("http://"),
       visible: record.visible === true,
       hibernated: record.hibernated === true,
+      browserProfile: record.browserProfile
+        ? {
+            localId: record.browserProfile.localId ?? null,
+            displayName: record.browserProfile.displayName ?? "",
+            color: record.browserProfile.color ?? null,
+            isDefault: record.browserProfile.isDefault === true,
+            temporary: record.browserProfile.temporary === true,
+          }
+        : null,
       attached: record.attached === true,
       crashed: record.state === PAGE_STATES.CRASHED,
       lastError: record.lastError ?? null,
@@ -110,28 +119,54 @@ export function createBrowserRegistry(deps = {}) {
      * an invalid id is refused rather than guessed at, because guessing would
      * silently drop the page into the wrong browser identity.
      */
-    create({ profileId, url = "about:blank" } = {}) {
+    create({ profileId, browserProfile = null, liveCap = maxLive, url = "about:blank" } = {}) {
       if (!validateProfileId(profileId)) return { ok: false, reason: REASONS.NO_PROFILE };
       const target = isAllowedUrl(url);
       if (!target.ok) return { ok: false, reason: REASONS.INVALID_URL, detail: target.reason };
-      if ([...pages.values()].filter((r) => r.view).length >= maxLive) {
+      // Phase 3B: the live cap is per WORKSPACE and shared across that
+      // workspace's browser profiles (not per profile, not global). A
+      // workspace never evicts another workspace's pages.
+      const cap = Math.min(20, Math.max(1, Math.floor(Number(liveCap)) || maxLive));
+      const ws = Number(profileId);
+      if ([...pages.values()].filter((r) => r.view && r.profileId === ws).length >= cap) {
         const victim = [...pages.values()]
-          .filter((r) => r.view && r.visible !== true)
+          .filter((r) => r.view && r.profileId === ws && r.visible !== true)
           .sort((a, b) => (a.lastUsed ?? a.createdAt) - (b.lastUsed ?? b.createdAt))[0];
         if (!victim) return { ok: false, reason: REASONS.LIVE_CAP };
         api.hibernate(victim.id);
       }
 
+      // A browser profile, when given, must be well-formed; a malformed
+      // one is refused rather than silently falling back to the legacy
+      // partition (which would put the page in the wrong identity).
+      let profile = null;
+      if (browserProfile !== null && browserProfile !== undefined) {
+        const shapeOk =
+          (browserProfile.temporary === true && validateTempProfileId(browserProfile.localId)) ||
+          (browserProfile.temporary !== true && validateBrowserProfileId(browserProfile.localId));
+        if (!shapeOk) return { ok: false, reason: REASONS.NO_PROFILE };
+        profile = {
+          localId: browserProfile.localId,
+          displayName: typeof browserProfile.displayName === "string" ? browserProfile.displayName : "",
+          color: browserProfile.color ?? null,
+          isDefault: browserProfile.isDefault === true,
+          temporary: browserProfile.temporary === true,
+        };
+      }
       const id = mintId();
-      const partition = partitionFor(profileId);
+      const partition = partitionForBrowser(profileId, profile);
       if (!partition) return { ok: false, reason: REASONS.NO_PROFILE };
 
-      const view = createView({ id, partition });
+      // The full browser profile (when given) is forwarded to the view
+      // factory, which is main-only: wirePage needs the policy fields
+      // (WebRTC, proxy, headers) that the record's safe shape omits.
+      const view = createView({ id, partition, browserProfile });
       const record = {
         id,
         view,
         partition,
-        profileId: Number(profileId),
+        profileId: ws,
+        browserProfile: profile,
         url: target.url,
         title: "",
         state: PAGE_STATES.LOADING,
@@ -201,11 +236,14 @@ export function createBrowserRegistry(deps = {}) {
      * The caller loads the stored URL; this only rebuilds the view.
      * A live page is a no-op returning its public shape.
      */
-    wake(pageId) {
+    wake(pageId, browserProfile = null) {
       const record = pages.get(String(pageId));
       if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
       if (!record.hibernated) return { ok: true, page: toPublic(record) };
-      record.view = createView({ id: record.id, partition: record.partition });
+      // Prefer the full profile the caller supplies (the host passes its
+      // stored copy); fall back to the record's safe shape so a wake
+      // without one still wires the page to its identity.
+      record.view = createView({ id: record.id, partition: record.partition, browserProfile: browserProfile ?? record.browserProfile });
       record.hibernated = false;
       record.hibernatedAt = null;
       record.state = PAGE_STATES.LOADING;

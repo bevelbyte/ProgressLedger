@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { Bookmark, Globe, RotateCw, ExternalLink, Quote, Trash2 } from "lucide-svelte";
   import { reportError } from "../../../shared/utils/errors.js";
+  import { browser, loadProfiles } from "../../../shared/stores/browser.svelte.js";
   import { formatCitation } from "../../../shared/utils/citations.js";
 
   let { profileId = null, researchPageId = null, onOpenResearchSource = () => {} } = $props();
@@ -17,6 +18,22 @@
   let searchHits = $state(null);
   let searching = $state(false);
   let confirming = $state(null);
+
+  // Phase 3B: profile chips on ledger rows. The color comes from the
+  // workspace's profile list when it is loaded (the surface loads it
+  // too); a missing color still shows the name, so a chip never
+  // disappears just because the profile was deleted since capture.
+  $effect(() => {
+    if (profileId) loadProfiles(profileId);
+  });
+
+  function profileChipFor(entry) {
+    const name = entry?.browserProfileName ?? entry?.browser_profile_name ?? null;
+    if (!name) return null;
+    const id = entry?.browserProfileId ?? entry?.browser_profile_id ?? null;
+    const color = id ? (browser.profiles.find((p) => p && p.localId === id)?.color ?? null) : null;
+    return { name, color };
+  }
 
   async function refresh(requestedProfileId = profileId) {
     if (!Number.isInteger(Number(requestedProfileId))) return;
@@ -197,9 +214,10 @@
   <section class="rows" aria-label="Saved sources and captured passages">
     {#each rows as row (row.type === "source" ? `s-${row.source.id}` : `c-${row.capture.id}`)}
       {#if row.type === "source"}
+        {@const sourceChip = profileChipFor(row.source)}
         <article class="row" data-source-id={row.source.id}>
           <Globe size={14} />
-          <div class="copy"><strong>{row.source.title}</strong><span>{row.source.domain} · {row.source.keptCount} kept</span><small>{row.source.url}</small></div>
+          <div class="copy"><strong>{row.source.title}</strong><span>{row.source.domain} · {row.source.keptCount} kept</span>{#if sourceChip}<span class="profile-chip" title="Captured from {sourceChip.name}">{#if sourceChip.color}<span class="profile-chip-dot" style="--profile-color: {sourceChip.color}"></span>{/if}{sourceChip.name}</span>{/if}<small>{row.source.url}</small></div>
           <div class="row-actions">
             <button type="button" aria-label={`Open ${row.source.title}`} title="Return to this page" onclick={() => { void onOpenResearchSource(row.source.url); }}><ExternalLink size={13} /></button>
             {#if confirming?.type === "source" && confirming?.id === row.source.id}
@@ -211,9 +229,10 @@
           </div>
         </article>
       {:else}
+        {@const captureChip = profileChipFor(row.capture)}
         <article class="row" data-capture-id={row.capture.id}>
           <Bookmark size={14} />
-          <div class="copy"><strong>{row.capture.kind === "extraction" ? "Operator extraction" : "Kept passage"}</strong><span>{row.capture.sourceTitle || row.capture.source_title || "Research Source"} · {row.capture.kind}</span><p>{row.capture.text}</p><small>{row.capture.sourceUrl || row.capture.source_url || ""}</small></div>
+          <div class="copy"><strong>{row.capture.kind === "extraction" ? "Operator extraction" : "Kept passage"}</strong><span>{row.capture.sourceTitle || row.capture.source_title || "Research Source"} · {row.capture.kind}</span>{#if captureChip}<span class="profile-chip" title="Captured from {captureChip.name}">{#if captureChip.color}<span class="profile-chip-dot" style="--profile-color: {captureChip.color}"></span>{/if}{captureChip.name}</span>{/if}<p>{row.capture.text}</p><small>{row.capture.sourceUrl || row.capture.source_url || ""}</small></div>
           <div class="row-actions">
             <button type="button" aria-label={`Copy citation for ${row.capture.sourceTitle || row.capture.source_title || "Research Source"}`} title="Copy citation" onclick={() => copyCitation(row.capture)}><Quote size={13} /></button>
             <button type="button" aria-label={`Open source ${row.capture.sourceTitle || row.capture.source_title || "Research Source"}`} title="Return to originating page" onclick={() => { void onOpenResearchSource(row.capture.sourceUrl || row.capture.source_url); }}><ExternalLink size={13} /></button>
@@ -243,4 +262,6 @@
   .search-form{display:flex;gap:6px}.search-form input{flex:1;min-width:0;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px;background:var(--atlas-base);color:var(--atlas-ink);font:12px var(--font-sans)}.search-form button{border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px 10px;background:var(--atlas-panel);color:var(--atlas-ink);font-size:11px}.search-form button:disabled{opacity:.45}
   .capture-form{display:flex;flex-direction:column;gap:5px;padding:9px;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);background:var(--atlas-panel)}.capture-form label{font-size:11px;color:var(--atlas-ink-3)}.capture-form>div{display:flex;gap:6px}.capture-form textarea{flex:1;min-width:0;resize:vertical;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px;background:var(--atlas-base);color:var(--atlas-ink);font:12px var(--font-sans)}.capture-form button{align-self:center;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);padding:7px 10px;background:var(--atlas-panel);color:var(--atlas-ink);font-size:11px}.capture-form button:disabled{opacity:.45}
   .rows{display:flex;flex-direction:column;gap:6px;overflow:auto}.row{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--atlas-line);border-radius:var(--radius-sm);background:var(--atlas-panel)}.row> :global(svg){margin-top:2px;color:var(--atlas-ink-4);flex:0 0 auto}.row-actions{display:flex;align-items:center;gap:4px}.copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}.copy strong{font-size:12px;font-weight:550}.copy span,.copy small{font-size:10px;color:var(--atlas-ink-4);overflow-wrap:anywhere}.copy p{margin:2px 0;color:var(--atlas-ink-2);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.empty,.notice{padding:24px;text-align:center;color:var(--atlas-ink-4);font-size:12px}.notice{color:var(--atlas-bad)}
+  .profile-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--atlas-line);border-radius:999px;padding:1px 8px;font-size:11px;color:var(--atlas-ink-3)}
+  .profile-chip-dot{width:8px;height:8px;border-radius:50%;background:var(--profile-color, #888888);flex-shrink:0}
 </style>

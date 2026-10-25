@@ -153,7 +153,7 @@ describe("view registry", () => {
   // and rendering disagree and the app develops dead ends.
   const ALLOWED_VIEWS = new Set([
     "home", "cgpa", "tree", "labs", "projects", "flashcards", "mistakes",
-    "formulas", "research-ledger", "deadlines", "sessions", "profiles", "project",
+    "formulas", "research-ledger", "browser-profiles", "deadlines", "sessions", "profiles", "project",
     "goals", "career", "settings",
   ]);
 

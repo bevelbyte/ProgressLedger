@@ -491,3 +491,63 @@ sha2 crate (see DEPENDENCIES.md); no other new dependency was
 needed. Old bundles (no research key) still import exactly as before,
 and bundles exported without a vault carry rows without file
 references so they stay self-consistent.
+
+## V2-33 — Phase 3B plan: reuse browser_profiles, default adopts the legacy partition (2026-10-25)
+V2-05 (reuse-or-replace the 015/016 tables) is decided: REUSE
+browser_profiles. Its columns are generic (workspace id, name,
+position, enabled, timestamps) despite the Donut comments around it;
+migration 026 adds the 3B settings (color, icon, notes, type,
+is_default, proxy mode/host/port/user/encrypted password/bypass,
+language, user-agent preset, WebRTC policy, permissions allow list,
+GPC, DNT, third-party cookie blocking, clear-on-close, download
+folder) plus a partial unique index for one default per workspace.
+browser_shortcuts stays untouched as history (3B has no shortcuts).
+Every workspace gains a Default browser profile row in 026, and the
+Phase 3 browser_tabs rows (browser_profile_id = workspace id) are
+repointed to that workspace's default. The default profile ADOPTS the
+Phase 3 partition (persist:cf-browser-<workspace>) so existing
+cookies survive; the cf-browser name is a Phase 3 artifact kept
+deliberately, not a rename miss. New profiles get
+persist:pl-browser-<workspace>-<browser id>; temporary profiles get
+an in-memory partition (pl-temp-<uuid>, no persist: prefix) and no
+database row. Partition names come only from validated internal ids,
+never user text. Proxy passwords are encrypted by the shell with
+safeStorage before reaching Rust (Rust stores an opaque blob); the
+blob never reaches the renderer, never appears in logs or exports,
+and a missing encryption capability refuses the password rather
+than storing it plain. Per-profile language sets Accept-Language via
+a per-session header override (navigator.language stays app-wide:
+an Electron limit, documented, not worked around with a page
+preload). Third-party cookie blocking is enforced per session via
+webRequest header filtering, for the same reason (no Chromium pref
+API in Electron). WebRTC defaults to no local-IP leak
+(default_public_interface_only). User-agent presets are Chromium
+variants only (no fake browsers, no free-text UA).
+
+## V2-34 — Privilege rule: standard rights for every job (2026-10-25, user-ordered, supersedes the /RL HIGHEST part of V2-27)
+
+The scheduler route itself stays (temporary tasks, created, run minimized, verified, deleted in a separate call, job scripts end with plain `exit`), but the privilege token changes. Every new task is created with `/RL LIMITED /IT`: the user's normal token, in the user's logged-in session. Never `/RL HIGHEST` for any job that starts the app, a test server, or a web page. Never raise the agent's own privileges. If a step seems to need administrator rights, stop and ask the user with the exact command and the reason.
+
+Fallbacks, in this order, only if a limited task cannot be created or does not run: (a) the helper, which the user double-clicks once; (b) administrator rights ONLY for build, compile, and unit-test jobs that never start the app, a test server, or a web page, with whoami proof in the log. Anything else that seems to need admin rights is a stop-and-ask, not a fallback.
+
+Every job log starts with the output of `whoami /groups | findstr /i "Mandatory"` plus the date and time. "Medium Mandatory Level" is normal. "High Mandatory Level" is elevated. Results from elevated runs are not final proof: the isolation test and the capture checks must be re-run without elevation, and that run is the proof. The final report states, for every job type, whether it ran elevated, with the log evidence.
+
+Ending a job: `schtasks /End` first (note: a task whose command is `cmd /c start ...` shows Status Ready while its detached job still runs, so /End alone does not end the job). Then end only the processes that job started, identified specifically, never by image name: servers by the PID that owns their listening port (netstat), the app by its verified main-process PID (its child processes exit with it). Verify the app is gone, then delete the task in a separate call and verify the deletion by Query error.
+
+## V2-35 — Run 10: what it proved, what it did not, and why it looked hung (2026-10-25)
+
+Run 10 (task V2P3BIso10, created with /RL HIGHEST before the V2-34 correction) was ended by user order on 2026-10-25, replacing the earlier "let it finish". It did not finish on its own. Archive: `work\run10-archive\` (10 files, copy only: run 10 log up to temp, run 9 report, job script, old done/exit, final log, final report, final exit, and a consistent database snapshot made with the sqlite3 backup API, 532,480 bytes). `schtasks /End` reported success but the detached job kept running, as expected. Servers were killed by port-PIDs (8931 -> 34044, 8932 -> 33472). The app main process (PID 14260) was killed by PID; its four child electron processes exited with it and were "not found" on separate kill attempts, which confirms they were its children, not other projects' processes. App gone was verified (no electron tasks), and the task was deleted and verified gone by Query error.
+
+Lesson, in the user's words: run 10 proved that the capture-handler fix works, and nothing about isolation. A and B both recorded capture-landed=true, and the live database held a real research source with extracted text, so the un-awaited extractPage bug from runs 8-9 is fixed. But that "landed" was misleading for isolation: the captures landed in the Default profile's source, not in A or B sources, because the driver navigated the existing Default page after creating each profile instead of opening a tab in the new profile. The save-source title flipped to "Already" because a /state source already existed, not because an A or B source was created. Run 10's final report (failed=1, driver-error at openBrowserPage for D) is a kill artifact, not a test failure: the error is `page.evaluate: Target page, context or browser has been closed` at clickWorkspaceTab (driver line 52) after the app was killed, and it is preserved as `p3b-iso-report-run10.json` for the record only.
+
+Correction to the earlier "stuck before C" report: the log was buffered, not stuck. Node stdout redirected to a file does not flush every line promptly, so the log showed only up to the temp step for about 90 minutes while the driver was in fact progressing through the temp-to-C interval. After the kill, the flushed log showed profile-C-deleted-in-UI PASS (localId bp-8a2acadc-896b-4e25-bb2c-e34f5c6a10f1, row-remaining=0). Run 10 was therefore progressing slowly through that interval, not stuck before C, and had completed C's deletion by kill time. The exact slow step in that interval cannot be pinpointed from the evidence available: the log has no timestamps, C creation has no step-start record, and the app writes no log. Every Playwright wait in that interval is bounded (about 3.5 minutes total if every step hit its maximum), so the slow step must be an unbounded wait, a renderer evaluate or main-process IPC call made with no timeout set, or a main-process operation that took long. The fix is therefore not a guess at one line: timestamp every log line, record a step-start line before each profile step, bound every evaluate with a timeout race, and add the watchdog and hard limit below, so the next slow run names its step instead of hiding it in a buffer.
+
+Time limits and watchdog, for every job from now on (user-ordered): hard limit 20 minutes for a proof run, 30 minutes for a build or test job. At the limit the job ends itself, ends the processes it started, and writes TIMED OUT and a done flag in its log. Watchdog: if the log gets no new line for 10 minutes, treat the job as hung, save a state report (which step, and a page capture if possible), end the job, and report it. Implementation for proof runs is inside the driver: record() timestamps every line and updates last-activity, an interval checks idle time and elapsed time, and on either limit it writes the state report and TIMED OUT, closes the app with a timeout, and exits with a distinct code; the job script then writes .done/.exit as usual. Build and test job scripts get the same self-limit through a Node watchdog wrapper, written with the next such job, not retroactively.
+
+## V2-36 — Product fix: a created profile opens a tab at once; test fix: the driver asserts the profile, never trusts a title (2026-10-25, user-ordered)
+
+Product fix (step 5): after a browser profile is created in the UI, the app opens a fresh tab in that profile and makes it active, so the user can use it right away. In the surface dialog (where a browser page already exists) the onSaved handler now opens a real page (about:blank) in the created profile with the same openPage + reportPage pattern as the switcher's "Open a new tab in this profile" button, so the pane tab immediately shows a fresh page in the new profile. In the manager dialog (where no browser surface exists) the onSaved handler for a new profile sets it current and opens a fresh Web page tab in the focused pane and activates it (openPageTab, activate: true); that tab is bare until the user navigates, and its first navigation opens in the new profile because new tabs open in the current profile. Edit mode opens no tab: editing settings creates nothing. Tabs already showed their profile color (PaneHeader .tab-profile-dot from page.browserProfile, and the surface address-bar dot); the fix makes the new profile's dot appear at once, because the new tab's page carries the new profile.
+
+Test fix (step 6): the isolation driver no longer navigates the old page after creating a profile (the run 10 flaw). createBrowserProfileViaUI only creates and returns the local id; the caller then opens a tab IN that profile via the switcher's per-profile open button, waits for a page id, and asserts from app state (browser.state() pages, matched by the surface's page id) that the active tab's browserProfile.localId equals the profile under test. The assert runs inside capturePage (so every capture is preceded by it) and after every openTabInProfile (so every navigation and every cookie/storage check that follows is in the right profile). A mismatch throws PROFILE MISMATCH with the active and expected ids, failing loudly; a title flip to "Already" can no longer pass a capture in the wrong profile. Post-quit DB checks are grouped by browser_profile_id from the database (not by title), with two new explicit checks: profile-ids-in-db (A, B, D, F ids present as keys) and localstorage-separation (A text has ls=A, B does not). LocalStorage separation is now real: the test server gained /setls, which sets the probe in the loading profile's storage and goes to /state, so A captures both cookie=probe=A and ls=A while B captures neither. IndexedDB separation is NOT separately captured in ledger text (ledger text is page text only); it holds by partition construction (one persist partition per profile), and the final report must say so, not claim a captured IndexedDB check.
+
+Driver hardening (steps 2-3, same change): every log line is timestamped and written synchronously to fd 1, so the job log can no longer hide progress in a buffer (the run 10 lesson); a STEP line is recorded before each profile step; every renderer evaluate is bounded by a 30-second timeout race (evaluate itself has no timeout, and an unbounded evaluate was the only unbounded wait left in the temp-to-C interval); a watchdog interval checks every 30 seconds and, if the log has no new line for 10 minutes or the run has exceeded its hard limit (20 minutes for a proof run, via P3B_HARD_LIMIT_MINUTES), writes a state report (step, profile, reason, last activity, results so far) plus a renderer screenshot if possible, writes TIMED OUT to the log and report, closes the app with a 10-second timeout, and exits with code 2 (the job script then writes TIMED OUT to the log and .done as usual). Exit codes: 0 pass, 1 test failure or driver error, 2 watchdog/hard-limit timeout.

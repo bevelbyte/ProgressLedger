@@ -968,6 +968,8 @@ export interface ResearchSource {
   domain: string
   savedAt: string
   keptCount: number
+  browserProfileId?: string
+  browserProfileName?: string
 }
 export interface ResearchCapture {
   id: number
@@ -979,12 +981,14 @@ export interface ResearchCapture {
   kind: string
   text: string
   createdAt: string
+  browserProfileId?: string
+  browserProfileName?: string
 }
-export declare function saveResearchSource(profileId: number, url: string, title: string): ResearchSource
+export declare function saveResearchSource(profileId: number, url: string, title: string, browserProfileId?: string | undefined | null, browserProfileName?: string | undefined | null): ResearchSource
 export declare function listResearchSources(profileId: number): Array<ResearchSource>
 export declare function listResearchCaptures(profileId: number): Array<ResearchCapture>
 export declare function countKeptResearchPassages(profileId: number, url: string): number
-export declare function captureResearchPassage(profileId: number, url: string, title: string, pageId: string | undefined | null, kind: string, text: string): ResearchCapture
+export declare function captureResearchPassage(profileId: number, url: string, title: string, pageId: string | undefined | null, kind: string, text: string, browserProfileId?: string | undefined | null, browserProfileName?: string | undefined | null): ResearchCapture
 export interface ResearchSearchHit {
   kind: string
   sourceId: number
@@ -995,7 +999,7 @@ export interface ResearchSearchHit {
 export interface BrowserTab {
   id: number
   profileId: number
-  browserProfileId: number
+  browserProfileId: string
   position: number
   url: string
   title: string
@@ -1032,10 +1036,78 @@ export declare function deleteResearchPassage(profileId: number, captureId: numb
  * UI keep its <b> marker contract unchanged.
  */
 export declare function searchResearch(profileId: number, query: string, limit?: number | undefined | null): Array<ResearchSearchHit>
-export declare function saveBrowserTab(profileId: number, browserProfileId: number, position: number, url: string, title: string, isActive: boolean): BrowserTab
+export declare function saveBrowserTab(profileId: number, browserProfileId: string, position: number, url: string, title: string, isActive: boolean): BrowserTab
 export declare function updateBrowserTab(tabId: number, url: string, title: string): BrowserTab
 export declare function deleteBrowserTab(tabId: number): void
 export declare function listBrowserTabs(profileId: number): Array<BrowserTab>
+export interface BrowserProfile {
+  localId: string
+  profileId: number
+  displayName: string
+  position: number
+  enabled: boolean
+  color?: string
+  icon?: string
+  notes: string
+  profileType: string
+  isDefault: boolean
+  proxyMode: string
+  proxyHost?: string
+  proxyPort?: number
+  proxyUsername?: string
+  proxyPasswordEncrypted?: string
+  proxyBypass: string
+  language?: string
+  userAgentPreset?: string
+  webrtcPolicy: string
+  permissionsAllow: string
+  gpc: boolean
+  dnt: boolean
+  blockThirdPartyCookies: boolean
+  clearOnClose: boolean
+  downloadDir?: string
+  createdAt: string
+  lastUsedAt?: string
+}
+export declare function listBrowserProfiles(profileId: number): Array<BrowserProfile>
+export declare function createBrowserProfile(profileId: number, localId: string, displayName: string, color: string | undefined | null, icon: string | undefined | null, notes: string): BrowserProfile
+/**
+ * Idempotent: returns the workspace's default profile, promoting the
+ * earliest profile when no default exists, or creating a fresh
+ * "Default" (with the shell-supplied candidate id) when none exist.
+ * The shell calls this on every browser open, so a workspace can
+ * never be left without a default profile to browse in.
+ */
+export declare function ensureDefaultBrowserProfile(profileId: number, candidateLocalId: string): BrowserProfile
+export declare function updateBrowserProfile(localId: string, displayName: string, color: string | undefined | null, icon: string | undefined | null, notes: string, proxyMode: string, proxyHost: string | undefined | null, proxyPort: number | undefined | null, proxyUsername: string | undefined | null, proxyPasswordEncrypted: string | undefined | null, proxyBypass: string, language: string | undefined | null, userAgentPreset: string | undefined | null, webrtcPolicy: string, permissionsAllow: string, gpc: boolean, dnt: boolean, blockThirdPartyCookies: boolean, clearOnClose: boolean, downloadDir?: string | undefined | null): BrowserProfile
+/**
+ * Idempotent delete: false means the row was already gone (the shell
+ * clears the partition first, so "already gone" is a success, not an
+ * error). Deleting the default does not promote another profile here;
+ * the next ensure_default call promotes or recreates one.
+ */
+export declare function deleteBrowserProfile(localId: string): boolean
+/**
+ * Touch last_used_at (called when a view is created in this profile or
+ * the user switches to it, so the manager's "last used" stays honest).
+ */
+export declare function touchBrowserProfile(localId: string): boolean
+export declare function getBrowserLiveCap(profileId: number): number
+export declare function setBrowserLiveCap(profileId: number, cap: number): number
+/**
+ * How many ledger rows a profile delete would remove when the
+ * "also delete ledger entries" box is ticked: captures from this
+ * profile, sources from this profile, plus passages that belong to
+ * a source from this profile but carry a different profile (they go
+ * away with their source). The confirm shows exactly this number.
+ */
+export declare function countLedgerByBrowserProfile(profileId: number, browserProfileId: string): number
+/**
+ * Delete the ledger rows counted above, in one transaction. Returns
+ * the same count (computed before deletion) so the shell can verify
+ * the confirm number matched what was actually removed.
+ */
+export declare function deleteLedgerByBrowserProfile(profileId: number, browserProfileId: string): number
 export interface SemesterAcademic {
   sgpa: number
   gradedCredits: number

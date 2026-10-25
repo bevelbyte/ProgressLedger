@@ -32,6 +32,7 @@ mod mistakes;
 mod projects;
 mod resources;
 pub mod research;
+pub mod browser_profiles;
 mod semester_overview;
 mod study_sessions;
 mod subject_links;

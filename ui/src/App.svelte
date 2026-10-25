@@ -292,6 +292,7 @@
     "mistakes",
     "formulas",
     "research-ledger",
+    "browser-profiles",
     "deadlines",
     "sessions",
     "profiles",

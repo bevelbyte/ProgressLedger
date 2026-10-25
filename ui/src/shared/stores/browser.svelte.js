@@ -33,7 +33,19 @@ export const browser = $state({
    */
   lastPopupPage: null,
   popupTick: 0,
+  // Phase 3B: the ACTIVE workspace's browser profiles (stripped in
+  // main — no password blob ever reaches the renderer) and the current
+  // profile new tabs open in. The workspace id they belong to, so a
+  // workspace switch reloads them instead of reusing another
+  // workspace's list.
+  profiles: [],
+  currentProfileId: null,
+  profileWorkspaceId: null,
 });
+
+function profileStorageKey(workspaceId) {
+  return `progressledger_v2_browser_profile_${workspaceId}`;
+}
 
 function bridgeUnavailable() {
   return { ok: false, reason: "bridge-unavailable" };
@@ -157,12 +169,28 @@ export async function refresh() {
 }
 
 /** Create a page in the browser partition of `profileId`. */
-export async function openPage({ profileId, url, restoreBrowserTabId }) {
+export async function openPage({ profileId, url, restoreBrowserTabId, browserProfileId }) {
   const b = bridge();
   if (!b?.createPage) return bridgeUnavailable();
-  const args = [profileId, url];
-  if (restoreBrowserTabId !== undefined) args.push(restoreBrowserTabId);
-  const res = await b.createPage(...args);
+  // New tabs open in the current profile of their workspace. A restore
+  // still passes it, but main overrides it from the tab row (the row
+  // is the truth for restores), so passing it here is harmless.
+  let effectiveProfileId = browserProfileId;
+  if (effectiveProfileId === undefined && browser.profileWorkspaceId === profileId && browser.currentProfileId) {
+    effectiveProfileId = browser.currentProfileId;
+  }
+  // ONE options object to preload.createPage, with exactly the fields
+  // main validates: { profileId, url, restoreId, browserProfileId }.
+  // Positional arguments are gone: a missing restore can no longer
+  // shift the profile id into the restore slot (Iso11: Default opened
+  // instead of ISO-A). Preload drops undefined fields from the payload,
+  // so an absent restore sends no restoreId field (V2-31 holds).
+  const res = await b.createPage({
+    profileId,
+    url,
+    restoreId: restoreBrowserTabId,
+    browserProfileId: effectiveProfileId,
+  });
   if (res?.ok) {
     put(res.page);
     browser.lastError = null;
@@ -177,6 +205,129 @@ export async function listTabs(profileId) {
   const b = bridge();
   if (!b?.listTabs) return bridgeUnavailable();
   return (await b.listTabs(profileId)) ?? bridgeUnavailable();
+}
+
+/**
+ * Phase 3B profiles. loadProfiles fetches the workspace's profiles
+ * (stripped in main) and picks the current one: the stored choice when
+ * it still exists, else the workspace default, else the first profile.
+ * A stored choice for a deleted profile falls back to the default,
+ * never to an error.
+ */
+export async function loadProfiles(profileId) {
+  const b = bridge();
+  if (!b?.listProfiles) return bridgeUnavailable();
+  const res = await b.listProfiles(profileId);
+  if (!res?.ok) return res ?? bridgeUnavailable();
+  browser.profiles = Array.isArray(res.profiles) ? res.profiles : [];
+  browser.profileWorkspaceId = profileId;
+  let stored = null;
+  try {
+    stored = localStorage.getItem(profileStorageKey(profileId));
+  } catch {}
+  const byId = (id) => browser.profiles.find((p) => p && p.localId === id) ?? null;
+  const current =
+    (stored && byId(stored)) ||
+    browser.profiles.find((p) => p && p.isDefault === true) ||
+    browser.profiles[0] ||
+    null;
+  browser.currentProfileId = current ? current.localId : null;
+  return { ok: true, profiles: browser.profiles, currentProfileId: browser.currentProfileId };
+}
+
+export function currentProfile() {
+  if (!browser.currentProfileId) return null;
+  return browser.profiles.find((p) => p && p.localId === browser.currentProfileId) ?? null;
+}
+
+export function setCurrentProfile(localId) {
+  const found = browser.profiles.find((p) => p && p.localId === localId);
+  if (!found) return false;
+  browser.currentProfileId = localId;
+  try {
+    if (browser.profileWorkspaceId !== null) {
+      localStorage.setItem(profileStorageKey(browser.profileWorkspaceId), localId);
+    }
+  } catch {}
+  return true;
+}
+
+async function refreshProfiles(profileId) {
+  const id = profileId ?? browser.profileWorkspaceId;
+  if (id === null || id === undefined) return;
+  await loadProfiles(id);
+}
+
+export async function createTempProfile(profileId, displayName, color) {
+  const b = bridge();
+  if (!b?.createTempProfile) return bridgeUnavailable();
+  const res = await b.createTempProfile(profileId, displayName, color);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function createBrowserProfile(profileId, displayName, color, icon, notes) {
+  const b = bridge();
+  if (!b?.createProfile) return bridgeUnavailable();
+  const res = await b.createProfile(profileId, displayName, color, icon, notes);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function updateBrowserProfile(profileId, localId, settings) {
+  const b = bridge();
+  if (!b?.updateProfile) return bridgeUnavailable();
+  const res = await b.updateProfile(profileId, localId, settings);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function deleteBrowserProfile(profileId, localId, deleteLedger) {
+  const b = bridge();
+  if (!b?.deleteProfile) return bridgeUnavailable();
+  const res = await b.deleteProfile(profileId, localId, deleteLedger);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function duplicateBrowserProfile(profileId, localId) {
+  const b = bridge();
+  if (!b?.duplicateProfile) return bridgeUnavailable();
+  const res = await b.duplicateProfile(profileId, localId);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function clearBrowserProfileData(profileId, localId) {
+  const b = bridge();
+  if (!b?.clearProfileData) return bridgeUnavailable();
+  const res = await b.clearProfileData(profileId, localId);
+  if (res?.ok) await refreshProfiles(profileId);
+  return res ?? bridgeUnavailable();
+}
+
+export async function testBrowserProxy(profileId, localId, url) {
+  const b = bridge();
+  if (!b?.testProxy) return bridgeUnavailable();
+  return (await b.testProxy(profileId, localId, url)) ?? bridgeUnavailable();
+}
+
+export async function setBrowserLiveCap(profileId, cap) {
+  const b = bridge();
+  if (!b?.setLiveCap) return bridgeUnavailable();
+  return (await b.setLiveCap(profileId, cap)) ?? bridgeUnavailable();
+}
+
+export async function getBrowserLiveCap(profileId) {
+  const b = bridge();
+  if (!b?.getLiveCap) return bridgeUnavailable();
+  return (await b.getLiveCap(profileId)) ?? bridgeUnavailable();
+}
+
+export async function ledgerCountForBrowserProfile(profileId, localId) {
+  const b = bridge();
+  if (!b?.ledgerCountForProfile) return bridgeUnavailable();
+  return (await b.ledgerCountForProfile(profileId, localId)) ?? bridgeUnavailable();
 }
 
 export async function navigate(pageId, url) {

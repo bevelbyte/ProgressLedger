@@ -39,6 +39,7 @@ test("mints opaque ids and never exposes a partition to the public shape", () =>
   const keys = Object.keys(publicShape).sort();
   assert.deepEqual(keys, [
     "attached",
+    "browserProfile",
     "crashed",
     "createdAt",
     "hibernated",

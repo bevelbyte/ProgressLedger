@@ -68,7 +68,7 @@ export function register(ctx) {
     const pageId = validPageId(payload?.pageId);
     const owned = host.researchPage(pageId, profileId);
     if (!owned.ok) return owned;
-    return ctx.core.saveResearchSource(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200));
+    return ctx.core.saveResearchSource(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.browserProfile?.localId ?? null, owned.page.browserProfile?.displayName ?? null);
   });
   safeHandle("research:capture", (_event, payload) => {
     const profileId = positiveId(payload?.profileId, "profileId");
@@ -77,7 +77,7 @@ export function register(ctx) {
     if (!['clip', 'highlight', 'extraction'].includes(payload?.kind)) throw new Error("Unsupported capture kind");
     const owned = host.researchPage(pageId, profileId);
     if (!owned.ok) return owned;
-    return ctx.core.captureResearchPassage(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.id, payload.kind, payload.text);
+    return ctx.core.captureResearchPassage(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.id, payload.kind, payload.text, owned.page.browserProfile?.localId ?? null, owned.page.browserProfile?.displayName ?? null);
   });
   safeHandle("research:kept-count", (_event, payload) => {
     const profileId = positiveId(payload?.profileId, "profileId");
@@ -90,16 +90,20 @@ export function register(ctx) {
   // snapshot into the vault (text-only when the page has no usable HTML
   // or it is over the snapshot cap). The frame (URL, title) is the
   // host's attested record, never renderer-supplied text.
-  safeHandle("research:capture-page", (_event, payload) => {
+  // NOTE (3B-5, run 9): host.extractPage is async. The earlier sync
+  // handler read .ok off the pending Promise (always undefined) and
+  // returned {ok:false} without ever extracting or saving anything —
+  // every capture-page call failed silently. Awaiting it is the fix.
+  safeHandle("research:capture-page", async (_event, payload) => {
     const profileId = positiveId(payload?.profileId, "profileId");
     const pageId = validPageId(payload?.pageId);
     const owned = host.researchPage(pageId, profileId);
     if (!owned.ok) return owned;
-    const ext = host.extractPage(pageId, false);
+    const ext = await host.extractPage(pageId, false);
     if (!ext.ok) return { ok: false, reason: ext.reason };
     const text = ext.extraction.text ?? "";
     if (!text.trim()) throw new Error("This page has no text to capture");
-    const source = ctx.core.saveResearchSource(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200));
+    const source = ctx.core.saveResearchSource(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.browserProfile?.localId ?? null, owned.page.browserProfile?.displayName ?? null);
     let fileName = null;
     let sha = null;
     if (ext.extraction.html) {
@@ -112,17 +116,17 @@ export function register(ctx) {
   // Capture only what the user selected. The extraction passes the
   // selection through untruncated, so this layer enforces the 20,000
   // cap and refuses over-long selections with the limit stated.
-  safeHandle("research:capture-selection", (_event, payload) => {
+  safeHandle("research:capture-selection", async (_event, payload) => {
     const profileId = positiveId(payload?.profileId, "profileId");
     const pageId = validPageId(payload?.pageId);
     const owned = host.researchPage(pageId, profileId);
     if (!owned.ok) return owned;
-    const ext = host.extractPage(pageId, true);
+    const ext = await host.extractPage(pageId, true);
     if (!ext.ok) return { ok: false, reason: ext.reason };
     const selection = ext.extraction.selection ?? "";
     if (!selection.trim()) throw new Error("Select some text on the page first");
     if (selection.length > MAX_SELECTION) throw new Error(`Selection is too long to keep: ${MAX_SELECTION} characters maximum`);
-    return ctx.core.captureResearchPassage(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.id, "highlight", selection);
+    return ctx.core.captureResearchPassage(profileId, owned.page.url, String(owned.page.title || owned.page.url).slice(0, 200), owned.page.id, "highlight", selection, owned.page.browserProfile?.localId ?? null, owned.page.browserProfile?.displayName ?? null);
   });
   // Delete a source: the database row goes first, then the snapshot file
   // (if any) is unlinked under the filename-shape guard.

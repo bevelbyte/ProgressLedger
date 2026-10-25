@@ -152,3 +152,27 @@ pub fn enum_value(value: String, field: &str, allowed: &[&str]) -> Result<String
     }
     Ok(value)
 }
+
+/// Validate a browser profile local id. These ids are minted by the
+/// shell as "bp-<uuid>" and are the ONLY browser-profile identifiers
+/// that may reach a partition name, a file path, or a SQL row. The
+/// "bp-" prefix guarantees the value is never mistaken for an integer
+/// when stored in an INTEGER-affinity column (browser_tabs), and the
+/// character set (letters, digits, hyphens only) makes it safe in a
+/// partition name and a directory name. Anything else — user text,
+/// slashes, dots, spaces — is refused at the boundary, so a
+/// compromised renderer cannot steer a partition at a path of its
+/// choosing.
+pub fn valid_browser_profile_id(value: String, field: &str) -> Result<String> {
+    let ok = value.len() >= 4
+        && value.len() <= 64
+        && value.starts_with("bp-")
+        && value[3..].chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    if !ok {
+        return Err(coded(
+            codes::INVALID_INPUT,
+            format!("{field} must be a browser profile id of the form bp-<uuid>"),
+        ));
+    }
+    Ok(value)
+}

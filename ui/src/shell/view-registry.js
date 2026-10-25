@@ -25,6 +25,7 @@ import {
   Target,
   Compass,
   Settings2,
+  Users,
 } from "lucide-svelte";
 
 /**
@@ -174,6 +175,17 @@ export const VIEWS = [
     subtitle: "Saved browser sources, kept passages, and operator extractions.",
   },
   {
+    // Phase 3B: the browser profiles manager (replaces the removed legacy
+    // manager view). A normal Operator destination: rows, edit,
+    // duplicate, clear and delete, plus the live-page limit.
+    id: "browser-profiles",
+    label: "Browser profiles",
+    plane: "operator",
+    icon: Users,
+    title: "Browser profiles",
+    subtitle: "Separate browsing identities, each with its own cookies and settings.",
+  },
+  {
     id: "profiles",
     label: "Profiles",
     plane: "system",
@@ -231,6 +243,7 @@ const CAPTIONS = {
   project: "RUNS",
   browser: "WEB",
   "research-ledger": "RSCH",
+  "browser-profiles": "BPROF",
   profiles: "PROFS",
   settings: "CONF",
 };

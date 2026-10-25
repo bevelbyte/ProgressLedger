@@ -183,7 +183,7 @@ export function createDownloadManager(deps = {}) {
     return { ok: false, reason, downloadId: id };
   }
 
-  function begin(item) {
+  function begin(item, webContents = null) {
     sequence += 1;
     const id = `dl-${sequence}`;
     const requested = typeof item?.getFilename === "function" ? item.getFilename() : "";
@@ -191,9 +191,12 @@ export function createDownloadManager(deps = {}) {
     const safeUrl = sanitizeDisplayUrl(url);
 
     // (a) Is there a managed directory at all? No directory means no download.
+    // The webContents is passed through so the host can resolve a
+    // per-browser-profile directory; a getDir that ignores its argument
+    // (the old workspace-only shape) keeps working unchanged.
     let dir = null;
     try {
-      dir = typeof getDir === "function" ? getDir() : null;
+      dir = typeof getDir === "function" ? getDir(webContents) : null;
     } catch {
       dir = null;
     }
@@ -288,7 +291,7 @@ export function createDownloadManager(deps = {}) {
   function attach(session) {
     if (!session || typeof session.on !== "function") return null;
     if (sessions.has(session)) return () => detach(session);
-    const onWillDownload = (_event, item) => begin(item);
+    const onWillDownload = (_event, item, webContents) => begin(item, webContents ?? null);
     try {
       session.on("will-download", onWillDownload);
     } catch {

@@ -45,7 +45,7 @@ function pageFrame(overrides = {}) {
 
 function makeBrowserBridge(overrides = {}) {
   const base = {
-    createPage: vi.fn(async (profileId, url) => ({ ok: true, page: pageFrame({ url }) })),
+    createPage: vi.fn(async (options) => ({ ok: true, page: pageFrame({ url: options?.url }) })),
     navigate: vi.fn(async () => ({ ok: true })),
     reload: vi.fn(async () => ({ ok: true })),
     closePage: vi.fn(async () => ({ ok: true })),
@@ -132,7 +132,7 @@ describe("browser mirror", () => {
   it("sends the profile id and the URL, and never invents a page id", async () => {
     const bridge = makeBrowserBridge();
     const res = await openPage({ profileId: 7, url: "example.com" });
-    expect(bridge.createPage).toHaveBeenCalledWith(7, "example.com");
+    expect(bridge.createPage).toHaveBeenCalledWith({ profileId: 7, url: "example.com" });
     expect(res.ok).toBe(true);
     expect(pageFor("bp-1")).toBeTruthy();
 
@@ -140,6 +140,33 @@ describe("browser mirror", () => {
     const refused = await openPage({ profileId: 999, url: "https://x.test/" });
     expect(refused.ok).toBe(false);
     expect(browser.lastError).toBe("unknown-profile");
+  });
+
+  it("sends ONE options object, with a non-default profile in browserProfileId and no restore field", async () => {
+    const bridge = makeBrowserBridge();
+    const res = await openPage({ profileId: 3, url: "about:blank", browserProfileId: "bp-created" });
+    expect(res.ok).toBe(true);
+    // Exactly one argument, an object: a positional call, or a profile
+    // id landing in restoreId, fails this assertion on purpose.
+    expect(bridge.createPage.mock.calls.length).toBe(1);
+    expect(bridge.createPage.mock.calls[0].length).toBe(1);
+    expect(bridge.createPage).toHaveBeenCalledWith({
+      profileId: 3,
+      url: "about:blank",
+      browserProfileId: "bp-created",
+    });
+    expect(bridge.createPage.mock.calls[0][0].restoreId).toBeUndefined();
+  });
+
+  it("keeps restore and profile in their own fields, never swapped", async () => {
+    const bridge = makeBrowserBridge();
+    await openPage({ profileId: 3, url: "https://x.test/", restoreBrowserTabId: 42, browserProfileId: "bp-other" });
+    expect(bridge.createPage).toHaveBeenCalledWith({
+      profileId: 3,
+      url: "https://x.test/",
+      restoreId: 42,
+      browserProfileId: "bp-other",
+    });
   });
 
   it("keeps close, visibility and occlusion going one way: to main", async () => {
@@ -201,7 +228,7 @@ describe("browser surface", () => {
     });
     await fireEvent.click(screen.getByTestId("browser-go"));
 
-    await waitFor(() => expect(bridge.createPage).toHaveBeenCalledWith(3, "example.com"));
+    await waitFor(() => expect(bridge.createPage).toHaveBeenCalledWith({ profileId: 3, url: "example.com" }));
     await waitFor(() => expect(onPageChange).toHaveBeenCalledWith("bp-1"));
   });
 
@@ -358,5 +385,34 @@ describe("browser surface", () => {
 
     const host = screen.getByRole("region", { name: "Browser web content" });
     expect(host).toBeTruthy();
+  });
+
+  it("opens a fresh page in a profile just created, and reports it to the tab", async () => {
+    const created = { localId: "bp-created", displayName: "Work", color: "#e0a35c", isDefault: false };
+    const bridge = makeBrowserBridge({
+      listProfiles: vi.fn(async () => ({ ok: true, profiles: [created] })),
+      createProfile: vi.fn(async () => ({ ok: true, profile: created })),
+      updateProfile: vi.fn(async () => ({ ok: true, profile: created })),
+      createPage: vi.fn(async (options) => ({
+        ok: true,
+        page: pageFrame({ id: "bp-9", url: options?.url }),
+      })),
+    });
+    const onPageChange = vi.fn();
+    applyBrowserEvent({ kind: "created", page: pageFrame({ id: "bp-1", url: "https://example.com/" }) });
+    render(BrowserSurface, { props: { pageId: "bp-1", profileId: 3, onPageChange } });
+
+    await fireEvent.click(screen.getByTestId("browser-profile-switcher"));
+    await fireEvent.click(screen.getByTestId("browser-profile-new"));
+    await waitFor(() => expect(screen.getByTestId("browser-profile-name")).toBeTruthy());
+    await fireEvent.input(screen.getByTestId("browser-profile-name"), { target: { value: "Work" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Create profile" }));
+
+    // The new profile is created, then a fresh page is opened IN it
+    // (not in whatever profile the tab had before), and the tab is
+    // told about the new page id so it becomes the active page.
+    await waitFor(() => expect(bridge.createPage).toHaveBeenCalledWith({ profileId: 3, url: "about:blank", browserProfileId: "bp-created" }));
+    await waitFor(() => expect(onPageChange).toHaveBeenCalledWith("bp-9"));
+    await waitFor(() => expect(screen.queryByTestId("browser-profile-name")).toBe(null));
   });
 });

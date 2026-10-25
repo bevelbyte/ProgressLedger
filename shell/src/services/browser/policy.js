@@ -156,6 +156,66 @@ export function partitionFor(profileId) {
 }
 
 /**
+ * A browser profile local id is minted by main as "bp-<uuid>" and is the
+ * ONLY browser-profile identifier that may reach a partition name. The
+ * shape (bp- prefix, letters/digits/hyphens only) mirrors the Rust
+ * validator, so a compromised renderer cannot steer a partition at a
+ * path of its choosing. Temporary profiles carry "temp-<uuid>" instead
+ * (shell-only, never a database row); they are validated separately.
+ */
+export function validateBrowserProfileId(value) {
+  return (
+    typeof value === "string" &&
+    value.length >= 4 &&
+    value.length <= 64 &&
+    value.startsWith("bp-") &&
+    /^[A-Za-z0-9-]+$/.test(value.slice(3))
+  );
+}
+
+export function validateTempProfileId(value) {
+  return (
+    typeof value === "string" &&
+    value.length >= 6 &&
+    value.length <= 64 &&
+    value.startsWith("temp-") &&
+    /^[A-Za-z0-9-]+$/.test(value.slice(5))
+  );
+}
+
+/**
+ * The partition for one browser profile (Phase 3B, V2-33).
+ *
+ * - A temporary profile gets an IN-MEMORY partition (`pl-temp-<uuid>`,
+ *   no `persist:` prefix): nothing survives the app closing.
+ * - The workspace's DEFAULT profile adopts the Phase 3 partition
+ *   (`persist:cf-browser-<workspace>`), so cookies from before 3B
+ *   survive. The cf-browser name is a Phase 3 artifact kept
+ *   deliberately, not a rename miss.
+ * - Any other profile gets `persist:pl-browser-<workspace>-<localId>`.
+ *
+ * Returns null for any invalid input (workspace id, profile shape, or
+ * a default flag that contradicts the id shape). Partition names come
+ * only from validated internal ids, never user text.
+ *
+ * @param {number|string} workspaceId
+ * @param {{localId?: string, isDefault?: boolean, temporary?: boolean}|null} browserProfile
+ *   null = the legacy implicit profile (Phase 3 behaviour)
+ */
+export function partitionForBrowser(workspaceId, browserProfile) {
+  if (!validateProfileId(workspaceId)) return null;
+  const ws = Number(workspaceId);
+  if (!browserProfile) return `persist:cf-browser-${ws}`;
+  if (browserProfile.temporary === true) {
+    if (!validateTempProfileId(browserProfile.localId)) return null;
+    return `pl-temp-${browserProfile.localId.slice(5)}`;
+  }
+  if (!validateBrowserProfileId(browserProfile.localId)) return null;
+  if (browserProfile.isDefault === true) return `persist:cf-browser-${ws}`;
+  return `persist:pl-browser-${ws}-${browserProfile.localId}`;
+}
+
+/**
  * A URL with credentials, token-ish query parameters and the fragment removed,
  * bounded in length. This is the ONLY form of a URL the renderer ever sees.
  */

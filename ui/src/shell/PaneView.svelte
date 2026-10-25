@@ -29,6 +29,7 @@
   import { ProfileManager } from "../features/profiles";
   import BrowserSurface from "../features/browser/components/BrowserSurface.svelte";
   import ResearchLedger from "../features/browser/components/ResearchLedger.svelte";
+  import BrowserProfiles from "../features/browser/components/BrowserProfiles.svelte";
   import SettingsHub from "./SettingsHub.svelte";
 
   let {
@@ -158,6 +159,12 @@
   <div class="view-container flush">
     {#key profileId}
       <ResearchLedger {profileId} {researchPageId} {onOpenResearchSource} />
+    {/key}
+  </div>
+{:else if view === "browser-profiles"}
+  <div class="view-container flush">
+    {#key profileId}
+      <BrowserProfiles {profileId} />
     {/key}
   </div>
 {/if}

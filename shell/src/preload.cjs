@@ -269,13 +269,18 @@ const api = {
   // the whole mirror after a renderer reload, because browser pages live in main
   // and outlive this window.
   browser: {
-    createPage: (profileId, url, restoreBrowserTabId) =>
-      ipcRenderer.invoke(
-        "browser:create-page",
-        restoreBrowserTabId === undefined
-          ? { profileId, url }
-          : { profileId, url, restoreBrowserTabId },
-      ),
+    createPage: (options) => {
+      // ONE options object, exactly the fields main validates. Only
+      // defined values are copied into the payload (V2-31): an absent
+      // restore or profile sends no field for it, and an unknown key
+      // in options is dropped here and would be rejected by main.
+      const payload = {};
+      if (options?.profileId !== undefined) payload.profileId = options.profileId;
+      if (options?.url !== undefined) payload.url = options.url;
+      if (options?.restoreId !== undefined) payload.restoreId = options.restoreId;
+      if (options?.browserProfileId !== undefined) payload.browserProfileId = options.browserProfileId;
+      return ipcRenderer.invoke("browser:create-page", payload);
+    },
     navigate: (pageId, url) => ipcRenderer.invoke("browser:navigate", { pageId, url }),
     reload: (pageId) => ipcRenderer.invoke("browser:reload", { pageId }),
     goBack: (pageId) => ipcRenderer.invoke("browser:go-back", { pageId }),
@@ -283,6 +288,28 @@ const api = {
     navigation: (pageId) => ipcRenderer.invoke("browser:navigation", { pageId }),
     closePage: (pageId) => ipcRenderer.invoke("browser:close-page", { pageId }),
     listTabs: (profileId) => ipcRenderer.invoke("browser:list-tabs", { profileId }),
+    // Phase 3B browser profiles. Returned profiles are stripped of
+    // their password blob in main; the renderer never sees one.
+    listProfiles: (profileId) => ipcRenderer.invoke("browser:list-profiles", { profileId }),
+    createTempProfile: (profileId, displayName, color) =>
+      ipcRenderer.invoke("browser:create-temp-profile", { profileId, displayName, color }),
+    createProfile: (profileId, displayName, color, icon, notes) =>
+      ipcRenderer.invoke("browser:create-profile", { profileId, displayName, color, icon, notes }),
+    updateProfile: (profileId, localId, settings) =>
+      ipcRenderer.invoke("browser:update-profile", { profileId, localId, settings }),
+    deleteProfile: (profileId, localId, deleteLedger) =>
+      ipcRenderer.invoke("browser:delete-profile", { profileId, localId, deleteLedger }),
+    duplicateProfile: (profileId, localId) =>
+      ipcRenderer.invoke("browser:duplicate-profile", { profileId, localId }),
+    clearProfileData: (profileId, localId) =>
+      ipcRenderer.invoke("browser:clear-profile-data", { profileId, localId }),
+    testProxy: (profileId, localId, url) =>
+      ipcRenderer.invoke("browser:test-proxy", { profileId, localId, url }),
+    setLiveCap: (profileId, cap) =>
+      ipcRenderer.invoke("browser:set-live-cap", { profileId, cap }),
+    getLiveCap: (profileId) => ipcRenderer.invoke("browser:live-cap", { profileId }),
+    ledgerCountForProfile: (profileId, localId) =>
+      ipcRenderer.invoke("browser:ledger-count-for-profile", { profileId, localId }),
     state: () => ipcRenderer.invoke("browser:state"),
     setBounds: (pageId, rect) => ipcRenderer.invoke("browser:set-bounds", { pageId, rect }),
     setVisible: (pageId, visible) =>

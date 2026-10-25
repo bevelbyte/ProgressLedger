@@ -111,16 +111,41 @@ export function createBrowserHost(deps = {}) {
    * moves downloads without the host having to be rebuilt.
    */
   const downloads = createDownloadManager({
-    getDir: getDownloadsDir,
+    // Phase 3B: a page's own profile may name its download folder. The
+    // folder is used only when it still exists; a missing folder falls
+    // back to the workspace directory rather than refusing the download
+    // (a deleted folder is a usability problem, not a security one).
+    // The webContents arrives from the download manager (3B change
+    // there); a null webContents means the workspace directory.
+    getDir: (webContents) => {
+      try {
+        const owner = webContents ? pageIdFor(webContents) : null;
+        const dir = owner ? fullProfiles.get(owner)?.downloadDir : null;
+        if (dir && typeof downloadsExists === "function" && downloadsExists(dir)) return dir;
+      } catch {}
+      return getDownloadsDir();
+    },
     ensureDir: ensureDownloadsDir,
     exists: downloadsExists,
     emit: (event) => push(event),
   });
 
+  // Phase 3B: the FULL browser profile per live page (including the
+  // decrypted proxy password, in memory only). This map is main-only:
+  // it never crosses IPC (the registry's public shape carries only the
+  // safe subset), it is never logged, and it is dropped when the page
+  // closes. The registry record holds the safe shape; this map holds
+  // what session configuration (proxy, WebRTC, headers, downloads)
+  // needs at runtime.
+  const fullProfiles = new Map();
+  // Last-known live cap per workspace (for popups, which are created
+  // inside the host without an IPC round-trip to Rust).
+  const workspaceLiveCaps = new Map();
+
   const registry = createBrowserRegistry({
     createView: (spec) => {
       const view = createView(spec);
-      wirePage(spec.id, view);
+      wirePage(spec.id, view, spec.browserProfile ?? null);
       return view;
     },
     destroyView: (id, view) => destroyView(id, view),
@@ -226,8 +251,26 @@ export function createBrowserHost(deps = {}) {
    * webContents BEFORE anything is loaded into it, so the page can never
    * outrun the policy.
    */
-  function wirePage(pageId, view) {
+  function wirePage(pageId, view, browserProfile = null) {
     const wc = view?.webContents;
+    // Store the full profile for session configuration, but never let a
+    // safe shape (from a wake without one) clobber a full one: a safe
+    // shape has no policy fields, a full one always has webrtcPolicy.
+    if (browserProfile && (browserProfile.webrtcPolicy !== undefined || !fullProfiles.has(pageId))) {
+      fullProfiles.set(pageId, browserProfile);
+    }
+    // WebRTC IP handling (Phase 3B): the profile's policy applies to
+    // this view before anything loads. A stub view has no such method;
+    // a real Electron 44 view always does, so a missing method is
+    // reported, not fatal.
+    try {
+      const policy = fullProfiles.get(pageId)?.webrtcPolicy;
+      if (policy && typeof wc?.setWebRTCIPHandlingPolicy === "function") {
+        wc.setWebRTCIPHandlingPolicy(policy);
+      }
+    } catch {
+      push({ kind: "blocked", pageId, at: "webrtc-policy" });
+    }
     if (!wc) return;
 
     // From this moment on this webContents is governed, so the main.js global
@@ -285,7 +328,12 @@ export function createBrowserHost(deps = {}) {
         // exists: if creating the page fails, the page still cannot retry its
         // way to more tabs. A failed creation is a refusal, not a retry loop.
         popupsThisLoad += 1;
-        const created = createPage({ profileId: profileIdOf(), url: verdict.url });
+        const created = createPage({
+          profileId: profileIdOf(),
+          browserProfile: fullProfiles.get(pageId) ?? null,
+          liveCap: workspaceLiveCaps.get(Number(profileIdOf())) ?? undefined,
+          url: verdict.url,
+        });
         if (!created.ok) {
           push({
             kind: "blocked",
@@ -318,6 +366,16 @@ export function createBrowserHost(deps = {}) {
     // denial. The owner of the decision is a fact, not a capture.
     const permissionHandlers = attachPermissionHandlers(wc.session, {
       isActiveFocusedPage: (contents) => isActiveFocusedPage(contents),
+      getAllowedList: () => {
+        const profile = fullProfiles.get(pageId);
+        if (!profile || typeof profile.permissionsAllow !== "string") return null;
+        try {
+          const list = JSON.parse(profile.permissionsAllow);
+          return Array.isArray(list) ? list : [];
+        } catch {
+          return [];
+        }
+      },
       onDecision: ({ permission, allowed, webContents }) => {
         if (allowed) return;
         const owner = pageIdFor(webContents);
@@ -327,6 +385,100 @@ export function createBrowserHost(deps = {}) {
     });
     if (permissionHandlers === null) {
       push({ kind: "blocked", pageId, at: "permission-handlers" });
+    }
+
+    // Phase 3B per-profile request headers (read fresh from the stored
+    // profile, so an edit applies to already-open pages without a
+    // re-attach). Accept-Language is the profile's language; Sec-GPC
+    // and DNT are the profile's privacy signals. Third-party cookies
+    // are stripped only when third-party status is PROVEN (request
+    // host differs from the page's host); an unprovable case leaves
+    // cookies alone, so first-party logins never break on a guess.
+    // webRequest handlers replace (never accumulate), so installing
+    // them per view is safe for sessions shared across pages.
+    try {
+      const webRequest = wc.session?.webRequest;
+      if (webRequest && typeof webRequest.onBeforeSendHeaders === "function") {
+        webRequest.onBeforeSendHeaders((details, callback) => {
+          try {
+            const profile = fullProfiles.get(pageId);
+            const headers = { ...(details.requestHeaders ?? {}) };
+            if (profile) {
+              if (profile.language) headers["Accept-Language"] = profile.language;
+              if (profile.gpc === true) headers["Sec-GPC"] = "1";
+              if (profile.dnt === true) headers["DNT"] = "1";
+              if (profile.blockThirdPartyCookies === true) {
+                const pageUrl = registry.record(pageId)?.url;
+                let thirdParty = false;
+                try {
+                  thirdParty =
+                    new URL(details.url).hostname !== new URL(pageUrl).hostname;
+                } catch {
+                  thirdParty = false;
+                }
+                if (thirdParty) delete headers["Cookie"];
+              }
+            }
+            callback({ requestHeaders: headers });
+          } catch {
+            try {
+              callback({ requestHeaders: details.requestHeaders });
+            } catch {}
+          }
+        });
+      }
+      if (webRequest && typeof webRequest.onHeadersReceived === "function") {
+        webRequest.onHeadersReceived((details, callback) => {
+          try {
+            const profile = fullProfiles.get(pageId);
+            const responseHeaders = { ...(details.responseHeaders ?? {}) };
+            if (profile?.blockThirdPartyCookies === true) {
+              const pageUrl = registry.record(pageId)?.url;
+              let thirdParty = false;
+              try {
+                thirdParty =
+                  new URL(details.url).hostname !== new URL(pageUrl).hostname;
+              } catch {
+                thirdParty = false;
+              }
+              if (thirdParty) {
+                for (const key of Object.keys(responseHeaders)) {
+                  if (key.toLowerCase() === "set-cookie") delete responseHeaders[key];
+                }
+              }
+            }
+            callback({ responseHeaders });
+          } catch {
+            try {
+              callback({ responseHeaders: details.responseHeaders });
+            } catch {}
+          }
+        });
+      }
+    } catch {
+      push({ kind: "blocked", pageId, at: "header-handlers" });
+    }
+
+    // Proxy authentication (Phase 3B): only proxy challenges are
+    // answered, and only from credentials the profile stores (decrypted
+    // by the IPC into this map). Anything else — HTTP auth, or a proxy
+    // challenge with no stored credentials — is left unanswered, so the
+    // request fails rather than prompting or leaking a password.
+    try {
+      wc.on?.("login", (event, _webContents, _request, authInfo, callback) => {
+        try {
+          if (!authInfo?.isProxy) return;
+          event.preventDefault();
+          const profile = fullProfiles.get(pageId);
+          if (profile?.proxyUsername && profile?.proxyPassword) {
+            callback(profile.proxyUsername, profile.proxyPassword);
+          } else {
+            callback();
+          }
+        } catch {}
+      });
+    } catch {
+      /* a view without a login event simply cannot do proxy auth */
     }
 
     wc.on?.("page-title-updated", (_e, title) => {
@@ -520,21 +672,56 @@ export function createBrowserHost(deps = {}) {
     states: PAGE_STATES,
 
     /** Create one page in the browser partition belonging to `profileId`. */
-    createPage({ profileId, url = "about:blank" } = {}) {
-      const created = registry.create({ profileId, url });
+    createPage({ profileId, browserProfile = null, liveCap, url = "about:blank" } = {}) {
+      if (liveCap !== undefined && liveCap !== null) {
+        workspaceLiveCaps.set(Number(profileId), liveCap);
+      }
+      const created = registry.create({
+        profileId,
+        browserProfile,
+        liveCap: liveCap ?? workspaceLiveCaps.get(Number(profileId)) ?? undefined,
+        url,
+      });
       if (!created.ok) return created;
       const { id } = created.page;
       const record = registry.record(id);
+      const profile = fullProfiles.get(id) ?? browserProfile;
       // Loading is kicked off here, after the gates exist and after the id is
       // in the table, so a fast page cannot emit for an unknown page.
-      try {
-        observeLoadPromise(id, record.view.webContents.loadURL(record.url), "load-failed");
-      } catch {
-        clearNavigationTimer(id);
-        registry.update(id, {
-          state: PAGE_STATES.FAILED,
-          lastError: { reason: "load-failed", description: "Navigation could not be started" },
-        });
+      // A proxied profile waits for its proxy to apply FIRST: a page
+      // that loaded before setProxy resolved would go out direct, which
+      // is exactly the leak a proxy is meant to prevent. A proxy that
+      // fails to apply fails the page outright (never direct).
+      const startLoad = () => {
+        try {
+          observeLoadPromise(id, record.view.webContents.loadURL(record.url), "load-failed");
+        } catch {
+          clearNavigationTimer(id);
+          registry.update(id, {
+            state: PAGE_STATES.FAILED,
+            lastError: { reason: "load-failed", description: "Navigation could not be started" },
+          });
+        }
+      };
+      if (profile && profile.proxyMode && profile.proxyMode !== "none") {
+        const session = record.view?.webContents?.session;
+        const rules =
+          profile.proxyMode === "socks5"
+            ? `socks5://${profile.proxyHost}:${profile.proxyPort}`
+            : `${profile.proxyMode}=${profile.proxyHost}:${profile.proxyPort}`;
+        Promise.resolve()
+          .then(() => session?.setProxy({ proxyRules: rules, proxyBypassRules: profile.proxyBypass ?? "<local>" }))
+          .then(startLoad)
+          .catch(() => {
+            clearNavigationTimer(id);
+            registry.update(id, {
+              state: PAGE_STATES.FAILED,
+              lastError: { reason: "proxy-failed", description: "The profile proxy could not be applied, so the page was not loaded" },
+            });
+            push({ kind: "failed", pageId: id, reason: "proxy-failed" });
+          });
+      } else {
+        startLoad();
       }
       push({ kind: "created", pageId: id, page: registry.get(id) });
       return { ok: true, page: registry.get(id) };
@@ -677,7 +864,7 @@ export function createBrowserHost(deps = {}) {
       const record = registry.record(pageId);
       if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
       if (record.hibernated !== true) return { ok: true, page: registry.get(pageId) };
-      const woken = registry.wake(pageId);
+      const woken = registry.wake(pageId, fullProfiles.get(pageId) ?? null);
       if (!woken.ok) return woken;
       const stored = typeof record.url === "string" ? record.url : "";
       if (stored === "" || stored === "about:blank") {
@@ -716,7 +903,75 @@ export function createBrowserHost(deps = {}) {
     closePage(pageId) {
       const record = registry.record(pageId);
       if (!record) return { ok: true, alreadyClosed: true };
-      return { ok: registry.destroy(pageId) };
+      // Phase 3B clear-on-close: when the LAST live view of a
+      // clear-on-close profile closes, its session storage is wiped.
+      // The session is captured before destroy (the view is gone
+      // after), and the clear promise is returned so the IPC can await
+      // it: the close completes only after the data is gone, so a
+      // reopen cannot race the wipe.
+      const profile = fullProfiles.get(pageId);
+      const session = record.view?.webContents?.session ?? null;
+      let clearPromise = null;
+      if (profile?.clearOnClose === true && profile?.localId) {
+        const othersLive = [...allRecords()].some(
+          (r) => r.id !== pageId && r.view && fullProfiles.get(r.id)?.localId === profile.localId,
+        );
+        if (!othersLive && session && typeof session.clearStorageData === "function") {
+          clearPromise = Promise.resolve()
+            .then(() => session.clearStorageData())
+            .catch(() => {});
+        }
+      }
+      const destroyed = registry.destroy(pageId);
+      fullProfiles.delete(pageId);
+      return { ok: destroyed, clearPromise };
+    },
+
+    /**
+     * Re-apply a profile's session configuration to its live pages
+     * (after an edit). Headers and permissions read the stored profile
+     * fresh, so they need no re-attach; WebRTC (per view) and the proxy
+     * (per session, deduped) are re-applied here. A failed proxy
+     * re-apply keeps the OLD proxy (never direct): the page keeps
+     * working through the previous proxy until the user fixes it.
+     */
+    reconfigureProfile(localId, profile) {
+      if (!localId || !profile) return { ok: false, reason: "no-profile" };
+      const pages = [...allRecords()].filter(
+        (r) => r.view && fullProfiles.get(r.id)?.localId === localId,
+      );
+      for (const record of pages) fullProfiles.set(record.id, profile);
+      const sessions = new Map();
+      for (const record of pages) {
+        const wc = record.view?.webContents;
+        if (!wc) continue;
+        try {
+          if (typeof wc.setWebRTCIPHandlingPolicy === "function" && profile.webrtcPolicy) {
+            wc.setWebRTCIPHandlingPolicy(profile.webrtcPolicy);
+          }
+        } catch {}
+        if (wc.session && !sessions.has(wc.session)) sessions.set(wc.session, record.id);
+      }
+      if (profile.proxyMode && profile.proxyMode !== "none") {
+        const rules =
+          profile.proxyMode === "socks5"
+            ? `socks5://${profile.proxyHost}:${profile.proxyPort}`
+            : `${profile.proxyMode}=${profile.proxyHost}:${profile.proxyPort}`;
+        for (const [session, pageId] of sessions) {
+          Promise.resolve()
+            .then(() => session.setProxy({ proxyRules: rules, proxyBypassRules: profile.proxyBypass ?? "<local>" }))
+            .catch(() => {
+              push({ kind: "failed", pageId, reason: "proxy-failed" });
+            });
+        }
+      } else {
+        for (const session of sessions.keys()) {
+          Promise.resolve()
+            .then(() => session.setProxy({ proxyRules: "" }))
+            .catch(() => {});
+        }
+      }
+      return { ok: true, pages: pages.length };
     },
 
     /** Tear every page down. Used on quit and by the E2E reset. */
@@ -751,7 +1006,11 @@ export function createBrowserHost(deps = {}) {
       if (!record) return { ok: false, reason: REASONS.UNKNOWN_PAGE };
       if (record.profileId !== Number(profileId)) return { ok: false, reason: "profile-mismatch" };
       if (!/^https?:\/\//i.test(record.url ?? "")) return { ok: false, reason: "invalid-url" };
-      return { ok: true, page: { id: record.id, profileId: record.profileId, url: record.url, title: record.title || record.url } };
+      // Phase 3B: the capture records the page's browser profile (safe
+      // shape only — never stored credentials) so the ledger can show it
+      // as a chip. Legacy pages (no profile) capture without one.
+      const bp = record.browserProfile;
+      return { ok: true, page: { id: record.id, profileId: record.profileId, url: record.url, title: record.title || record.url, browserProfile: bp ? { localId: bp.localId ?? null, displayName: bp.displayName ?? "" } : null } };
     },
 
     /**

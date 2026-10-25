@@ -1,6 +1,7 @@
 <script>
   import { ChevronLeft, ChevronRight, Plus } from "lucide-svelte";
   import { Menu } from "../shared/components/index.js";
+  import { pageFor } from "../shared/stores/browser.svelte.js";
 
   // Atlas shell — pane header (the tab strip above the work surface).
   //
@@ -176,6 +177,18 @@ function onKeydown(event, index) {
                 aria-label={DOT_TITLES[dot] ?? dot}
                 role="img"
               ></span>
+            {/if}
+            {#if tab.view === "page"}
+              {@const pageProfile = pageFor(tab.entity)?.browserProfile ?? null}
+              {#if pageProfile}
+                <span
+                  class="tab-profile-dot"
+                  style="--profile-color: {pageProfile.color ?? "#888888"}"
+                  title={pageProfile.displayName}
+                  aria-label="Profile: {pageProfile.displayName}"
+                  role="img"
+                ></span>
+              {/if}
             {/if}
             <span class="tab-label">{tab.label}</span>
           </button>
@@ -376,6 +389,15 @@ function onKeydown(event, index) {
     margin-right: 6px;
     border-radius: 50%;
     background: var(--atlas-ink-4);
+  }
+  .tab-profile-dot {
+    display: inline-flex;
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--profile-color, #888888);
   }
 
   .tab-dot[data-tab-dot="loading"] { background: var(--atlas-signal); }

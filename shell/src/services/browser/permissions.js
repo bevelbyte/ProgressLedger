@@ -14,6 +14,21 @@
 // allow-all path and NO persisted grant: the decision is recomputed on every
 // request from the current, main-process-owned context.
 
+/**
+ * The capabilities a browser page may hold AT ALL (the grantable set,
+ * mirrored from the Rust allowlist). A per-profile allow list can only
+ * narrow this set, never widen it: midi, pointerLock, openExternal and
+ * any invented name are denied no matter what a profile lists.
+ */
+const GRANTABLE = Object.freeze([
+  "camera",
+  "microphone",
+  "geolocation",
+  "notifications",
+  "fullscreen",
+  "clipboard-sanitized-write",
+]);
+
 /** The capabilities a browser page may always hold. Bounded by design. */
 const ALLOWED_EXACT = Object.freeze([
   // The "copy" affordance every page has. It cannot read the clipboard, so it
@@ -50,9 +65,18 @@ export const PERMISSION_DECISIONS = Object.freeze({
  *   focused-only capabilities; anything falsy denies them.
  * @returns {boolean} true = grant, false = deny
  */
-export function decidePermission(permission, context = {}) {
+/**
+ * Decide whether `permission` may be granted. Phase 3B adds the
+ * per-profile allow list: when `allowedList` is given, the permission
+ * must be on it AND on the grantable set AND (for fullscreen) pass the
+ * focused-only rule. When it is omitted, the Phase 3 default applies
+ * (clipboard always, fullscreen focused-only), so old callers and old
+ * tests behave exactly as before. A corrupt or non-array list degrades
+ * to deny-all: a profile whose allow list cannot be read grants nothing.
+ */
+export function decidePermission(permission, context = {}, allowedList = null) {
   try {
-    return decide(permission, context);
+    return decide(permission, context, allowedList);
   } catch {
     // A context object whose property getter throws is not a reason to grant
     // anything: the documented contract of this function is "never throws",
@@ -62,15 +86,19 @@ export function decidePermission(permission, context = {}) {
 }
 
 /** The table itself. Kept separate so the fail-closed wrapper stays honest. */
-function decide(permission, context) {
+function decide(permission, context, allowedList) {
   if (typeof permission !== "string") return false;
   const name = permission.trim();
   if (!name) return false;
-  if (ALLOWED_EXACT.includes(name)) return true;
+  if (!GRANTABLE.includes(name)) return false;
+  if (allowedList === null) {
+    if (ALLOWED_EXACT.includes(name)) return true;
+    if (FOCUSED_ONLY.includes(name)) return context.isActiveFocusedPage === true;
+    return false;
+  }
+  if (!Array.isArray(allowedList) || !allowedList.includes(name)) return false;
   if (FOCUSED_ONLY.includes(name)) return context.isActiveFocusedPage === true;
-  // Default deny: named denials (media, devices, notifications, openExternal,
-  // pointerLock, idle-detection, speaker-selection, …) and UNKNOWN names alike.
-  return false;
+  return true;
 }
 
 /**
@@ -113,10 +141,23 @@ export function attachPermissionHandlers(session, deps = {}) {
     }
   };
 
+  // The allow list is read FRESH on every request (not snapshotted at
+  // install time): a profile edit takes effect for already-open pages
+  // without re-attaching handlers. A missing or throwing getter degrades
+  // to the Phase 3 default (clipboard + focused fullscreen).
+  const currentAllowList = () => {
+    try {
+      const list = typeof deps.getAllowedList === "function" ? deps.getAllowedList() : null;
+      return Array.isArray(list) ? list : null;
+    } catch {
+      return null;
+    }
+  };
+
   const requestHandler = (_webContents, permission, callback) => {
     let allow = false;
     try {
-      allow = decidePermission(permission, { isActiveFocusedPage: activeFor(_webContents) });
+      allow = decidePermission(permission, { isActiveFocusedPage: activeFor(_webContents) }, currentAllowList());
     } catch {
       allow = false;
     }
@@ -132,7 +173,7 @@ export function attachPermissionHandlers(session, deps = {}) {
   const checkHandler = (_webContents, permission) => {
     let allow = false;
     try {
-      allow = decidePermission(permission, { isActiveFocusedPage: activeFor(_webContents) });
+      allow = decidePermission(permission, { isActiveFocusedPage: activeFor(_webContents) }, currentAllowList());
     } catch {
       allow = false;
     }

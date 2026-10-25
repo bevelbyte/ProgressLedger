@@ -22,9 +22,14 @@
    */
   import { Globe, Loader2, RotateCw, AlertTriangle, ShieldOff, Square, Bookmark, BookmarkCheck, Telescope, Plus, Trash2, ChevronLeft, ChevronRight, Camera, Highlighter } from "lucide-svelte";
   import {
+    browser,
     pageFor,
     openPage,
     listTabs,
+    loadProfiles,
+    currentProfile,
+    setCurrentProfile,
+    createTempProfile,
     navigate as navigatePage,
     reload as reloadPage,
     goBack as goBackPage,
@@ -42,6 +47,7 @@
   // says so honestly and offers re-opening instead.
   import { toast } from "../../../shared/stores/toasts.svelte.js";
   import { reportError } from "../../../shared/utils/errors.js";
+  import BrowserProfileDialog from "./BrowserProfileDialog.svelte";
 
   let {
     /** The opaque browser page id this tab carries (`bp-N`), or null. */
@@ -58,6 +64,18 @@
   } = $props();
 
   const page = $derived(pageFor(pageId));
+  // Phase 3B: the workspace's profiles (for the switcher) and the open
+  // page's own profile (for the address-bar dot). They differ on
+  // purpose: the switcher picks the profile NEW tabs open in; an open
+  // page keeps the profile it was created in, even after a switch.
+  const profiles = $derived(browser.profiles);
+  const current = $derived(currentProfile());
+  const pageProfile = $derived(page?.browserProfile ?? null);
+  let profileMenuOpen = $state(false);
+  let showNewProfile = $state(false);
+  $effect(() => {
+    if (profileId) loadProfiles(profileId);
+  });
   const insecure = $derived(page?.url?.startsWith("http://") === true);
 
   let address = $state("");
@@ -481,6 +499,15 @@
       {/if}
     </span>
 
+    {#if pageProfile}
+      <span
+        class="profile-dot page-profile-dot"
+        style="--profile-color: {pageProfile.color ?? "#888888"}"
+        title={pageProfile.displayName}
+        aria-label="Profile: {pageProfile.displayName}"
+      ></span>
+    {/if}
+
     {#if page}
       <span class="browser-title truncate" data-testid="browser-title" title={page.title || page.url}>
         {page.title || page.url || "Untitled page"}
@@ -553,6 +580,91 @@
       >
         <RotateCw size={12} aria-hidden="true" />
       </button>
+      <div class="profile-switcher">
+        <button
+          type="button"
+          class="profile-switcher-btn"
+          data-testid="browser-profile-switcher"
+          aria-label="Browser profile"
+          aria-expanded={profileMenuOpen ? "true" : "false"}
+          title={current ? `New tabs open in ${current.displayName}` : "Browser profile"}
+          onclick={() => (profileMenuOpen = !profileMenuOpen)}
+        >
+          <span class="profile-dot" style="--profile-color: {current?.color ?? "#888888"}" aria-hidden="true"></span>
+          <span class="truncate">{current?.displayName ?? "Default"}{current?.temporary ? " (Temporary)" : ""}</span>
+        </button>
+        {#if profileMenuOpen}
+          <div class="profile-menu" data-testid="browser-profile-menu" role="menu">
+            {#each profiles as profile (profile.localId)}
+              <div class="profile-menu-row">
+                <button
+                  type="button"
+                  class="profile-menu-option"
+                  data-testid="browser-profile-option-{profile.localId}"
+                  role="menuitem"
+                  onclick={() => {
+                    setCurrentProfile(profile.localId);
+                    profileMenuOpen = false;
+                  }}
+                >
+                  <span class="profile-dot" style="--profile-color: {profile.color ?? "#888888"}" aria-hidden="true"></span>
+                  <span class="truncate">{profile.displayName}{profile.temporary ? " (Temporary)" : ""}{profile.isDefault ? " (Default)" : ""}</span>
+                </button>
+                <button
+                  type="button"
+                  class="profile-menu-open"
+                  data-testid="browser-profile-open-{profile.localId}"
+                  aria-label="Open a new tab in {profile.displayName}"
+                  title="Open a new tab in this profile"
+                  onclick={async () => {
+                    profileMenuOpen = false;
+                    const res = await openPage({ profileId, url: "about:blank", browserProfileId: profile.localId });
+                    if (res?.ok) reportPage(res.page?.id ?? null, res.browserTabId);
+                    else notice = res?.detail ?? res?.reason ?? "open-failed";
+                  }}
+                >
+                  <Plus size={12} aria-hidden="true" />
+                </button>
+              </div>
+            {/each}
+            <button
+              type="button"
+              class="profile-menu-action"
+              data-testid="browser-profile-temp"
+              onclick={async () => {
+                profileMenuOpen = false;
+                const res = await createTempProfile(profileId, "Temporary", null);
+                if (res?.ok && res.profile) setCurrentProfile(res.profile.localId);
+              }}
+            >
+              Temporary profile
+            </button>
+            <button
+              type="button"
+              class="profile-menu-action"
+              data-testid="browser-profile-new"
+              onclick={() => {
+                profileMenuOpen = false;
+                showNewProfile = true;
+              }}
+            >
+              New browser profile…
+            </button>
+            <button
+              type="button"
+              class="profile-menu-action"
+              data-testid="browser-profile-manage"
+              onclick={() => {
+                profileMenuOpen = false;
+                window.dispatchEvent(new CustomEvent("cf:navigate", { detail: { view: "browser-profiles" } }));
+              }}
+            >
+              Manage profiles…
+            </button>
+            <p class="profile-menu-note">New tabs open in the current profile. Open pages keep their profile.</p>
+          </div>
+        {/if}
+      </div>
       <button type="button" class="research-action" data-testid="research-save-source" aria-label="Save as a source" title={savedSource ? "Already in the Research ledger" : "Save as a source"} disabled={researchBusy || !!savedSource || !page || !/^https?:\/\//i.test(page.url)} onclick={saveCurrentSource}>
         {#if savedSource}<BookmarkCheck size={12} aria-hidden="true" />{:else}<Bookmark size={12} aria-hidden="true" />{/if}
       </button>
@@ -581,6 +693,28 @@
       </span>
     {/if}
   </form>
+
+  {#if showNewProfile}
+    <BrowserProfileDialog
+      profileId={profileId}
+      profile={null}
+      onClose={() => (showNewProfile = false)}
+      onSaved={async (created) => {
+        showNewProfile = false;
+        if (!created?.localId) return;
+        setCurrentProfile(created.localId);
+        // A profile just created is for use right away: open a fresh
+        // page in it in this pane tab (the same pattern as the
+        // switcher's "Open a new tab in this profile" button) and
+        // report it, so the tab shows the new profile's color dot
+        // at once. A failed open only shows the notice; the new
+        // profile stays current, so the user can open in it manually.
+        const res = await openPage({ profileId, url: "about:blank", browserProfileId: created.localId });
+        if (res?.ok) reportPage(res.page?.id ?? null, res.browserTabId);
+        else notice = res?.detail ?? res?.reason ?? "open-failed";
+      }}
+    />
+  {/if}
 
   {#if page}
     <span class="browser-page-id" data-testid="browser-page-id" data-page-id={page.id} aria-hidden="true">
@@ -895,5 +1029,93 @@
     .browser-state {
       max-width: 35%;
     }
+  }
+  .profile-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--profile-color, #888888);
+    flex-shrink: 0;
+    display: inline-block;
+  }
+
+  .page-profile-dot {
+    margin-left: 2px;
+  }
+
+  .profile-switcher {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .profile-switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 140px;
+    padding: 4px 8px;
+    border: 1px solid var(--hairline, #333);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .profile-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    max-width: 300px;
+    background: var(--surface-2, #1a1a1a);
+    border: 1px solid var(--hairline, #333);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .profile-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .profile-menu-option,
+  .profile-menu-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .profile-menu-option:hover,
+  .profile-menu-action:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .profile-menu-open {
+    flex-shrink: 0;
+    padding: 6px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .profile-menu-note {
+    margin: 6px 8px 4px;
+    font-size: 11px;
+    opacity: 0.7;
   }
 </style>
