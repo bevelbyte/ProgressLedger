@@ -57,6 +57,9 @@
     /** True while a shell overlay is open: a native browser view cannot be
      *  z-covered by DOM, so it is hidden instead of layered. */
     occluded = false,
+    /** Phase 4 (V2-43): a browser dialog in this pane reports its
+     *  open state up to App's one occluded flag (via viewDeps). */
+    onBrowserOverlayChange = () => {},
   } = $props();
 </script>
 
@@ -151,6 +154,7 @@
         browserTabId={browserTabId ?? null}
         {profileId}
         {occluded}
+        {onBrowserOverlayChange}
         onPageChange={(id, tabId) => onEntityChange(id, tabId)}
       />
     {/if}
@@ -164,7 +168,7 @@
 {:else if view === "browser-profiles"}
   <div class="view-container flush">
     {#key profileId}
-      <BrowserProfiles {profileId} />
+      <BrowserProfiles {profileId} {onBrowserOverlayChange} />
     {/key}
   </div>
 {/if}

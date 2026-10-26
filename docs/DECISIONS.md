@@ -818,3 +818,141 @@ by part:
   store resets current; no effect loops on delete. INFERRED
   ONLY, never recorded as proven: whatever renderer-side loop
   (if any) the dead channel looked like from the outside.
+
+## V2-42 — Solo session, 3B-6 close-out, crash safety, async audit (2026-10-26, user order 05:08 IST, away 4 hours)
+
+- Solo rules for this session (user-set, this message only): no
+  questions; a needed decision takes the safest option and is
+  recorded here; off limits are raising privileges, deleting
+  anything outside this project, touching CareerFlow /
+  Progress_Ledger / MyCampus, installing unvetted packages, and
+  pushing or publishing. Standard rights only (/RL LIMITED /IT),
+  whoami Mandatory line at the top of every job log, time limit +
+  10-minute silence watchdog on every job, each task deleted after
+  use, no cleanup1 / helper_test / mycampus_phone. Every problem is
+  time-boxed to 45 minutes: if unsolved, root-cause notes go in
+  docs/PARKED.md, the item is marked NOT FINISHED, and work moves
+  on. Commit (no push) at least every 45 minutes and after every
+  finished item, with a timestamped PROGRESS.md line each time.
+- Lock test CANCELLED by the user in the same message: do not
+  queue it. The screen is unlocked and the laptop is always on.
+  Desktop screenshot therefore stays NOT VERIFIED unless a
+  test-mode run with the app window in front proves it in Phase 5.
+- Item A (3B-6 close-out): verified, not assumed. `git ls-files`
+  contains NO p3b/diag driver (the drivers live only in the task
+  work folder and in local authoring copies, never in the repo);
+  the useful isolation logic is already a proper test surface:
+  e2e/browser-profile-isolation.spec.js plus the Rust pending/tab
+  tests plus the V2-41 source-order test. So close-out deletes
+  nothing from the repo tree; it records that the throwaway
+  drivers stay out of the tree by design. Baseline gate job
+  V2A6Gate (LIMITED, Medium Mandatory Level): npm test exit 0,
+  shell pass 1184, UI 70 files / 861 tests, cargo all suites ok;
+  task deleted and verified gone by Query error.
+- Item B (crash safety): new module
+  shell/src/services/crash-handler.js, wired in main.js right
+  after the userData path is set, so even a crash during window
+  creation is caught. uncaughtException: writes one timestamped
+  file <userData>/crash-logs/crash-uncaughtException-<ISO>.log
+  (colons stripped, Windows-safe), shows a plain-language error
+  box, then quits via app.quit() — the process state is undefined
+  after an uncaught exception, so continuing would be dishonest.
+  unhandledRejection: writes crash-unhandledRejection-<ISO>.log
+  and shows an error box, but does NOT quit — a rejected promise
+  alone does not prove the process is corrupt. The handler never
+  throws itself (every step guarded, re-entry guard, dialog and
+  disk failures swallowed). It imports no Electron, so its test
+  shell/tests/crash-handler.test.js runs under plain node --test
+  with fakes (5 tests, local pass 5/5): file naming, log format,
+  quit-on-uncaught, no-quit-on-rejection, handler-never-throws.
+  Check-esm lesson, found by the gate (first BC gate run failed
+  at check:esm, exit 1, before any test ran): the module first
+  took a `dialog` object, and the repo's check:esm guard flags any
+  bare `dialog` identifier in shell/src not imported from
+  "electron". The fix is structural, not a guard exemption: the
+  module now takes a plain showError callback, and main.js passes
+  (title, message) => dialog.showErrorBox(title, message).
+- Item C (async audit): all 40 files in shell/src/ipc plus the
+  browser service files were read. Findings: NO new V2-40-class
+  bug. `rm` in browser.js is correctly imported from
+  node:fs/promises (line 19) with Sync names only from node:fs;
+  no `await <fs>Sync(` anywhere in IPC/browser code (one false
+  positive, runAutomatedSync, is an async app function, not an fs
+  Sync call, and the test names fs Sync functions explicitly so
+  it cannot trip on it again); every Electron async session/page
+  call in IPC/browser code is awaited, promise-chained, observed
+  via observeLoadPromise, or returned to the safeHandle wrapper
+  (which is async and hands rejections to the renderer as IPC
+  errors, not as main-process unhandled rejections); the only
+  raw ipcMain.handle channels left are the three migration
+  channels in main.js, and all three are async/sync functions
+  whose rejections Electron delivers to the caller. Delete paths
+  audited individually: browser:delete-profile awaits
+  clearProfileData then deletes the row last; profiles:delete,
+  goal:delete, project:delete-project and plan:delete-template
+  all await (or return) their core calls. New source check
+  shell/tests/ipc-async-guard.test.js (4 tests, local pass 4/4
+  against the same files): node:fs imports must be *Sync only,
+  no await on an fs Sync function, every clearStorageData /
+  clearCache / clearAuthCache / flushStorageData / setProxy /
+  loadURL call must be awaited or .then-chained, and rm() must
+  come from node:fs/promises. The check reads source, never
+  imports Electron, so it runs in the plain shell suite.
+
+## V2-43 — Phase 4, part 1: measured layout + overlay flag (2026-10-26, solo session)
+
+- Layout numbers are MEASURED, not designed. Job V2D4Measure
+  (LIMITED, Medium, exit 0, 4.9 s): real app, throwaway data,
+  inner window 1386x779, dpr 1.25. Boxes: titlebar 0,0 1386x46;
+  rail 0,46 216x707; context header 216,80 1170x52 (the 46-80
+  strip above it is the 34px context strip); pane grid and pane
+  216,132 1170x590; pane header 216,132 1170x34; pane body
+  216,166 1170x556; status bar 0,753 1386x26. The 722-753 gap
+  under the pane grid is the operator dock bar (~31px): the
+  chrome stack 46 + 34 + 52 + 590 + 31 + 26 = 779, exactly the
+  window height. The same values are CSS tokens in
+  ui/src/app.css (--shell-titlebar-h 46, --shell-ctxstrip-h 34,
+  --shell-context-h 52, --shell-panehead-h 34, --shell-status-h
+  26, --shell-rail-w 216 / collapsed 56 / slim 64), and the
+  split handle is 4px (PaneGrid .handle flex-basis). Compact
+  density tightens titlebar 42, strip 30, context 46, panehead
+  30. One shared module shell/src/shared/layout.js (plain JS,
+  no Electron, policy.js pattern) carries both densities plus
+  browserRectForPane, splitPaneRects, rectsOverlap and
+  rectInside; shell/tests/layout.test.js (6 tests) asserts the
+  CSS-token agreement, the measured stack, and that a two-pane
+  row and column split are disjoint, inside the grid, and keep
+  each pane's browser rect inside its own pane. The module is
+  main-side: the renderer already measures its own surface box
+  for bounds (BrowserSurface), so the UI does not need a second
+  copy of the numbers, and a second copy is exactly how they
+  would drift. No enforced window minimum exists in
+  createWindow (verified by reading it); the module records a
+  USABLE floor of 1024x640 for tests and screenshots only, and
+  no limit is imposed on the user — the safest option under the
+  solo rules.
+- Overlay flag, real gap found and fixed: App's `occluded`
+  derived already covered the operator console, new-tab menu,
+  keyboard help, onboarding, command palette, arrange menu,
+  note editor, quick note and focus — but NOT toasts, NOT the
+  global confirm dialog, and NOT the browser dialogs. All three
+  are fixed-position backdrops (BrowserProfileDialog z-index
+  100; the manager's delete confirm is a dialog-backdrop), so a
+  native WebContentsView in any pane would paint over them and
+  the user could not click them. Fix, following the existing
+  onNewTabMenuOpenChange pattern: App imports toastState and
+  adds toastState.items.length > 0, toastState.confirm !== null
+  and browserDialogOpen to `occluded`; viewDeps carries
+  onBrowserOverlayChange; PaneView forwards it to
+  BrowserSurface (which reports showNewProfile) and to
+  BrowserProfiles (which reports dialog !== null ||
+  deleteTarget !== null). Main's setOccluded already hides
+  every view while the flag is set and restores on close.
+  New source test shell/tests/overlay-guard.test.js asserts
+  every overlay source is in the flag and both browser views
+  report their dialog state. Security and multitasking
+  re-verification (no bridge, contextIsolation, sandbox, CSP,
+  deny-by-default permissions, popup tabs in the opener's
+  profile, Arrange/Split/Immerse, tab restore in profile) is
+  NOT yet run in this part: it belongs to the Phase 4 proof
+  job, which runs after this commit's gate.

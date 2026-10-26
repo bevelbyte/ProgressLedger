@@ -18,6 +18,7 @@ import {
   isDestinationOccupied,
 } from "./workspace.js";
 import { initLogger, installFileLogger, rotateAndPruneLogs } from "./services/logger.js";
+import { installCrashHandlers } from "./services/crash-handler.js";
 import { makeIpcContext, registerAllIpc } from "./ipc/index.js";
 import { setupAutoUpdater } from "./ipc/updates.js";
 import {
@@ -82,6 +83,17 @@ if ((isE2E || isMigrationTest) && process.env.PROGRESSLEDGER_V2_E2E_USER_DATA) {
   app.setPath("userData", join(app.getPath("appData"), "progress-ledger-v2"));
 }
 
+
+// Crash safety (V2-42, item B): installed as early as the userData
+// path is known, so even a crash during window creation writes a
+// timestamped log under <userData>/crash-logs and shows the user an
+// error box instead of the window silently vanishing.
+installCrashHandlers({
+  process,
+  showError: (title, message) => dialog.showErrorBox(title, message),
+  userDataDir: app.getPath("userData"),
+  quit: () => app.quit(),
+});
 
 // --- Single instance ---
 if (!isE2E) {

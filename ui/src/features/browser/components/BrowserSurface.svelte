@@ -58,6 +58,10 @@
     /** True while the shell has an overlay open (a native view cannot be
      *  z-covered, so it must be hidden instead). */
     occluded = false,
+    /** Phase 4 (V2-43): report this surface's own dialog state up to
+     *  App's one occluded flag, so a fixed-position dialog is never
+     *  painted over by the native view it sits on top of. */
+    onBrowserOverlayChange = () => {},
     /** Reports a newly created page id back to the workspace, so the TAB carries
      *  the identity (the approved `(view, entity)` contract). */
     onPageChange = () => {},
@@ -73,6 +77,12 @@
   const pageProfile = $derived(page?.browserProfile ?? null);
   let profileMenuOpen = $state(false);
   let showNewProfile = $state(false);
+  // The new-profile dialog is a fixed full-window backdrop: while it
+  // is open, main must hide every native view (via App's flag), or
+  // the view in this very pane paints over the dialog.
+  $effect(() => {
+    onBrowserOverlayChange(showNewProfile === true);
+  });
   $effect(() => {
     if (profileId) loadProfiles(profileId);
   });

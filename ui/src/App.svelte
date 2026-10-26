@@ -30,7 +30,7 @@
   import { FocusSession } from "./features/focus";
   import Toaster from "./shared/components/Toaster.svelte";
   import { Onboarding } from "./features/onboarding";
-  import { toast } from "./shared/stores/toasts.svelte.js";
+  import { toast, toastState } from "./shared/stores/toasts.svelte.js";
   import { reportError } from "./shared/utils/errors.js";
   import {
     onboarding,
@@ -168,6 +168,9 @@
 
   const viewDeps = $derived({
     occluded,
+    onBrowserOverlayChange: (open) => {
+      browserDialogOpen = open === true;
+    },
     profileId: profileStore.activeProfileId,
     profiles: profileStore.profiles,
     activeProfile: profileStore.activeProfile,
@@ -502,6 +505,11 @@
   let commandPaletteOpen = $state(false);
   let keyboardHelpOpen = $state(false);
   let arrangeMenuOpen = $state(false);
+  // Phase 4 (V2-43): a browser dialog in a pane reports here through
+  // viewDeps (onBrowserOverlayChange). A fixed-position dialog in ANY
+  // pane sits over every pane's native view geometrically, so it must
+  // join the one flag or the view paints over it.
+  let browserDialogOpen = $state(false);
   const occluded = $derived(
     operator.consoleOpen === true ||
       newTabMenuOpen === true ||
@@ -511,7 +519,10 @@
       arrangeMenuOpen === true ||
       noteEditor.open === true ||
       quickNoteOpen === true ||
-      focusOpen === true,
+      focusOpen === true ||
+      toastState.items.length > 0 ||
+      toastState.confirm !== null ||
+      browserDialogOpen === true,
   );
 
   // Tell main once per change, not once per pane: the flag is global.

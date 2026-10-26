@@ -20,11 +20,17 @@
   import { toast } from "../../../shared/stores/toasts.svelte.js";
   import { focusedPaneId, openPageTab } from "../../../shell/workspace/store.svelte.js";
 
-  let { profileId = null } = $props();
+  let { profileId = null, onBrowserOverlayChange = () => {} } = $props();
 
   const profiles = $derived(browser.profiles);
   let dialog = $state(null); // null | { mode: "new" } | { mode: "edit", profile }
   let deleteTarget = $state(null); // { profile, ledgerCount, deleteLedger }
+  // Phase 4 (V2-43): both dialogs are fixed full-window backdrops, so
+  // while either is open main must hide every native view (via App's
+  // flag), or a view in another pane paints over the dialog.
+  $effect(() => {
+    onBrowserOverlayChange(dialog !== null || deleteTarget !== null);
+  });
   let confirmClear = $state(null); // profile awaiting its second click
   let liveCap = $state(5);
   let liveCapBusy = $state(false);
