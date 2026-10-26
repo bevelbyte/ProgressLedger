@@ -1025,3 +1025,25 @@ by part:
   controls since Phase 3 added the browser's own back/forward buttons
   inside the pane — fixed by scoping to button.pane-control.
   Proof run 8 (job V2D4Proof8, /RL LIMITED /IT, Medium, 8 tests, 33.8 s, exit 0): 8 passed, 0 failed. Phase 4 proof complete: 24/24 (security/popups/isolation) + 8/8 (workspace/arrange) = 32/32.
+
+## V2-45 — E/F evidence notes (driver bugs, not product bugs)
+- EF run 1 capture failures: the test server file placed the /select route
+  BEFORE `const u = new URL(...)`, so every request threw and the server
+  died; pages failed to load and captures found no text. The app correctly
+  showed "This page could not be loaded" + "no text to capture". Fixed by
+  moving the route below the URL parse; run 2/3 captures pass. Lesson kept:
+  the driver now fails loudly when a page state is "failed" instead of
+  treating a page-id as success.
+- EF run 2 split failure: after a split there are two address bars, so the
+  bare browser-address testid violates strict mode. Fix: pane-scoped
+  navigation (goPane) for the second pane and pane-0 scoping for the
+  manager phase. Same trap class as the Phase 4 spec selectors.
+- Renderer screenshots never show the native page (black page area):
+  Playwright cannot composite a WebContentsView. Page content is proven by
+  capture-to-ledger + DB rows, not by these shots. Only a real desktop
+  screenshot can show the page; that is the separate desktop job (visible
+  window via PROGRESSLEDGER_V2_E2E_VISIBLE=1 + CopyFromScreen in-session).
+- Proxy test has no UI button (testProxy is store/bridge only, no caller in
+  ui/src). The profile-UI driver screenshots the proxy SETTING in the edit
+  dialog and runs the test through the app's own bridge, recording the
+  result — it does not invent a button.
