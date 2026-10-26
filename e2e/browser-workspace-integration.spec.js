@@ -81,6 +81,12 @@ async function launch() {
   const env = {
     ...process.env,
     PROGRESSLEDGER_V2_E2E: "1",
+    // main.js ignores the Chromium --user-data-dir switch for
+    // app.getPath("userData") (see its comment): without this env var every
+    // test in the file shares the DEFAULT data dir, so test 1's profile
+    // slug collides with tests 2-5 and persisted layouts leak between
+    // launches. Every other browser spec already passes this.
+    PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir,
     PROGRESSLEDGER_V2_DONUT_SETTINGS_DIR: ABSENT_DONUT_DIR,
   };
   delete env.PROGRESSLEDGER_V2_E2E_DONUT_STUB;
@@ -121,7 +127,7 @@ async function seedAndSelectProfile(win) {
   await win.waitForLoadState("domcontentloaded");
   await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
 
-  await win.locator('button.nav-item:has-text("Profiles")').first().click();
+  await win.getByRole("button", { name: "Profiles", exact: true }).first().click();
   const card = win.locator("button.profile-main").first();
   await card.waitFor({ state: "visible", timeout: 10_000 });
   await card.click();
@@ -237,7 +243,10 @@ test.describe("Phase 2 embedded browser — a page is an ordinary workspace tab 
     // BACK — one step lands on page ONE, the page this pane actually showed
     // before. With view-named trail entries both pages are "page" and the step
     // had to guess, which is the defect design 2.3.1 closes.
-    await pane.locator('button[aria-label="Back"]').click();
+    // Phase 3 added the browser's own Back button (browser-back) inside the
+    // pane, so the bare aria-label now matches two controls; the pane-control
+    // class is the pane trail's own button, which is what this step tests.
+    await pane.locator('button.pane-control[aria-label="Back"]').click();
     await expect.poll(() => visiblePageId(app)).toBe(first.id);
     await expect(pane.locator('[data-testid="browser-page-id"]')).toHaveAttribute(
       "data-page-id",
@@ -249,7 +258,7 @@ test.describe("Phase 2 embedded browser — a page is an ordinary workspace tab 
 
     // FORWARD returns to page two: the step moved the pointer, it did not spend
     // the forward history.
-    await pane.locator('button[aria-label="Forward"]').click();
+    await pane.locator('button.pane-control[aria-label="Forward"]').click();
     await expect.poll(() => visiblePageId(app)).toBe(second.id);
     const forward = await snapshot(app);
     expect(forward.pages.map((p) => p.id).sort()).toEqual([first.id, second.id].sort());

@@ -41,9 +41,14 @@ const ARRANGEMENTS = [
 ];
 
 async function launch() {
+  // Same trap as the workspace-integration spec: the --user-data-dir switch
+  // does NOT move app.getPath("userData"), so without E2E_USER_DATA every
+  // launch shares the default data dir and a previous run's split layout
+  // is restored instead of the expected single pane.
+  const userDataDir = mkdtempSync(join(tmpdir(), "cf-arrange-"));
   const app = await electron.launch({
-    args: [projectRoot, `--user-data-dir=${mkdtempSync(join(tmpdir(), "cf-arrange-"))}`],
-    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1" },
+    args: [projectRoot, `--user-data-dir=${userDataDir}`],
+    env: { ...process.env, PROGRESSLEDGER_V2_E2E: "1", PROGRESSLEDGER_V2_E2E_USER_DATA: userDataDir },
   });
   const win = await app.firstWindow();
   await win.waitForLoadState("domcontentloaded");
@@ -229,7 +234,7 @@ test("choosing a shape reshapes the panes without losing tabs, modes or place", 
     // ---- The Lab's known loss bug: a pane MODE must survive a reshape -------
     // System holds exactly two destinations, so Split's groups line up with the
     // panes Margin just made and the margin mode has to be carried, not dropped.
-    await win.locator('button.nav-item:has-text("Profiles")').first().click();
+    await win.getByRole("button", { name: "Profiles", exact: true }).first().click();
     await win.waitForTimeout(1000);
 
     await openArrange(win);

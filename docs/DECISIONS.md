@@ -1005,3 +1005,23 @@ by part:
   above). Fix: expectation updated with a comment; refusal + no-page-created
   unchanged.
   Proof run 4 re-runs the same three specs with these fixes.
+
+- Proof runs 6-7 (workspace-integration + arrange specs, jobs V2D4Proof6/7,
+  /RL LIMITED /IT, Medium): run 6 was 2/8, run 7 was 7/8 — all failures again
+  spec drift, plus one spec-hygiene bug worth recording:
+  (9) The workspace-integration and arrange specs launched the app with ONLY
+  the Chromium --user-data-dir switch. main.js itself documents that this
+  switch does not reliably move app.getPath("userData"), so every launch
+  shared the DEFAULT data dir: test 1's profile slug collided with tests
+  2-5 (DB_CONSTRAINT), and a previous run's split layout was restored
+  instead of the arrange test's expected single pane. Fix: pass
+  PROGRESSLEDGER_V2_E2E_USER_DATA (the same tmp dir) in both specs' launch,
+  as every other browser spec already does. Side note, no action taken: the
+  unfixed runs wrote throwaway "Browser Phase Two" profile rows into the
+  default data dir; nothing there was deleted or changed by this session
+  (outside-project deletion is off limits).
+  (10) The same substring Profiles selector in both specs (fixed as in (1)),
+  and the pane Back/Forward locators in the trail test now match TWO
+  controls since Phase 3 added the browser's own back/forward buttons
+  inside the pane — fixed by scoping to button.pane-control.
+  Proof run 8 (job V2D4Proof8, /RL LIMITED /IT, Medium, 8 tests, 33.8 s, exit 0): 8 passed, 0 failed. Phase 4 proof complete: 24/24 (security/popups/isolation) + 8/8 (workspace/arrange) = 32/32.
