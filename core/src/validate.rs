@@ -164,14 +164,25 @@ pub fn enum_value(value: String, field: &str, allowed: &[&str]) -> Result<String
 /// compromised renderer cannot steer a partition at a path of its
 /// choosing.
 pub fn valid_browser_profile_id(value: String, field: &str) -> Result<String> {
-    let ok = value.len() >= 4
-        && value.len() <= 64
-        && value.starts_with("bp-")
-        && value[3..].chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    // Browser profile ids are bp-<uuid> for persistent profiles and
+    // temp-<uuid> for temporary ones. Both are app-generated; the
+    // charset/length rules still reject forged ids (../evil, ;rm,
+    // persist:evil) exactly as before. Previously only bp- was
+    // accepted, so every research call from a temp page failed with
+    // INVALID_INPUT (ledger-drawer toasts, capture rejected) even
+    // though temp captures are stored with temp- ids.
+    let rest = value
+        .strip_prefix("bp-")
+        .or_else(|| value.strip_prefix("temp-"));
+    let ok = value.len() <= 64
+        && match rest {
+            Some(r) => !r.is_empty() && r.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'),
+            None => false,
+        };
     if !ok {
         return Err(coded(
             codes::INVALID_INPUT,
-            format!("{field} must be a browser profile id of the form bp-<uuid>"),
+            format!("{field} must be a browser profile id of the form bp-<uuid> or temp-<uuid>"),
         ));
     }
     Ok(value)
