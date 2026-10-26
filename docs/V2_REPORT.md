@@ -6,8 +6,8 @@ happened. Where something was not proven, it says so.
 Builds and tests in this report ran on the user's laptop, except for
 the items listed under "Work done on the Muse machine" at the end.
 Nothing was pushed or published. The repo is
-`D:\Muse_Workspace\projects\Progress_Ledger_v2`, last commit at
-report time: 08e1fff (G finish + final report).
+`D:\Muse_Workspace\projects\Progress_Ledger_v2`; commits are named in
+each session section below.
 
 ## What was built, per phase
 
@@ -473,3 +473,112 @@ deliberately not applied, see V2-47). No new packages were added in
 this session. No PARKED.md was needed: no problem hit the 30-minute
 limit except the whole-D: gap search, which was narrowed and
 completed rather than parked.
+
+## Audit + continue session (2026-10-27, branch v2-continue)
+
+Worked alone under the user's rules: standard rights only
+(/RL LIMITED /IT, whoami Mandatory line at the top of every job log,
+every log showed "Medium Mandatory Level", no job elevated), nothing
+in front of the user (all jobs minimized, all app runs off-screen,
+no desktop screenshots), no touching the user's running app or Brave
+browser, no push, no remotes, no reading or resetting real app data.
+Every scheduler task used here was deleted after use and verified
+gone by Query error (V2Audit1, V2Audit2, V2Shot9 leftover, V2Mgr1,
+V2Mgr2, V2Chat1, V2Chat2, V2Chat3, V2Guard1, V2Site1, V2Site2, V2Site3,
+V2Gate1). The user's part-session loss (ChatGPT changes) was already
+captured on arrival: HEAD was 2e87673 "Snapshot" on v2-continue, so
+no new snapshot commit was needed.
+
+1. Stage 1 audit (docs/CHANGES_SINCE_D6553A3.md, commit aefb61f):
+   29 files changed since d6553a3 — GOOD 13, NEUTRAL 16, RISKY 0,
+   BROKEN 0, UNKNOWN 3 (three pre-existing non-V2 scheduled tasks
+   left running, removal commands documented). No security setting
+   changed, no dependency changed, no schema change. Tests on the
+   snapshot: shell 1204/0, UI 71 files / 875 tests, cargo 122/0,
+   build exit 0.
+2. Stage 1B cleanup: no reverts required — nothing weakened
+   security, added an unvetted network call or package, or broke
+   the build.
+3. Stage 2.1 profile manager (commit 43804a8): search box, sort by
+   name, Open (play) per row, double-click to open, right-click
+   menu (Open, Open details, Set as current — renamed from "Use
+   for new tabs", Rename (F2), Duplicate settings, Copy ID, Clear
+   data, Delete with the existing confirm wording), tabbed details
+   side panel (Overview with ID + copy button, data size, and
+   clear-data-on-close; Network with proxy + Test proxy; Start
+   pages one per line), start pages opened on Play (first URL
+   focused, up to 10 total). New migration 029 (start_pages) and a
+   partition-size measurer (symlinks never followed, capped).
+   Verified: UI 71 files / 884 tests, core 124, shell green, build
+   exit 0, manager/play/split E2E specs green. Two test-only fixes
+   were needed on the way (a duplicated Rust test module and three
+   jsdom tests using a non-existent fireEvent.update); no product
+   code was weakened for any test.
+4. Stage 2.2 ChatGPT "Unable to connect" (verdict C — session /
+   network, not an app bug, not a site refusal): chatgpt.com loads
+   in the app's Default, brand-new, and temporary profiles (~2 s,
+   correct title, default settings). In a bare Electron window
+   (same Electron 44.9.3, default settings), the page loads
+   (document 200, HTTP/2, cookies set, no service workers) and an
+   anonymous message receives a real assistant reply. The only
+   failed requests were 13 aborted analytics beacons; no console
+   errors, no page errors, no WebSocket use. The user's logged-in
+   send failure was not reproduced in any test arm, and the user's
+   own logged-in profile was never touched, so a logged-in-only
+   app-view issue cannot be fully excluded — but there is no
+   evidence for it. One early bare-window launch timed out at
+   180 s; the smoke test and the rerun both launched it in under a
+   second (transient harness issue).
+5. Stage 2.3 site table (docs/SITE_COMPAT.md): example.com, Wikipedia,
+   GitHub work; Google search partly (Google serves its /sorry
+   unusual-traffic check, trigger not isolated); YouTube works
+   (video plays, audio decodes; Electron codec limits noted);
+   PDF fails (bytes arrive as application/pdf but the viewer never
+   renders — zero viewer elements after 30 s, page capture times
+   out); download works (file lands in the profile's download
+   folder); local login form works; camera/microphone denied with
+   NotAllowedError. The first PDF probe used a dead public URL, so
+   the valid test used a locally served minimal PDF.
+6. Stage 2.4 deferred ideas (docs/FUTURE.md): cookie import/export,
+   profile transfer, per-profile logs, request viewer, password
+   protection of profile data — each with its risk note. Fingerprint
+   settings, sync, launch hook, 2FA codes, extensions, VPN/DNS, and
+   a debugging endpoint were not built, by decision.
+7. Stage 2.5 Proof workspace: the real app data contains
+   spec-created workspace profiles ("Browser Phase Two", created by
+   e2e/browser-workspace-integration.spec.js:120, proves test runs
+   reached real data). Mechanism: main ignored Chromium's
+   --user-data-dir for app.getPath("userData"), so any driver that
+   launched the app without PROGRESSLEDGER_V2_E2E_USER_DATA fell
+   through to %APPDATA%\progress-ledger-v2. The exact driver that
+   created "Proof 1792878075719" was not identified (no current
+   driver uses that name; it may come from the lost ChatGPT
+   session) — real data was never read to check, per the rules.
+   Guard added (shell/src/main.js + shell/src/e2e-data-guard.js):
+   test mode refuses to start, with exit code 1 and a REFUSING
+   message, when the resolved data path equals the real folder or
+   sits inside it — including test mode with no override at all.
+   Guard unit tests 5/5, shell 1212/0, guard E2E spec green (the
+   first version failed only because Playwright reports the
+   refusal as a launch error; the spec now accepts that shape).
+   README_RUN.md gained safe in-app delete steps for the Proof
+   workspace; nothing in real data was deleted or reset.
+8. Final gate (job V2Gate1, on commit 477d0a1): npm run test exit 0
+   (shell 1212 pass / 0 fail, UI 71 files / 884 tests passed,
+   cargo 124 passed), npm run build exit 0, manager/play/split/
+   guard E2E specs exit 0. The diagnostic specs (chatgpt, site,
+   pdf) are skipped in a normal suite run unless their bare-driver
+   env var is set, so a full suite run stays green.
+9. Packaging runs from the report commit (this commit): the UI
+   build bakes the commit's short hash into the status-bar build
+   ID, so the packaged build ID equals this commit. Folder,
+   shortcut target, and old-folder size are in the session's final
+   message, not here, because the folder name carries this
+   commit's hash.
+
+No PARKED.md was needed in this session: no problem hit the
+30-minute limit. Not verified: the PDF viewer in a visible window
+(prohibited by the task rules — all probes ran off-screen); the
+logged-in ChatGPT send in the app view (would need the user's own
+logged-in profile, which was never touched); the exact driver that
+created "Proof 1792878075719" (see item 7).
