@@ -84,6 +84,7 @@ pub struct BrowserProfile {
     pub download_dir: Option<String>,
     pub created_at: String,
     pub last_used_at: Option<String>,
+    pub start_pages: String,
 }
 
 fn profile_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<BrowserProfile> {
@@ -121,6 +122,7 @@ fn profile_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<BrowserProfile>
         download_dir: row.get(24)?,
         created_at: row.get(25)?,
         last_used_at: row.get(26)?,
+        start_pages: row.get(27)?,
     })
 }
 
@@ -128,7 +130,46 @@ const PROFILE_COLS: &str = "local_id, cf_profile_id, display_name, position, ena
     color, icon, notes, type, is_default, proxy_mode, proxy_host, proxy_port, \
     proxy_username, proxy_password_encrypted, proxy_bypass, language, \
     user_agent_preset, webrtc_policy, gpc, dnt, block_third_party_cookies, \
-    clear_on_close, permissions_allow, download_dir, created_at, last_used_at";
+    clear_on_close, permissions_allow, download_dir, created_at, last_used_at, start_pages";
+
+fn valid_start_pages(value: String) -> Result<String> {
+    // Stored exactly as the UI edits it: one URL per line. Empty lines
+    // are dropped. Every remaining line must be an http(s) URL with a
+    // host; localhost and private hosts are allowed here (start pages
+    // are the user's own choice, unlike a fetched test URL). At most
+    // 20 pages, each at most 2048 chars.
+    let mut kept: Vec<&str> = Vec::new();
+    for raw in value.lines() {
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if kept.len() >= 20 || line.len() > 2048 || line.chars().any(|c| c.is_whitespace()) {
+            return Err(coded(
+                codes::INVALID_INPUT,
+                "start pages must be at most 20 http(s) URLs, one per line",
+            ));
+        }
+        let rest = line
+            .strip_prefix("http://")
+            .or_else(|| line.strip_prefix("https://"));
+        let Some(rest) = rest else {
+            return Err(coded(
+                codes::INVALID_INPUT,
+                "start pages must be http(s) URLs, one per line",
+            ));
+        };
+        let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+        if host.is_empty() {
+            return Err(coded(
+                codes::INVALID_INPUT,
+                "start pages must be http(s) URLs, one per line",
+            ));
+        }
+        kept.push(line);
+    }
+    Ok(kept.join("\n"))
+}
 
 fn valid_color(value: Option<String>) -> Result<Option<String>> {
     match value {
@@ -509,12 +550,14 @@ pub fn update_browser_profile(
     block_third_party_cookies: bool,
     clear_on_close: bool,
     download_dir: Option<String>,
+    start_pages: String,
 ) -> Result<BrowserProfile> {
     let local_id = valid_browser_profile_id(local_id, "local_id")?;
     let display_name = required_text(display_name, "display_name", MAX_NAME)?;
     let color = valid_color(color)?;
     let icon = valid_icon(icon)?;
     let notes = bounded_text(notes, "notes", MAX_NOTES)?;
+    let start_pages = valid_start_pages(start_pages)?;
     let (
         proxy_mode,
         proxy_host,
@@ -548,7 +591,7 @@ pub fn update_browser_profile(
                  proxy_password_encrypted=?10, proxy_bypass=?11, language=?12, \
                  user_agent_preset=?13, webrtc_policy=?14, permissions_allow=?15, \
                  gpc=?16, dnt=?17, block_third_party_cookies=?18, clear_on_close=?19, \
-                 download_dir=?20 WHERE local_id=?1",
+                 download_dir=?20, start_pages=?21 WHERE local_id=?1",
                 params![
                     local_id,
                     display_name,
@@ -570,6 +613,7 @@ pub fn update_browser_profile(
                     i32::from(block_third_party_cookies),
                     i32::from(clear_on_close),
                     download_dir,
+                    start_pages,
                 ],
             )
             .map_err(to_err)?;
@@ -833,6 +877,25 @@ pub fn delete_ledger_by_browser_profile(
 
 #[cfg(test)]
 mod tests {
+    use super::valid_start_pages;
+
+    #[test]
+    fn start_pages_accepts_http_and_https_and_drops_blanks() {
+        let out = valid_start_pages(
+            "  https://example.com  \n\nhttp://127.0.0.1:8080/a?b=c\n".to_string(),
+        )
+        .unwrap();
+        assert_eq!(out, "https://example.com\nhttp://127.0.0.1:8080/a?b=c");
+    }
+
+    #[test]
+    fn start_pages_rejects_non_http_and_hostless_urls() {
+        assert!(valid_start_pages("ftp://example.com".to_string()).is_err());
+        assert!(valid_start_pages("example.com".to_string()).is_err());
+        assert!(valid_start_pages("https://".to_string()).is_err());
+        assert!(valid_start_pages("https://exa mple.com".to_string()).is_err());
+    }
+
     #[test]
     fn browser_profiles_round_trip() {
         let path = std::env::temp_dir()
@@ -887,6 +950,7 @@ mod tests {
             true,
             false,
             None,
+            "".to_string(),
         )
         .expect("update");
         assert_eq!(upd.proxy_mode, "http");
@@ -915,6 +979,7 @@ mod tests {
             false,
             false,
             None,
+            "".to_string(),
         )
         .is_err());
         assert!(super::create_browser_profile(

@@ -305,6 +305,8 @@ const api = {
       ipcRenderer.invoke("browser:clear-profile-data", { profileId, localId }),
     testProxy: (profileId, localId, url) =>
       ipcRenderer.invoke("browser:test-proxy", { profileId, localId, url }),
+    partitionSize: (profileId, localId) =>
+      ipcRenderer.invoke("browser:partition-size", { profileId, localId }),
     setLiveCap: (profileId, cap) =>
       ipcRenderer.invoke("browser:set-live-cap", { profileId, cap }),
     getLiveCap: (profileId) => ipcRenderer.invoke("browser:live-cap", { profileId }),

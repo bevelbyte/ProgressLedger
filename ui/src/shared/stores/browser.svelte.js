@@ -312,6 +312,12 @@ export async function testBrowserProxy(profileId, localId, url) {
   return (await b.testProxy(profileId, localId, url)) ?? bridgeUnavailable();
 }
 
+export async function partitionSizeForBrowserProfile(profileId, localId) {
+  const b = bridge();
+  if (!b?.partitionSize) return bridgeUnavailable();
+  return (await b.partitionSize(profileId, localId)) ?? bridgeUnavailable();
+}
+
 export async function setBrowserLiveCap(profileId, cap) {
   const b = bridge();
   if (!b?.setLiveCap) return bridgeUnavailable();

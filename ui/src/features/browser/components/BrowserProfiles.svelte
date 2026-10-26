@@ -16,7 +16,7 @@
   // page created but orphaned by a vanished pane or a deleted profile
   // is closed again — only the page Play itself made, never others.
   import { onDestroy, onMount, tick } from "svelte";
-  import { Play, MoreHorizontal } from "lucide-svelte";
+  import { Play, MoreHorizontal, Info } from "lucide-svelte";
   import {
     browser,
     loadProfiles,
@@ -70,6 +70,18 @@
     // source-matches `onBrowserOverlayChange(dialog` here.
     onBrowserOverlayChange(dialog !== null || deleteTarget !== null || clearTarget !== null || infoProfile !== null || menu !== null);
   });
+  let searchQuery = $state("");
+  let sortDir = $state(null); // null | "asc" | "desc"
+  const visibleProfiles = $derived.by(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = profiles.filter((p) => !q || String(p.displayName ?? "").toLowerCase().includes(q));
+    if (sortDir === "asc") list = [...list].sort((a, b) => String(a.displayName ?? "").localeCompare(String(b.displayName ?? "")));
+    else if (sortDir === "desc") list = [...list].sort((a, b) => String(b.displayName ?? "").localeCompare(String(a.displayName ?? "")));
+    return list;
+  });
+  function toggleSort() {
+    sortDir = sortDir === null ? "asc" : sortDir === "asc" ? "desc" : "asc";
+  }
   let liveCap = $state(5);
   let liveCapBusy = $state(false);
   let notice = $state("");
@@ -100,6 +112,48 @@
     }
   }
 
+  // Start pages, validated the same way the dialog validates them:
+  // http(s) only, with a host, at most 10 opened (the dialog allows 20
+  // stored; Play caps what it opens so one click cannot flood panes).
+  function startPageUrls(profile) {
+    const lines = String(profile?.startPages ?? "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    const valid = [];
+    for (const line of lines) {
+      const rest = line.startsWith("http://") ? line.slice(7) : line.startsWith("https://") ? line.slice(8) : null;
+      const host = rest === null ? "" : rest.split(/[/?#]/)[0];
+      if (rest !== null && host !== "") valid.push(line);
+    }
+    return valid;
+  }
+
+  async function copyId(profile) {
+    const id = profile?.localId ?? "";
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      toast.success("Profile ID copied.");
+    } catch {
+      notice = "Could not copy the profile ID.";
+    }
+  }
+
+  function openRename(profile) {
+    dialog = { mode: "edit", profile, focusName: true };
+  }
+
+  function rowKey(e, profile) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      playProfile(profile);
+    } else if (e.key === "F2") {
+      e.preventDefault();
+      if (!profile.temporary) openRename(profile);
+    }
+  }
+
   async function playProfile(profile) {
     const localId = profile?.localId;
     if (!localId || playBusy[localId]) return;
@@ -116,8 +170,12 @@
     playBusy[localId] = true;
     notice = "";
     let pageId = null;
+    const createdIds = [];
+    const startUrls = startPageUrls(profile);
+    const firstUrl = startUrls[0] ?? "about:blank";
+    const extraUrls = startUrls.slice(1, 10);
     try {
-      const res = await openPage({ profileId, url: "about:blank", browserProfileId: localId });
+      const res = await openPage({ profileId, url: firstUrl, browserProfileId: localId });
       if (!alive) {
         // The manager went away mid-flight: tear down only the page
         // this Play made, and open nothing.
@@ -163,6 +221,26 @@
       if (tab && tab.entity === pageId && typeof res.browserTabId === "number") {
         setTabEntity(paneId, tabId, pageId, res.browserTabId);
       }
+      // Additional start pages open as background tabs in the same
+      // pane. Each background tab is found by its page id (the entity
+      // it was born carrying) so its restore row id is recorded too.
+      for (const url of extraUrls) {
+        let res2 = null;
+        try {
+          res2 = await openPage({ profileId, url, browserProfileId: localId });
+        } catch {
+          continue;
+        }
+        if (!res2?.ok || !res2.page?.id) continue;
+        createdIds.push(res2.page.id);
+        openPageTab(paneId, res2.page.title || "Web page", res2.page.id, { activate: false });
+        const paneNow = focusedPane();
+        const bgTab = paneNow?.tabs?.find((t) => t.entity === res2.page.id);
+        if (bgTab && typeof res2.browserTabId === "number") {
+          setTabEntity(paneId, bgTab.id, res2.page.id, res2.browserTabId);
+        }
+      }
+      if (startUrls.length > 10) notice = "Only the first 10 start pages were opened.";
       // Refresh so the row's Last used reflects the touch main just
       // recorded for this profile. A refresh failure never undoes
       // the opened page.
@@ -170,9 +248,11 @@
         await loadProfiles(profileId);
       } catch {}
     } catch (e) {
-      if (pageId) {
+      const toClose = new Set(createdIds);
+      if (pageId) toClose.add(pageId);
+      for (const id of toClose) {
         try {
-          await closePage(pageId);
+          await closePage(id);
         } catch {}
       }
       notice = String(e?.message ?? e).slice(0, 200);
@@ -318,6 +398,16 @@
     </button>
   </div>
 
+  <div class="profiles-toolbar">
+    <label>
+      Search profiles
+      <input type="search" data-testid="browser-profile-search" bind:value={searchQuery} placeholder="Search by name" aria-label="Search profiles" />
+    </label>
+    <button type="button" class="cf-btn ghost sm" data-testid="browser-profile-sort" onclick={toggleSort} aria-label="Sort profiles by name">
+      {sortDir === "asc" ? "Name A–Z" : sortDir === "desc" ? "Name Z–A" : "Sort by name"}
+    </button>
+  </div>
+
   {#if notice}
     <p class="profiles-notice" data-testid="browser-profiles-notice" role="alert">{notice}</p>
   {/if}
@@ -325,6 +415,10 @@
   {#if profiles.length === 0}
     <p class="profiles-empty" data-testid="browser-profiles-empty">
       No browser profiles yet. Create one to browse with a separate identity.
+    </p>
+  {:else if visibleProfiles.length === 0}
+    <p class="profiles-empty" data-testid="browser-profiles-no-match">
+      No profiles match “{searchQuery.trim()}”.
     </p>
   {:else}
     <table class="profiles-table">
@@ -338,10 +432,14 @@
         </tr>
       </thead>
       <tbody>
-        {#each profiles as profile (profile.localId)}
+        {#each visibleProfiles as profile (profile.localId)}
           <!-- svelte-ignore a11y_no_static_element_interactions: right-click opens the row menu -->
           <tr
             data-testid="browser-profile-row-{profile.localId}"
+            tabindex="0"
+            aria-label="Browser profile {profile.displayName}. Press Enter to open, F2 to rename."
+            ondblclick={() => playProfile(profile)}
+            onkeydown={(e) => rowKey(e, profile)}
             oncontextmenu={(e) => {
               e.preventDefault();
               const btn = e.currentTarget.querySelector(`[data-testid="browser-profile-menu-${profile.localId}"]`);
@@ -376,6 +474,16 @@
               <button
                 type="button"
                 class="cf-btn ghost sm icon-btn"
+                data-testid="browser-profile-details-{profile.localId}"
+                aria-label="Details for {profile.displayName}"
+                title="Details"
+                onclick={() => (infoProfile = profile)}
+              >
+                <Info size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="cf-btn ghost sm icon-btn"
                 data-testid="browser-profile-menu-{profile.localId}"
                 aria-label="More actions for {profile.displayName}"
                 aria-haspopup="menu"
@@ -398,7 +506,7 @@
     </table>
   {/if}
 
-  <p class="profiles-help">Profiles keep your data separate. They do not hide that you use this browser. Right-click a row for more actions.</p>
+  <p class="profiles-help">Profiles keep your data separate. They do not hide that you use this browser. Double-click a row to open it, F2 renames it, right-click a row for more actions.</p>
 
   {#if menu}
     <div
@@ -409,8 +517,21 @@
       style="left: {menu.x}px; top: {menu.y}px;"
       data-testid="browser-profile-menu"
     >
+      <button
+        type="button"
+        role="menuitem"
+        data-testid="browser-profile-open-{menu.profile.localId}"
+        onkeydown={menuKey}
+        onclick={() => {
+          const p = menu.profile;
+          closeMenu();
+          playProfile(p);
+        }}
+      >
+        Open
+      </button>
       <button type="button" role="menuitem" data-testid="browser-profile-info-{menu.profile.localId}" onkeydown={menuKey} onclick={() => { const p = menu.profile; closeMenu(); infoProfile = p; }}>
-        Profile information
+        Open details
       </button>
       <button
         type="button"
@@ -423,9 +544,35 @@
           setCurrentProfile(p.localId);
         }}
       >
-        Use for new tabs
+        Set as current
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        data-testid="browser-profile-copy-id-{menu.profile.localId}"
+        onkeydown={menuKey}
+        onclick={() => {
+          const p = menu.profile;
+          closeMenu();
+          copyId(p);
+        }}
+      >
+        Copy ID
       </button>
       {#if !menu.profile.temporary}
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="browser-profile-rename-{menu.profile.localId}"
+          onkeydown={menuKey}
+          onclick={() => {
+            const p = menu.profile;
+            closeMenu();
+            openRename(p);
+          }}
+        >
+          Rename (F2)
+        </button>
         <button
           type="button"
           role="menuitem"
@@ -489,6 +636,7 @@
     <BrowserProfileDialog
       profileId={profileId}
       profile={dialog.mode === "edit" ? dialog.profile : null}
+      focusName={dialog.focusName === true}
       onClose={() => (dialog = null)}
       onSaved={(saved) => {
         const wasNew = dialog?.mode === "new";
@@ -506,7 +654,7 @@
   {/if}
 
   {#if infoProfile}
-    <BrowserProfileInfo profile={infoProfile} onClose={() => (infoProfile = null)} />
+    <BrowserProfileInfo profile={infoProfile} profileId={profileId} onClose={() => (infoProfile = null)} />
   {/if}
 
   {#if clearTarget}
@@ -705,6 +853,34 @@
 
   .row-menu button[role="menuitem"].danger {
     color: #e0655a;
+  }
+
+  .profiles-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .profiles-toolbar label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .profiles-toolbar input[type="search"] {
+    width: 260px;
+    padding: 6px 8px;
+    border: 1px solid var(--hairline, #333);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+  }
+
+  .profiles-table tbody tr:focus-visible {
+    outline: 2px solid #e0a35c;
+    outline-offset: -2px;
   }
 
   .profiles-help {

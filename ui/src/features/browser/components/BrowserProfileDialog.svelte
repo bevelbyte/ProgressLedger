@@ -7,6 +7,7 @@
   // field on EDIT keeps the existing password; the "Clear password"
   // checkbox clears it. The dialog never sees the existing password
   // (main strips it), so "keep" is the only honest empty-field meaning.
+  import { onMount } from "svelte";
   import { createBrowserProfile, updateBrowserProfile, deleteBrowserProfile, testBrowserProxy } from "../../../shared/stores/browser.svelte.js";
 
   let {
@@ -15,6 +16,8 @@
     profile = null,
     onClose = () => {},
     onSaved = () => {},
+    /** Rename flow: focus the name field when the dialog opens. */
+    focusName = false,
   } = $props();
 
   const isEdit = $derived(profile !== null);
@@ -22,6 +25,11 @@
   let color = $state(profile?.color ?? "#e0a35c");
   let icon = $state(profile?.icon ?? "");
   let notes = $state(profile?.notes ?? "");
+  let startPages = $state(profile?.startPages ?? "");
+  let nameInput = $state(null);
+  onMount(() => {
+    if (focusName) nameInput?.focus?.();
+  });
   let proxyMode = $state(profile?.proxyMode ?? "none");
   let proxyHost = $state(profile?.proxyHost ?? "");
   let proxyPort = $state(profile?.proxyPort ?? "");
@@ -83,11 +91,31 @@
     } catch {}
   });
 
+  function normalizedStartPages() {
+    const lines = startPages
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    for (const line of lines) {
+      const rest = line.startsWith("http://") ? line.slice(7) : line.startsWith("https://") ? line.slice(8) : null;
+      const host = rest === null ? "" : rest.split(/[/?#]/)[0];
+      if (rest === null || host === "") return null;
+    }
+    if (lines.length > 20) return null;
+    return lines.join("\n");
+  }
+
   async function save(event) {
     event?.preventDefault?.();
     if (!displayName.trim() || busy) return;
     busy = true;
     error = "";
+    const cleanStartPages = normalizedStartPages();
+    if (cleanStartPages === null) {
+      error = "Start pages must be http(s) URLs, one per line (at most 20).";
+      busy = false;
+      return;
+    }
     try {
       const permissionsAllow = JSON.stringify([
         ...(allowCamera ? ["camera"] : []),
@@ -117,6 +145,7 @@
         blockThirdPartyCookies,
         clearOnClose,
         downloadDir: downloadDir.trim() || null,
+        startPages: cleanStartPages,
       };
       let res;
       if (isEdit) {
@@ -153,7 +182,7 @@
 
     <label>
       Name
-      <input type="text" data-testid="browser-profile-name" bind:value={displayName} required maxlength="200" placeholder="e.g. Work" />
+      <input type="text" data-testid="browser-profile-name" bind:this={nameInput} bind:value={displayName} required maxlength="200" placeholder="e.g. Work" />
     </label>
     <label>
       Color
@@ -166,6 +195,11 @@
     <label>
       Notes (optional)
       <textarea data-testid="browser-profile-notes" bind:value={notes} rows="2" maxlength="2000" placeholder="What is this profile for?"></textarea>
+    </label>
+    <label>
+      Start pages (optional, one URL per line)
+      <textarea data-testid="browser-profile-start-pages" bind:value={startPages} rows="3" maxlength="20000" placeholder={"https://example.com\nhttps://example.org"}></textarea>
+      <span class="dialog-hint">Play opens these pages in this profile. Leave empty for a blank page.</span>
     </label>
 
     <fieldset>

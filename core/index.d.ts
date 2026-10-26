@@ -1068,6 +1068,7 @@ export interface BrowserProfile {
   downloadDir?: string
   createdAt: string
   lastUsedAt?: string
+  startPages: string
 }
 export declare function listBrowserProfiles(profileId: number): Array<BrowserProfile>
 export declare function createBrowserProfile(profileId: number, localId: string, displayName: string, color: string | undefined | null, icon: string | undefined | null, notes: string): BrowserProfile
@@ -1079,7 +1080,7 @@ export declare function createBrowserProfile(profileId: number, localId: string,
  * never be left without a default profile to browse in.
  */
 export declare function ensureDefaultBrowserProfile(profileId: number, candidateLocalId: string): BrowserProfile
-export declare function updateBrowserProfile(localId: string, displayName: string, color: string | undefined | null, icon: string | undefined | null, notes: string, proxyMode: string, proxyHost: string | undefined | null, proxyPort: number | undefined | null, proxyUsername: string | undefined | null, proxyPasswordEncrypted: string | undefined | null, proxyBypass: string, language: string | undefined | null, userAgentPreset: string | undefined | null, webrtcPolicy: string, permissionsAllow: string, gpc: boolean, dnt: boolean, blockThirdPartyCookies: boolean, clearOnClose: boolean, downloadDir?: string | undefined | null): BrowserProfile
+export declare function updateBrowserProfile(localId: string, displayName: string, color: string | undefined | null, icon: string | undefined | null, notes: string, proxyMode: string, proxyHost: string | undefined | null, proxyPort: number | undefined | null, proxyUsername: string | undefined | null, proxyPasswordEncrypted: string | undefined | null, proxyBypass: string, language: string | undefined | null, userAgentPreset: string | undefined | null, webrtcPolicy: string, permissionsAllow: string, gpc: boolean, dnt: boolean, blockThirdPartyCookies: boolean, clearOnClose: boolean, downloadDir: string | undefined | null, startPages: string): BrowserProfile
 /**
  * Idempotent delete: false means the row was already gone (the shell
  * clears the partition first, so "already gone" is a success, not an

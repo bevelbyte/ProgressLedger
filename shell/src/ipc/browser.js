@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { app, net, safeStorage, session } from "electron";
 import { createBrowserHost } from "../services/browser/host.js";
+import { measureDirectory } from "../services/browser/partition-size.js";
 import { REASONS } from "../services/browser/registry.js";
 import {
   isAllowedUrl,
@@ -683,6 +684,7 @@ export function register(ctx) {
         s.blockThirdPartyCookies === true,
         s.clearOnClose === true,
         readString(s, "downloadDir"),
+        readString(s, "startPages") ?? row.startPages ?? "",
       );
       const full = { ...updated, proxyPassword: decryptPassword(updated.proxyPasswordEncrypted) };
       try { host.reconfigureProfile(localId, full); } catch {}
@@ -771,6 +773,7 @@ export function register(ctx) {
         src.blockThirdPartyCookies === true,
         src.clearOnClose === true,
         src.downloadDir ?? null,
+        src.startPages ?? "",
       );
       return { ok: true, profile: stripProfile(updated) };
     } catch (err) {
@@ -849,6 +852,33 @@ export function register(ctx) {
       return { ok: true, status };
     } catch (err) {
       return { ok: false, reason: "proxy-failed", detail: String(err?.message ?? err).slice(0, 200) };
+    }
+  });
+
+  // Read-only partition size for the info panel. Persistent profiles
+  // only: a temporary profile evaporates with the app, so its size is
+  // meaningless, and its row does not live in rustProfiles.
+  safeHandle("browser:partition-size", async (_e, payload) => {
+    const profileId = Number(readString(payload, "profileId") ?? NaN);
+    if (!Number.isInteger(profileId) || !profileExists(profileId)) {
+      return { ok: false, reason: "unknown-profile" };
+    }
+    const localId = readString(payload, "localId");
+    if (!localId || !validateBrowserProfileId(localId)) {
+      return { ok: false, reason: "unknown-browser-profile" };
+    }
+    const row = rustProfiles(profileId).find((r) => r && r.localId === localId);
+    if (!row) return { ok: false, reason: "unknown-browser-profile" };
+    try {
+      const partition = partitionForBrowser(profileId, row);
+      if (!partition) return { ok: false, reason: "unknown-browser-profile" };
+      const sess = session.fromPartition(partition);
+      const root = sess.getStoragePath();
+      if (!root || !existsSync(root)) return { ok: true, bytes: 0, files: 0, complete: true };
+      const { bytes, files, complete } = await measureDirectory(root);
+      return { ok: true, bytes, files, complete };
+    } catch {
+      return { ok: false, reason: "size-failed" };
     }
   });
 
