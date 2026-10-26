@@ -400,3 +400,76 @@ rule), V2-37 (options-object page creation), V2-39
 V2-42 (solo-session rules), V2-43 (Phase 4 layout and
 overlay), V2-44 (Phase 4 proof spec drift), V2-45 (EF
 driver lessons), V2-46 (desktop proof).
+
+## Second solo session (2026-10-26, from 13:22 IST, items 1-12, background-only from 14:11 IST)
+
+Twelve items in a fixed order, worked alone while the user was away.
+From 14:11 IST everything ran in the background only: no visible app
+window, no desktop screenshot, all jobs minimized at low priority.
+Every job ran /RL LIMITED /IT with the whoami Mandatory line at the
+top of its log; every job log showed "Medium Mandatory Level"; no job
+ran elevated; every task was deleted after use and verified gone by
+Query error. Jobs used in this session: 15 (V2DistDir, V2Degree,
+V2Degree2, V2MinWin, V2TextSize, V2DlPages, V2ProfKept, V2CargoKept,
+V2Cargo2, V2DeskFinal, V2DeskFinal2, V2Gap, V2Final, V2Gap2, V2Repack).
+
+1. Way to open the app: packaged build via npm run dist:dir; Desktop
+   launcher `C:\Users\Asus\Desktop\Progress Ledger v2.bat` (a .bat was
+   chosen over a .lnk for safety/transparency); it starts the packaged
+   exe as the normal user, builds only if the exe is missing, sets no
+   test flags. README_RUN.md documents run, data folder
+   %APPDATA%\progress-ledger-v2, reset, and window-not-appearing steps.
+2. Degree screen with real data (1 degree, 4 semesters, 16 subjects,
+   CGPA 8.77) at 1024x640, 1386x779, 1920x1080 plus a toast shot: no
+   header overlap, no clipping, toast above the status bar. No fix.
+3. Minimum window size 1024x640 from the shared layout module, with a
+   test that fails if the module and main ever differ (mutation-proven).
+4. No text below 11px: --text-micro 10px to 11px, both 8.5px captions
+   to 11px, two risky em rules fixed, source guard test added; live
+   minimum computed font size exactly 11px; live clamp 1027x642.
+5. Downloads proven to the managed workspace downloads folder in
+   persistent and temp profiles, correct content, absent from OS
+   Downloads, never auto-opened; temp downloads persist as workspace
+   files by design.
+6. No phantom second live page: state, debug snapshot and webContents
+   agreed 1:1:1 per tab at every step; the earlier double was two tabs,
+   one left blank (cost ~65-80 MB per stray tab, capped by LRU).
+7. Profile screens: Test proxy button in the edit dialog (live
+   "Proxy test OK (HTTP 200)"), browser bar shows dot + profile name,
+   title span no longer duplicates the URL, delete confirm carries
+   the exact new leftover-files sentence.
+8. Kept count is per browser profile (live 2 vs 1, old code 3 for
+   both), new Rust test 1/1; temp bridge check fixed by creating a
+   tab after selecting Temporary; validator now accepts temp- ids
+   (V2-53), which fixed temp-page research capture.
+9. Real desktop proof on the final build: status-bar build aaf781e
+   equals newest commit aaf781e, real /state page, Capture page +
+   Capture selection in the ledger (2 sources, 2 passages), temp kept
+   count live = 1, shot cropped to the app window, full-desktop image
+   deleted at once.
+10. Cleanup: only the three approved paths deleted (cf-build 2,053
+    files / 488,962,652 B; pl-test/node_modules 19,377 files /
+    707,241,273 B; pl-test/throwaway-data 3 files / 465,376 B;
+    total ~1,196,669,301 B freed). REPORT.md and everything else kept.
+11. Feature gap report (docs/FEATURE_GAP.md, read-only, nothing
+    built): 61 documents from the CareerFlow and Progress Ledger
+    trees; most planned features are done in v2 by inheritance;
+    missing are sub-agent telemetry read IPC, ledger Attach file, MCP
+    tool execution (deliberately unwired), hooks emit wiring
+    (dormant by design), OS directory picker; see the report for the
+    full table and the top 10 in build order.
+12. Final checks (this section): docs/SCREENSHOTS.md lists 34
+    screenshots in 8 sets; final gate (job V2Final) npm test exit 0
+    (shell 1204 pass / 0 fail, UI 70 files / 861 tests, cargo suites
+    ok) and npm run build exit 0; everything committed, then the app
+    re-packaged from the final commit (job V2Repack, dist:dir exit 0);
+    git status clean after packaging; packaged build ID verified
+    against the final commit hash from the built output without
+    opening any window; Desktop launcher verified by properties only
+    (not launched); no scheduler tasks or job windows left running.
+
+Production audit note: still 1 low only (katex, breaking fix
+deliberately not applied, see V2-47). No new packages were added in
+this session. No PARKED.md was needed: no problem hit the 30-minute
+limit except the whole-D: gap search, which was narrowed and
+completed rather than parked.

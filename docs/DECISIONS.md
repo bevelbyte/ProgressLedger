@@ -1326,3 +1326,13 @@ once, fullDeleted=true). Status-bar build hash aaf781e
 equals the newest commit aaf781edf2edb9ada30d5b85fa06a
 4f9d6cd6484 (job head.txt) — the UI was rebuilt after that
 commit, so the hash equality is real, not carried over.
+
+## V2-54 — Feature gap search method (item 11)
+
+The whole-D: filename search was killed by its 30-minute watchdog with
+zero matches, so the gap report rests on a narrower, complete search:
+recursive listings of the CareerFlow tree and the Progress Ledger tree
+only, read-only, filename-filtered, other projects skipped. The
+laboratory folder was read, never modified. Coverage limits (partial
+D: coverage, missing old_ideas and versions/v1 paths, clone dates) are
+recorded in docs/FEATURE_GAP.md Part 4, not hidden.
