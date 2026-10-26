@@ -987,7 +987,7 @@ export interface ResearchCapture {
 export declare function saveResearchSource(profileId: number, url: string, title: string, browserProfileId?: string | undefined | null, browserProfileName?: string | undefined | null): ResearchSource
 export declare function listResearchSources(profileId: number): Array<ResearchSource>
 export declare function listResearchCaptures(profileId: number): Array<ResearchCapture>
-export declare function countKeptResearchPassages(profileId: number, url: string): number
+export declare function countKeptResearchPassages(profileId: number, url: string, browserProfileId?: string | undefined | null): number
 export declare function captureResearchPassage(profileId: number, url: string, title: string, pageId: string | undefined | null, kind: string, text: string, browserProfileId?: string | undefined | null, browserProfileName?: string | undefined | null): ResearchCapture
 export interface ResearchSearchHit {
   kind: string
