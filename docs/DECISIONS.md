@@ -1159,3 +1159,21 @@ Date: 2026-10-26 (solo session, item G).
   repo is the rule defining it in DECISIONS.md. Items that are
   not finished are listed as NOT FINISHED in the final report,
   not hidden behind a parked file that does not exist.
+
+## V2-48 — Degree header overlap checked with real data: no defect found
+
+Date: 2026-10-26 (solo session, item 2). Job V2Degree2, /RL LIMITED /IT,
+Medium Mandatory Level. Seeded through the app's own bridge: 1 degree
+(B.Tech Computer Science & Engineering), 4 semesters, 16 subjects with
+marks and credits (SGPA 8.80 / 8.33 / 9.00 / 8.89, CGPA 8.77). Shots at
+1024x640, 1386x779 and 1920x1080 plus a toast shot ("Degree added.").
+Bounding-box overlap checks passed at all sizes, and the shots were
+viewed: the Degree hub header sits cleanly below the pane tab row,
+semester headers do not overlap anything, and the toast sits above
+the status bar without covering it. No code change was made, because
+there is no overlap to fix. One observation, not a defect: at
+1024x640 the pane tab row scrolls (arrow controls) and the last
+visible tab is cut at the scroll edge, which is normal scroll
+behaviour, not clipping of content. The Internal-I tab shows "no
+subjects" by design: subjects live under the Semester Exam pattern
+and Internal tabs are session scratch (see degree-mapper.js).
