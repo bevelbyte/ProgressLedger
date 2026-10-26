@@ -438,6 +438,15 @@ export function register(ctx) {
   // create the page in the resolved profile, then record its tab row
   // (temporary profiles get no row: they evaporate, so there is nothing
   // to restore).
+  // Last-used is metadata, never a gate: a failed touch must not fail
+  // a page that main already created. Persistent profiles only — a
+  // temporary profile has no row to touch.
+  function touchProfile(localId) {
+    try {
+      if (typeof ctx.core?.touchBrowserProfile === "function") ctx.core.touchBrowserProfile(localId);
+    } catch { /* last-used stays stale; the page itself is unaffected */ }
+  }
+
   function createPageWithProfile(profileId, resolved, url, restoreRow) {
     let liveCap = undefined;
     try {
@@ -455,11 +464,13 @@ export function register(ctx) {
     if (restoreRow) {
       tabRows.set(pageId, { rowId: restoreRow.id, profileId, title: created.page.title ?? restoreRow.title ?? "" });
       try { ctx.core.updateBrowserTab(restoreRow.id, created.page.url ?? url, created.page.title ?? restoreRow.title ?? ""); } catch { /* row keeps its stored values; restore still works */ }
+      touchProfile(resolved.full.localId);
       return { ...created, browserTabId: restoreRow.id };
     }
     try {
       const row = ctx.core.saveBrowserTab(profileId, resolved.full.localId, tabRows.size, created.page.url ?? url, created.page.title ?? "", true);
       tabRows.set(pageId, { rowId: row.id, profileId, title: created.page.title ?? "" });
+      touchProfile(resolved.full.localId);
       return { ...created, browserTabId: row.id };
     } catch (err) {
       // Fail closed: a page without its row would silently lose its

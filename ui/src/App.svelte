@@ -245,10 +245,13 @@
       profileLandingTimer = setTimeout(() => {
         profileLandingTimer = null;
         // The delayed default landing is only for a user who remains on the
-        // profile chooser without a restored destination.
+        // profile chooser without a restored destination. "Remains" is
+        // focus-independent: in a split layout the chooser can be visible
+        // in a pane that does not hold focus, and currentView() (focused
+        // pane only) would wrongly report the user as gone.
         if (landingRequest === profileLandingRequest &&
             profileStore.activeProfileId === id &&
-            ws.currentView() === "profiles") {
+            ws.anyPaneShows("profiles")) {
           navigate("tree");
         }
       }, 500);

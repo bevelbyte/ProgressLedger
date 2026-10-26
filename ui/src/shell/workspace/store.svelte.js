@@ -196,6 +196,20 @@ export function currentView() {
   return focusedView() ?? "home";
 }
 
+/**
+ * Focus-independent "is this view still shown" check. `currentView()` reads
+ * the FOCUSED pane only, so a view visible in an unfocused pane (split
+ * layout with another pane focused) would report as gone even though the
+ * user is still looking at it. The profile landing uses this: it must fire
+ * whenever the chooser is still shown anywhere in the active context, not
+ * only when its pane holds focus.
+ */
+export function anyPaneShows(view) {
+  const ctx = activeContext();
+  if (!ctx) return false;
+  return Object.values(ctx.panes ?? {}).some((pane) => M.activeTabOf(pane)?.view === view);
+}
+
 export function focusedTabs() {
   return focusedPane()?.tabs ?? [];
 }
