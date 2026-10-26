@@ -1298,3 +1298,31 @@ errors for temp pages ("browser_profile_id must be a
 browser profile id of the form bp-<uuid>"), visible as
 toasts in the profkept screenshots; temp pages could not
 capture before this change either, so nothing regressed.
+
+## V2-53 — Temp browser profile ids accepted everywhere (item 8 follow-up, item 9)
+
+Date: 2026-10-26 (solo session). Jobs V2DeskFinal (first run
+failed only at the temp-capture step) and V2DeskFinal2,
+both /RL LIMITED /IT, Medium.
+
+The first desktop run proved the pre-existing temp limitation
+live: research:capture from a temp page failed with
+INVALID_INPUT "browser_profile_id must be a browser profile
+id of the form bp-<uuid>", because the shared validator
+accepted only bp- ids while temp profiles are temp-<uuid>.
+Fix: valid_browser_profile_id now accepts bp- or temp-
+with the same length/charset rules, so forged ids are still
+rejected. No test depended on temp rejection (verified by
+grep). The count function now uses the shared validator
+directly again. This supersedes the V2-52 note that the temp
+ledger error was left unfixed: it is fixed by this change.
+
+Item 9 proof (V2DeskFinal2, build 0, driver 0): visible
+window, real /state page, Capture page + Capture selection
+through the UI buttons, ledger drawer open with 2 sources
+and 2 passages, temp kept count live = 1, desktop screenshot
+cropped to the app window (full-desktop image deleted at
+once, fullDeleted=true). Status-bar build hash aaf781e
+equals the newest commit aaf781edf2edb9ada30d5b85fa06a
+4f9d6cd6484 (job head.txt) — the UI was rebuilt after that
+commit, so the hash equality is real, not carried over.
