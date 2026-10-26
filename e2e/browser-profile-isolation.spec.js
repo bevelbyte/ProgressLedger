@@ -199,7 +199,7 @@ async function addProfile(win, name) {
  */
 async function createPage(win, profileId, url) {
   const res = await win.evaluate(
-    (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url),
+    (spec) => window.progressLedger.browser.createPage({ profileId: spec.profileId, url: spec.url }),
     { profileId, url },
   );
   expect(res?.ok, `createPage refused: ${JSON.stringify(res)}`).toBe(true);
@@ -260,7 +260,7 @@ function snapshot(app) {
 
 /** Select a profile through the app's own profile card, and wait for the hand-off. */
 async function selectProfileThroughUi(win) {
-  await win.locator('button.nav-item:has-text("Profiles")').first().click();
+  await win.getByRole("button", { name: "Profiles", exact: true }).first().click();
   const card = win.locator("button.profile-main").first();
   await card.waitFor({ state: "visible", timeout: 10_000 });
   await card.click();
@@ -346,7 +346,7 @@ test.describe("R1 browser session/profile isolation — Progress Ledger-owned br
       // The ownership gate: an id that is not a real Progress Ledger profile gets no
       // partition and no page…
       const unknown = await win.evaluate(() =>
-        window.progressLedger.browser.createPage(999999, "about:blank"),
+        window.progressLedger.browser.createPage({ profileId: 999999, url: "about:blank" }),
       );
       expect(unknown.ok).toBe(false);
       expect(unknown.reason).toBe("unknown-profile");
@@ -354,10 +354,14 @@ test.describe("R1 browser session/profile isolation — Progress Ledger-owned br
       // bridge has no partition parameter at all, so this can only ever be read
       // as a profile id, and it is not one.
       const steered = await win.evaluate(() =>
-        window.progressLedger.browser.createPage("1;persist:cf-browser-2", "about:blank"),
+        window.progressLedger.browser.createPage({ profileId: "1;persist:cf-browser-2", url: "about:blank" }),
       );
       expect(steered.ok).toBe(false);
-      expect(steered.reason).toBe("unknown-profile");
+      // Phase 3B (V2-37): the options-object shape guard fires BEFORE the
+      // profile lookup, so a malformed id is refused as invalid-create-page,
+      // not unknown-profile. The refusal (and no page created) is the point;
+      // the well-formed unknown id above still expects unknown-profile.
+      expect(steered.reason).toBe("invalid-create-page");
       expect((await snapshot(app)).pages.length, "a refused create must add no page").toBe(2);
     } finally {
       await app.close();

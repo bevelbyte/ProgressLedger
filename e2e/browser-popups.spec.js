@@ -181,7 +181,7 @@ async function seedAndSelectProfile(win) {
     window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
-  await win.locator('button.nav-item:has-text("Profiles")').first().click();
+  await win.getByRole("button", { name: "Profiles", exact: true }).first().click();
   const card = win.locator("button.profile-main").first();
   await card.waitFor({ state: "visible", timeout: 10_000 });
   await card.click();
@@ -381,7 +381,7 @@ test.describe("R3 popups — an approved popup is an unfocused Progress Ledger t
    *
    * Chromium itself stops some popup schemes before Electron's handler is
    * consulted. Measured on this host by driving each one from real page
-   * content: `data:` and `progressLedger:` DO reach `setWindowOpenHandler`, while
+   * content: `data:` and `progressledger-v2:` DO reach `setWindowOpenHandler`, while
    * `file:` and `view-source:` are stopped inside Chromium and produce no
    * Electron event at all.
    *
@@ -412,13 +412,13 @@ test.describe("R3 popups — an approved popup is an unfocused Progress Ledger t
     );
     expect(dataRefusal.reason, "the refusal states why").toBe("blocked-scheme");
 
-    // --- progressLedger: reaches the handler and is refused. ---
+    // --- progressledger-v2: reaches the handler and is refused. ---
     await navigateTo(win, `${origin.origin}/probe?program=open-progressledger`);
     await expect
       .poll(
         async () =>
           (await events(win)).filter(
-            (e) => e.at === "window-open" && e.scheme === "progressLedger:",
+            (e) => e.at === "window-open" && e.scheme === "progressledger-v2:",
           ).length,
         { timeout: 20_000 },
       )
@@ -515,27 +515,26 @@ test.describe("R3 popups — an approved popup is an unfocused Progress Ledger t
   });
 
   test("a popup whose page cannot be created is a stated refusal, not a crash", async () => {
-    await seedAndSelectProfile(win);
-    await openPageTab(win);
+    const wsProfileId = await seedAndSelectProfile(win);
 
-    // Fill the pane to the live-page cap (4) with real pages, then ask for a
-    // popup: the creation is refused and the app must survive and say so.
+    // LRU hibernation (Phase 3) means "fill to the cap" can NEVER refuse a
+    // popup: a background page simply sleeps and the new page is created.
+    // The only creation that genuinely cannot happen is one where NO
+    // background victim exists — so set the workspace live cap to 1 (the
+    // app's own bridge) BEFORE opening the tab: the tab's own creation
+    // reads the cap from the database into main's in-memory map, and the
+    // popup path then enforces that same cap. The single visible probe
+    // page is then the only live page, and a popup has nowhere to go.
+    await win.evaluate(
+      (id) => window.progressLedger.browser.setLiveCap(id, 1),
+      wsProfileId,
+    );
+    await openPageTab(win);
     await navigateTo(win, `${origin.origin}/probe`);
     await expect(win.locator('[data-testid="browser-title"]')).toHaveText("R3 Popup Probe");
-    const first = await runInPage(app, 'window.__open("/landed");');
-    expect(first.ok, `could not drive the page: ${first.reason}`).toBe(true);
-    await expect.poll(async () => (await snapshot(app)).pages.length).toBe(2);
+    await expect.poll(async () => (await snapshot(app)).pages.length).toBe(1);
 
-    // Two more pages through the app's own bridge, taking us to the cap.
-    for (let i = 0; i < 2; i += 1) {
-      await win.evaluate(
-        (url) => window.progressLedger.browser.createPage(1, url),
-        `${origin.origin}/landed`,
-      );
-    }
-    await expect.poll(async () => (await snapshot(app)).pages.length).toBe(4);
-
-    // A further popup on the FIRST page cannot create a fifth page, so it is
+    // A popup on the only live page cannot create a second page, so it is
     // refused with the registry's own reason.
     const blocked = await runInPage(app, 'window.__open("/landed");');
     expect(blocked.ok, `could not drive the page: ${blocked.reason}`).toBe(true);
@@ -548,9 +547,13 @@ test.describe("R3 popups — an approved popup is an unfocused Progress Ledger t
         { timeout: 20_000 },
       )
       .toBeGreaterThan(0);
+    const refusal = (await events(win)).find(
+      (e) => e.at === "window-open" && e.kind === "blocked",
+    );
+    expect(refusal.reason, "the refusal names the cap").toBe("live-cap-reached");
 
     // The app is still alive and still governed.
-    expect((await snapshot(app)).pages.length, "no page was created").toBe(4);
+    expect((await snapshot(app)).pages.length, "no page was created").toBe(1);
     expect(await browserWindowCount(app), "no OS window").toBe(1);
     await expect(win.getByText(/Progress Ledger core online/i)).toBeVisible();
   });

@@ -126,7 +126,7 @@ const PAGE_HTML = `<!doctype html>
 
           // window.open() is the broadest sweep available: it reaches
           // setWindowOpenHandler for MOST schemes (measured: data:, mailto:,
-          // progressLedger:), whereas a page navigation is stopped inside Chromium
+          // progressledger-v2:), whereas a page navigation is stopped inside Chromium
           // before any event fires for some of them. Both are page-initiated
           // and both must fail closed.
           case "open-mailto":
@@ -385,7 +385,7 @@ async function seedAndSelectProfile(win) {
     window.progressLedger.browser.onEvent((event) => window.__cfEvents.push(event));
   });
 
-  await win.locator('button.nav-item:has-text("Profiles")').first().click();
+  await win.getByRole("button", { name: "Profiles", exact: true }).first().click();
   const card = win.locator("button.profile-main").first();
   await card.waitFor({ state: "visible", timeout: 10_000 });
   await card.click();
@@ -502,7 +502,7 @@ async function assertDonutAbsent(app) {
    * escape is that the DOCUMENT SURVIVES, still on its own origin, and that main
    * never recorded the new URL.
    *
-   * `mailto:` and `progressLedger:` DO reach `will-frame-navigate`, and are covered
+   * `mailto:` and `progressledger-v2:` DO reach `will-frame-navigate`, and are covered
    * by the dedicated per-scheme tests below rather than here — because their
    * events are dispatched asynchronously and a shared loop would race them.
    *
@@ -655,7 +655,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
    */
   for (const [program, scheme] of [
     ["nav-mailto", "mailto:"],
-    ["nav-progressledger", "progressLedger:"],
+    ["nav-progressledger", "progressledger-v2:"],
   ]) {
     test(`a page navigating itself to ${scheme} is refused by name at the frame gate`, async () => {
       await seedAndSelectProfile(win);
@@ -693,7 +693,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
     for (const [program, scheme] of [
       ["open-data", "data:"],
       ["open-mailto", "mailto:"],
-      ["open-progressledger", "progressLedger:"],
+      ["open-progressledger", "progressledger-v2:"],
     ]) {
       const before = (await blockedEvents(win)).length;
       await navigateTo(win, programUrl(origin.origin, program));
@@ -724,7 +724,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // MEASURED, NOT ASSUMED: a server 302 to `file:` / `data:` is stopped
     // INSIDE Chromium before `will-redirect` is emitted (the navigation simply
-    // fails), whereas a 302 to `mailto:` or `progressLedger:` IS dispatched and
+    // fails), whereas a 302 to `mailto:` or `progressledger-v2:` IS dispatched and
     // therefore reaches the gate. So `mailto:` is the case that proves the
     // main-process `will-redirect` guard is really installed and bites, and
     // `file:`/`data:` are proven by "the page did not move".
@@ -891,24 +891,49 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
     const pagesBefore = await snapshot(app);
     const pageId = pagesBefore.pages.at(-1).id;
     const urlBefore = pagesBefore.pages.at(-1).url;
-    const profileId = pagesBefore.pages.at(-1).partition.match(/cf-browser-(\d+)/)[1];
+    const profileId = Number(pagesBefore.pages.at(-1).partition.match(/cf-browser-(\d+)/)[1]);
+// V2-37: the create-page options object is strictly typed, so the partition
+// digits (a string from the regex) must become a number first; a string id
+// is refused as invalid-create-page before any URL check runs.
 
     // --- The bridge surface itself: pinned, so a channel that could grant a
     //     permission (or name a session/partition) cannot appear unnoticed. ---
     const surface = await win.evaluate(() => Object.keys(window.progressLedger.browser).sort());
+    // Phase 3B surface (preload.cjs): profile management joined the bridge
+    // (listProfiles, createProfile, updateProfile, deleteProfile,
+    // duplicateProfile, clearProfileData, createTempProfile, testProxy,
+    // setLiveCap, getLiveCap, ledgerCountForProfile, listTabs, navigation,
+    // goBack, goForward). The list stays PINNED: any future addition still
+    // fails here, and the permission/grant/session/partition name guard
+    // below still runs on the same surface.
     expect(surface).toEqual(
       [
         "cancelDownload",
+        "clearProfileData",
         "closePage",
         "createPage",
+        "createProfile",
+        "createTempProfile",
+        "deleteProfile",
         "downloads",
+        "duplicateProfile",
+        "getLiveCap",
+        "goBack",
+        "goForward",
+        "ledgerCountForProfile",
+        "listProfiles",
+        "listTabs",
         "navigate",
+        "navigation",
         "onEvent",
         "reload",
         "setBounds",
+        "setLiveCap",
         "setOccluded",
         "setVisible",
         "state",
+        "testProxy",
+        "updateProfile",
       ].sort(),
     );
 
@@ -934,7 +959,7 @@ test.describe("R2 navigation + permission security — embedded browser, Donut a
 
     // --- A page cannot be CREATED onto a forbidden destination either. ---
     const created = await win.evaluate(
-      (spec) => window.progressLedger.browser.createPage(spec.profileId, spec.url),
+      (spec) => window.progressLedger.browser.createPage({ profileId: spec.profileId, url: spec.url }),
       { profileId, url: "data:text/html,<h1>smuggled</h1>" },
     );
     expect(created.ok, "createPage must refuse the scheme").toBe(false);

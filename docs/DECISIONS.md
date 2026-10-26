@@ -956,3 +956,52 @@ by part:
   profile, Arrange/Split/Immerse, tab restore in profile) is
   NOT yet run in this part: it belongs to the Phase 4 proof
   job, which runs after this commit's gate.
+
+## V2-44 — Phase 4 proof: two 3B spec drifts found and fixed (DRAFT, outcome pending proof3)
+- Proof run 2 (job V2D4Proof2, /RL LIMITED /IT, Medium, 24 tests, exit 1, 24 failed)
+  was NOT a product failure: every failure traced to specs written before Phase 3B
+  that 3B changed underneath.
+  (1) `button.nav-item:has-text("Profiles")` is a SUBSTRING match. Phase 3B added a
+  "Browser profiles" nav item above "Profiles", so the click opened the browser
+  profiles view and `button.profile-main` never appeared (proven by the failing
+  run's page snapshot: heading "Browser profiles", "New browser profile" button,
+  no profile card). Fix in all three specs: getByRole("button", { name: "Profiles",
+  exact: true }) — the accessible name is exactly "Profiles".
+  (2) Positional `browser.createPage(profileId, url)` is deliberately refused since
+  V2-37 ("A positional call ... is rejected, not reinterpreted"), so the isolation
+  spec's direct createPage calls failed with invalid-create-page. Fix: options form
+  `createPage({ profileId, url })` in navigation-security, profile-isolation and
+  popups specs; the forged-id refusals (999999, "1;persist:cf-browser-2") keep the
+  same expectation under the new form. `navigate(pageId, url)` is unchanged
+  (preload still maps it positionally), so those calls were left alone.
+  Updating these specs aligns them with the deliberate V2-37 API; it does not
+  weaken any assertion (same refusals, same profile-card selection, same
+  isolation checks). Proof run 1 failed earlier on a filter-syntax detail
+  (backslash spec paths match nothing under Playwright on Windows; forward
+  slashes used since).
+
+- Proof run 3 (job V2D4Proof3, /RL LIMITED /IT, Medium, 24 tests, 3.1 min, exit 1):
+  18 passed, 6 failed — all six are further pre-3B spec drift, diagnosed from the
+  failing runs' own error contexts, NOT product failures:
+  (3) Pinned bridge surface (navsec test 11, 3.3 s): Phase 3B added 15 bridge
+  methods (profile management, listTabs, navigation, goBack/goForward, live cap,
+  testProxy, ledger count). The pinned list is updated to the full 26-key
+  surface read from preload.cjs, with a comment; the permission/grant/session/
+  partition name guard still runs unchanged, so a future unnoticed channel
+  still fails.
+  (4) Scheme name (tests 5, 6, 15): the page attempts progressledger-v2:// (the
+  Phase 2 rename) but the specs filtered events for "progressLedger:" (the old
+  name), so the poll never matched (22-26 s timeouts). schemeOf() returns the
+  URL protocol verbatim ("progressledger-v2:"). Fix: expected scheme strings
+  and comments updated in both specs.
+  (5) Live cap (popups test 19): the test filled to "cap (4)"; Phase 3B's
+  default is 5 (migration 026; the manager spinbutton shows 5), so the fifth
+  popup page was legitimately created and no blocked event arrived. Fix: fill
+  to 5 (three bridge pages, not two) and expect 5.
+  (6) Forged-id reason (isolation test 21): the malformed id
+  "1;persist:cf-browser-2" is refused by the V2-37 shape guard BEFORE lookup,
+  so the reason is "invalid-create-page", not "unknown-profile" (the
+  well-formed unknown id 999999 still yields unknown-profile, as asserted just
+  above). Fix: expectation updated with a comment; refusal + no-page-created
+  unchanged.
+  Proof run 4 re-runs the same three specs with these fixes.
