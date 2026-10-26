@@ -1079,3 +1079,83 @@ by part:
   NOT VERIFIED verdict is superseded by this shot for the page-on-desktop
   claim. No check-ui.bat is needed (the fallback only applied if the shot
   could not show the app). The shot's status bar shows build 37ed06e.
+
+## V2-47 — G finish checks (rename, offline, audit, DESIGN, accessibility, final gate)
+
+Date: 2026-10-26 (solo session, item G).
+
+- Rename: `git grep -i careerflow` over shell/ui/core/e2e/scripts returns
+  only the brand-guard test's own self-references and one logo.svg comment
+  ("not copied from CareerFlow or Progress Ledger"). No visible UI text
+  carries the old name. The brand-guard test itself stays in the suite.
+- Offline: `findstr` for `http(s)://` over `ui/dist/assets/*.js|*.css`
+  listed no files. No external font, icon or script URL in the build
+  output. Sync and updater stay OFF by default under V2-09 (no network
+  call at startup, proven by a test); not re-proven separately in G.
+- Dependency audit, before the fix (`npm audit --omit=dev`): 2
+  vulnerabilities, 1 low and 1 high. High: devalue <=5.9.2
+  (GHSA-j22f-vq7h-c4qm et al.). Low: katex 0.11.0-0.18.1
+  (GHSA-238p-pmpm-9mq7).
+- Dependency audit, fix (job V2GFix, /RL LIMITED /IT, Medium Mandatory
+  Level): `npm audit fix` changed 14 packages in package-lock.json only.
+  No new package was added in this session. Full audit after the fix
+  (dev included): 17 vulnerabilities (1 low, 5 moderate, 8 high,
+  3 critical), down from the Phase 1 baseline of 27 total. The
+  production-only result after the fix is in the final gate log
+  1 low severity vulnerability only: katex (GHSA-238p-pmpm-9mq7). The devalue high is fixed. npm audit exits 1 because that 1 low remains; that exit code is the finding, not a build failure..
+- Katex decision (safest option, user away): the katex low fix needs
+  `--force` and a breaking change to katex@0.19.1. It was NOT applied.
+  A breaking dependency upgrade without the user present, for a low
+  severity finding, is riskier than leaving the finding recorded.
+  The finding stays open in the final report.
+- DESIGN: repo `docs/DESIGN.md` is the archived CareerFlow "Meridian"
+  document; its own header says "Superseded. Not a source of truth.
+  Read `docs/DESIGN-ATLAS.md` instead." `docs/DESIGN-ATLAS.md` exists
+  (60,694 bytes, 2026-10-18) and is the live design document. G makes
+  no design change; the superseded file is left as archive, not
+  deleted and not edited.
+- Accessibility, contrast (computed from the app.css tokens):
+  ink #ece9e4 on base #0e0e11 = 15.92:1; ink-2 #a5a19a on base =
+  7.49:1; ink-3 #979189 on panel #1a1a1f = 5.55:1 and on base =
+  6.17:1; amber #e0a35c on base = 8.78:1; signal-ink #0a0a0c on
+  amber = 9.01:1; cyan #6ea8c9 on base = 7.44:1. All at or above
+  4.5:1. Note: --atlas-ink-3 was raised to #979189 in an earlier
+  pass because the old #746f68 measured about 3.3:1;
+  --atlas-ink-4 #7a756d is documented for disabled, placeholder and
+  decorative use only.
+- Accessibility, focus and motion: a global `:focus-visible` ring
+  exists in ui/src/app.css:421-431 (2px solid var(--atlas-signal),
+  2px offset) for button, input, textarea, select, [role=button],
+  [role=tab], [role=option] and links, plus component-level
+  `:focus-visible` rules. `prefers-reduced-motion: reduce` blocks
+  exist in app.css:1435, BrowserSurface:997 and PaneHeader:540.
+  aria-label counts: BrowserSurface 18, PaneHeader 12,
+  BrowserProfiles 1.
+- Accessibility, text size: three 10px sites found in G
+  (BrowserSurface narrow-pane address, BrowserSurface ledger-copy
+  small, ResearchLedger copy span/small) were raised to 11px and
+  were already in the laptop tree at the start of the final gate.
+  A re-check found two more literal 10px lines in the same file
+  (ResearchLedger eyebrow and count labels); both were raised to
+  11px from a fresh laptop download and verified by git diff, so
+  no literal `font:10px` or `font-size:10px` declaration remains in
+  the two browser components. Exception, stated plainly: the
+  `--text-micro: 10px` token in ui/src/app.css:142 remains, and it
+  feeds meta labels (timestamps, counts, small heads) across the
+  app. Raising that one token while the user is away would shift
+  dozens of labels without a visual check, so it was left alone
+  and is recorded here as the exception to a strict "all text
+  >= 11px" claim. The final report says so, rather than claiming
+  a clean pass.
+- Production build: job V2GFix ran `npm run build` (browser-ts +
+  core + UI) with exit 0 ("built in 12.21s"). The final gate
+  re-ran it exit 0, built in 12.18s.
+- Final gate (job V2GFinal, /RL LIMITED /IT, Medium Mandatory
+  Level): npm test exit 0, shell 1201 pass / 0 fail, UI 70 files / 861 tests pass, cargo all suites ok (every suite "test result: ok", 0 failed); npm run build exit 0 (built in 12.18s);
+  npm audit --omit=dev reports 1 low severity vulnerability only (katex), exit 1 from that finding alone. All numbers are read
+  from the job's step logs, not from its .done flag alone.
+- No PARKED.md file exists in the repo (checked by directory
+  listing and git ls-files). The only PARKED reference in the
+  repo is the rule defining it in DECISIONS.md. Items that are
+  not finished are listed as NOT FINISHED in the final report,
+  not hidden behind a parked file that does not exist.

@@ -947,7 +947,7 @@
   .ledger-row { display:flex; align-items:flex-start; gap:7px; padding:4px 5px; color:var(--atlas-ink-3); border-radius:var(--radius-xs); background:var(--atlas-base); }
   .ledger-copy { display:flex; flex-direction:column; min-width:0; gap:2px; }
   .ledger-copy strong { font-size:var(--text-micro); font-weight:500; color:var(--atlas-ink-2); }
-  .ledger-copy small { font-size:10px; color:var(--atlas-ink-4); overflow-wrap:anywhere; }
+  .ledger-copy small { font-size:11px; color:var(--atlas-ink-4); overflow-wrap:anywhere; }
   .ledger-empty,.research-notice { margin:0; font-size:var(--text-micro); color:var(--atlas-ink-4); }
   .research-notice { color:var(--atlas-bad); }
   .research-notice.warning { color:var(--atlas-warn-ink); }
@@ -1008,7 +1008,7 @@
 
     .browser-address {
       padding: 0 6px;
-      font-size: 10px;
+      font-size: 11px;
     }
 
     .browser-title {
