@@ -1177,3 +1177,17 @@ visible tab is cut at the scroll edge, which is normal scroll
 behaviour, not clipping of content. The Internal-I tab shows "no
 subjects" by design: subjects live under the Semester Exam pattern
 and Internal tabs are session scratch (see degree-mapper.js).
+
+## V2-49 — Minimum window size now enforced from the layout module
+
+Date: 2026-10-26 (solo session, item 3). shell/src/shared/layout.js
+gains minWindowWidth: 1024 and minWindowHeight: 640 (the same pair
+as the old usable floor, which stays as an alias). createWindow in
+shell/src/main.js sets minWidth: LAYOUT.minWindowWidth and
+minHeight: LAYOUT.minWindowHeight — no literal in main. The layout
+test gains a case that fails if the module minimum and the usable
+floor differ, if main stops referencing the module fields, or if
+main hardcodes 1024/640 (verified by mutation: a literal 1024 in
+main fails the test, 6/7). Laptop run of the layout suite: 7/7,
+exit 0 (job V2MinWin, /RL LIMITED /IT, Medium). A live clamp check
+(window resized below the floor) is folded into item 4's app run.

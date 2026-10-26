@@ -34,10 +34,12 @@ export const LAYOUT = Object.freeze({
   railCollapsedWidth: 56,
   railSlimWidth: 64,
   dividerWidth: 4,
-  // No enforced window minimum exists in createWindow (verified):
-  // the OS minimum applies. This is the USABLE floor used by the
-  // Phase 5 screenshots and the layout test, not a limit the app
-  // enforces on the user.
+  // Enforced window minimum (item 3, 2026-10-26): createWindow sets
+  // minWidth/minHeight from these two fields, never from literals.
+  // The usable floor is the same pair: a window smaller than this
+  // cannot show the rail + a pane + the status bar usefully.
+  minWindowWidth: 1024,
+  minWindowHeight: 640,
   usableMinWindowWidth: 1024,
   usableMinWindowHeight: 640,
   minViewSize: 1,

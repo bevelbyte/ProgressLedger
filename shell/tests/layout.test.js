@@ -82,6 +82,23 @@ describe("shared shell layout (V2-43)", () => {
     assert.ok(!rectsOverlap(browserRectForPane(a), browserRectForPane(b)));
   });
 
+  it("the enforced minimum comes from the layout module, not a literal", () => {
+    // Item 3: the module is the single source. If the usable floor
+    // and the enforced minimum ever differ, this fails.
+    assert.equal(LAYOUT.minWindowWidth, 1024);
+    assert.equal(LAYOUT.minWindowHeight, 640);
+    assert.equal(LAYOUT.minWindowWidth, LAYOUT.usableMinWindowWidth);
+    assert.equal(LAYOUT.minWindowHeight, LAYOUT.usableMinWindowHeight);
+    // And createWindow must actually use those fields (main.js imports
+    // Electron, so it cannot load under node --test; read its source).
+    const main = readFileSync(join(root, "shell", "src", "main.js"), "utf8");
+    assert.match(main, /from "\.\/shared\/layout\.js"/);
+    assert.match(main, /minWidth: LAYOUT\.minWindowWidth/);
+    assert.match(main, /minHeight: LAYOUT\.minWindowHeight/);
+    assert.ok(!/minWidth: 1024/.test(main), "main must not hardcode the minimum");
+    assert.ok(!/minHeight: 640/.test(main), "main must not hardcode the minimum");
+  });
+
   it("a two-pane column split is disjoint and inside the grid", () => {
     const grid = { x: 216, y: 132, width: 1170, height: 590 };
     const [a, b] = splitPaneRects(grid, 2, "col");

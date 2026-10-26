@@ -39,6 +39,7 @@ import { _closeAll as _closeAllProjectMemory } from "./services/memory/index.js"
 import { bootstrapMarketplace, shutdownMarketplace } from "./services/marketplace/bootstrap.js";
 import { MCP } from "./services/mcp/index.js";
 import { CSP_HEADER } from "./security/csp.js";
+import { LAYOUT } from "./shared/layout.js";
 import { isGovernedWebContents } from "./services/browser/host.js";
 import { makeWillNavigateGuard } from "./services/browser/navigation.js";
 // Re-exported for IPC modules: drop-in `safeHandle(channel, fn)` that
@@ -158,6 +159,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    minWidth: LAYOUT.minWindowWidth,
+    minHeight: LAYOUT.minWindowHeight,
     backgroundColor: "#0d1117",
     show: false,
     webPreferences: {
