@@ -1250,3 +1250,51 @@ a download navigation, the registry record url becomes the
 download URL while the view itself stays on the previous
 page, so state url and webContents url disagree until the
 next navigation.
+
+## V2-52 — Profile screens + per-profile kept count (items 7 and 8)
+
+Date: 2026-10-26 (solo session, items 7/8). Job V2ProfKept,
+/RL LIMITED /IT, Medium; cargo rerun V2Cargo2, same rights.
+
+Item 7: (a) BrowserProfileDialog gains a Test proxy button,
+edit mode only, shown when a proxy is configured: a Test
+address input (typed by the user, nothing contacted until the
+button is clicked) and a result line; it tests the SAVED
+profile row, and the dialog says to save first after edits.
+Live proof: "Proxy test OK (HTTP 200)" through a local proxy
+server on 127.0.0.1:8935 with bypass <-loopback>. (b) The
+browser bar now shows the active tab's profile as dot + name
+(data-testid browser-page-profile; hidden below 360 px pane
+width so the bar does not crowd). (c) The static title span
+is rendered only when the page title exists and differs from
+the URL, so it no longer duplicates the address input; a
+no-title page shows no title span at all. (d) The delete
+confirm now also says, verbatim: "Its data is cleared now.
+Leftover files are removed the next time Progress Ledger
+starts." Delete behaviour itself is unchanged.
+
+Item 8: count_kept_research_passages now takes the active
+page's browser profile id (JS handler passes
+owned.page.browserProfile.localId, null for manual saves)
+and filters both the capture and the source row on it. Live
+proof: same URL captured twice in PK-A and once in PK-B;
+kept counts read 2 and 1 (the old code read 3 for both).
+New Rust test core/tests/research_kept_count.rs (1/1) pins
+the query, including the old-query sum (5 with a manual and
+a temp row) as the bug it guards. The temp bridge check is
+fixed by correcting the premise, not the bridge: selecting
+Temporary only changes the profile for NEW tabs, so the
+driver now creates a tab after selecting it and asserts a
+state page marked temporary (bp-6) — PASS.
+
+Temp-profile validation note: the shared validator accepts
+only bp-<uuid> ids, but temp profiles are temp-<uuid>. The
+count function therefore accepts both prefixes with the same
+charset/length rules, while the shared validator is left
+unchanged (widening it would also change capture/save/list
+semantics for temp pages — a separate decision). Known,
+pre-existing, NOT fixed here: the Research ledger drawer
+errors for temp pages ("browser_profile_id must be a
+browser profile id of the form bp-<uuid>"), visible as
+toasts in the profkept screenshots; temp pages could not
+capture before this change either, so nothing regressed.

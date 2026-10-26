@@ -516,11 +516,12 @@
         title={pageProfile.displayName}
         aria-label="Profile: {pageProfile.displayName}"
       ></span>
+      <span class="page-profile-name truncate" data-testid="browser-page-profile">{pageProfile.displayName}</span>
     {/if}
 
-    {#if page}
-      <span class="browser-title truncate" data-testid="browser-title" title={page.title || page.url}>
-        {page.title || page.url || "Untitled page"}
+    {#if page && page.title && page.title !== page.url}
+      <span class="browser-title truncate" data-testid="browser-title" title={page.title}>
+        {page.title}
       </span>
     {/if}
 
@@ -1031,6 +1032,10 @@
       display: none;
     }
 
+    .page-profile-name {
+      display: none;
+    }
+
     .browser-title {
       flex-basis: 20%;
       max-width: 20%;
@@ -1052,6 +1057,7 @@
   .page-profile-dot {
     margin-left: 2px;
   }
+  .page-profile-name { max-width: 140px; color: var(--atlas-ink-2); font: 11px var(--font-mono); white-space: nowrap; }
 
   .profile-switcher {
     position: relative;

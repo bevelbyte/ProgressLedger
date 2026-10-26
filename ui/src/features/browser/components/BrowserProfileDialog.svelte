@@ -7,7 +7,7 @@
   // field on EDIT keeps the existing password; the "Clear password"
   // checkbox clears it. The dialog never sees the existing password
   // (main strips it), so "keep" is the only honest empty-field meaning.
-  import { createBrowserProfile, updateBrowserProfile, deleteBrowserProfile } from "../../../shared/stores/browser.svelte.js";
+  import { createBrowserProfile, updateBrowserProfile, deleteBrowserProfile, testBrowserProxy } from "../../../shared/stores/browser.svelte.js";
 
   let {
     profileId = null,
@@ -45,6 +45,27 @@
   let downloadDir = $state(profile?.downloadDir ?? "");
   let busy = $state(false);
   let error = $state("");
+  // Proxy test (edit mode only: the test runs against the SAVED
+  // profile row, so unsaved edits must be saved first). Nothing is
+  // contacted until the user clicks Test proxy, and the test address
+  // is typed here, not assumed.
+  let testUrl = $state("");
+  let testBusy = $state(false);
+  let testResult = $state("");
+
+  async function runProxyTest() {
+    if (!profile?.localId || !testUrl.trim()) return;
+    testBusy = true;
+    testResult = "";
+    try {
+      const res = await testBrowserProxy(Number(profileId), profile.localId, testUrl.trim());
+      testResult = res?.ok ? `Proxy test OK (HTTP ${res.status}).` : `Proxy test failed: ${res?.reason ?? "unknown error"}.`;
+    } catch (e) {
+      testResult = `Proxy test failed: ${String(e?.message ?? e).slice(0, 200)}.`;
+    } finally {
+      testBusy = false;
+    }
+  }
 
   // Parse the stored allow list once (it is main-validated JSON, so a
   // parse failure here just means "nothing checked" — never a crash).
@@ -185,6 +206,17 @@
           Bypass (comma-separated, default keeps local addresses direct)
           <input type="text" data-testid="browser-profile-proxy-bypass" bind:value={proxyBypass} placeholder="<local>" />
         </label>
+        {#if isEdit}
+          <label>
+            Test address (nothing is contacted until you click Test proxy)
+            <input type="text" data-testid="browser-profile-test-url" bind:value={testUrl} placeholder="https://example.com" />
+          </label>
+          <button type="button" class="cf-btn ghost" data-testid="browser-profile-test-proxy" disabled={testBusy || !testUrl.trim()} onclick={runProxyTest}>{testBusy ? "Testing…" : "Test proxy"}</button>
+          {#if testResult}
+            <p class="proxy-test-result" data-testid="browser-profile-test-result" role="status">{testResult}</p>
+          {/if}
+          <p class="dialog-hint">Tests the saved proxy settings. Save changes first if you edited them above.</p>
+        {/if}
       {/if}
     </fieldset>
 

@@ -132,10 +132,43 @@ pub fn list_research_captures(profile_id: i32) -> Result<Vec<ResearchCapture>> {
 }
 
 #[napi]
-pub fn count_kept_research_passages(profile_id: i32, url: String) -> Result<i32> {
+pub fn count_kept_research_passages(profile_id: i32, url: String, browser_profile_id: Option<String>) -> Result<i32> {
     let profile_id = valid_id(profile_id, "profile_id")?;
     let (canonical, _, _) = canonical_research_url(&url)?;
-    with_db(|conn| conn.query_row("SELECT COUNT(*) FROM research_captures c JOIN research_sources s ON s.id=c.source_id WHERE c.profile_id=?1 AND s.canonical_url=?2 AND c.kind IN ('clip','highlight')", params![profile_id, canonical], |r| r.get(0)).map_err(to_err))
+    // Kept count is per BROWSER profile: the old query summed captures
+    // across every browser profile of the workspace, so the browser
+    // bar showed other profiles' passages as this page's own. The
+    // caller passes the active page's browser profile id (None only
+    // for manual, non-browser saves).
+    // Temporary profiles use temp-<uuid> ids, which the shared
+    // valid_browser_profile_id (bp- only) rejects; a temp page's
+    // kept count must still work, so this function accepts both
+    // prefixes with the same charset/length rules. The shared
+    // validator is left alone: widening it would also change what
+    // capture/save/list accept for temp pages, which is a separate
+    // product decision (the ledger drawer already errors for temp
+    // pages today — pre-existing, noted in V2-52, not fixed here).
+    let browser_profile_id = match browser_profile_id {
+        None => None,
+        Some(id) => {
+            let rest = id
+                .strip_prefix("bp-")
+                .or_else(|| id.strip_prefix("temp-"));
+            let ok = id.len() <= 64
+                && match rest {
+                    Some(r) => !r.is_empty() && r.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'),
+                    None => false,
+                };
+            if !ok {
+                return Err(coded(
+                    codes::INVALID_INPUT,
+                    "browser_profile_id must be a browser profile id of the form bp-<uuid> or temp-<uuid>",
+                ));
+            }
+            Some(id)
+        }
+    };
+    with_db(|conn| conn.query_row("SELECT COUNT(*) FROM research_captures c JOIN research_sources s ON s.id=c.source_id WHERE c.profile_id=?1 AND s.canonical_url=?2 AND c.browser_profile_id IS ?3 AND s.browser_profile_id IS ?3 AND c.kind IN ('clip','highlight')", params![profile_id, canonical, browser_profile_id], |r| r.get(0)).map_err(to_err))
 }
 
 #[napi]

@@ -239,6 +239,7 @@
       >
         <h2>Delete “{deleteTarget.profile.displayName}”?</h2>
         <p>This deletes its cookies and browsing data. Pages open in this profile will be closed.</p>
+        <p>Its data is cleared now. Leftover files are removed the next time Progress Ledger starts.</p>
         {#if deleteTarget.ledgerCount > 0}
           <label class="checkbox">
             <input type="checkbox" data-testid="browser-profile-delete-ledger" bind:checked={deleteTarget.deleteLedger} />

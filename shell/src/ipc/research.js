@@ -84,7 +84,7 @@ export function register(ctx) {
     const pageId = validPageId(payload?.pageId);
     const owned = host.researchPage(pageId, profileId);
     if (!owned.ok) return owned;
-    return { ok: true, count: ctx.core.countKeptResearchPassages(profileId, owned.page.url) };
+    return { ok: true, count: ctx.core.countKeptResearchPassages(profileId, owned.page.url, owned.page.browserProfile?.localId ?? null) };
   });
   // Capture the whole live page: full text into the source row, HTML
   // snapshot into the vault (text-only when the page has no usable HTML
