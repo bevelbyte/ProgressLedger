@@ -1209,3 +1209,44 @@ computed font size on the dashboard is exactly 11px (the kbd
 no misalignment or cut-off text. Item 3 live check in the same
 run: requesting 800x500 clamped to 1027x642 outer size (frame
 included), never below the 1024x640 floor.
+
+## V2-51 — Downloads proven; no phantom second page (items 5 and 6)
+
+Date: 2026-10-26 (solo session, items 5/6). Job V2DlPages,
+/RL LIMITED /IT, Medium. Local server on 127.0.0.1:8933, fresh
+throwaway data, one workspace profile.
+
+Item 5: a download in the Default persistent profile completed
+(dl-1, 39 bytes) to <data>/downloads/v2-test-file.txt with the
+exact served content, and it is absent from the OS Downloads
+folder. A download in a temporary profile completed (dl-2) to
+the SAME managed folder as v2-test-file (1).txt (collision
+suffix). Downloads are workspace-scoped, not profile-scoped, so
+a temp profile's download survives temp evaporation: that is
+the documented decision D behaviour, not a leak, because the
+file is a workspace file the user can see. Nothing is opened:
+the manager never calls setOpenWhenDone and never imports
+shell (asserted by shell/tests/browser-downloads.test.js), and
+the driver opened nothing. No download UI exists yet (the
+renderer only gets opaque ids); the list is reachable through
+the bridge. No disable was needed.
+
+Item 6: at every step, state pages, debugSnapshot pages and
+Electron webContents agree 1:1:1 per tab. No tab yet: 0 pages.
+After the UI "New web page" click but before any navigation:
+0 host pages (the surface creates the page on first Go, not
+on tab creation). After navigating one tab to /state: exactly
+1 page in the Default profile (partition persist:cf-browser-1).
+After adding a temp page: exactly 1 temp page (partition
+pl-temp-...). There is NO host duplicate and NO phantom
+about:blank page in a clean flow, so no host fix was made.
+The earlier EF observation (two rows per profile, one
+about:blank) was two tabs, not a duplicate webContents: one
+tab was left un-navigated. Cost of such a stray blank tab:
+one renderer process, about 65-80 MB by the EF memory
+measurements, bounded by the live cap (5) and LRU hibernation
+of background tabs. Minor observation, not fixed here: after
+a download navigation, the registry record url becomes the
+download URL while the view itself stays on the previous
+page, so state url and webContents url disagree until the
+next navigation.
