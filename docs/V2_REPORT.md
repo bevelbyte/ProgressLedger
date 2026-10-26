@@ -7,7 +7,7 @@ Builds and tests in this report ran on the user's laptop, except for
 the items listed under "Work done on the Muse machine" at the end.
 Nothing was pushed or published. The repo is
 `D:\Muse_Workspace\projects\Progress_Ledger_v2`, last commit at
-report time: see the commit line in the close-out step below (the G commit).
+report time: 08e1fff (G finish + final report).
 
 ## What was built, per phase
 
