@@ -1191,3 +1191,21 @@ main hardcodes 1024/640 (verified by mutation: a literal 1024 in
 main fails the test, 6/7). Laptop run of the layout suite: 7/7,
 exit 0 (job V2MinWin, /RL LIMITED /IT, Medium). A live clamp check
 (window resized below the floor) is folded into item 4's app run.
+
+## V2-50 — No text below 11px (item 4), and the live window clamp
+
+Date: 2026-10-26 (solo session, item 4). Changes: --text-micro
+10px -> 11px in ui/src/app.css; slim-rail caption 8.5px -> 11px
+(NavRail.svelte); Spine caption 8.5px -> 11px (Spine.svelte);
+HooksLog code 0.92em -> 1em (its parent is 12px, so 1em = 12px);
+PaneGrid kbd 0.9em -> 11px absolute (a kbd inside an 11px context
+would otherwise resolve to 9.9px). New source check
+shell/tests/text-size-guard.test.js fails on any literal px size
+under 11, any em size under 1em, and any --text-* token under
+11px. Job V2TextSize (/RL LIMITED /IT, Medium): build:ui exit 0,
+guard test exit 0, driver exit 0. Driver evidence: minimum
+computed font size on the dashboard is exactly 11px (the kbd
+"Ctrl K"); built CSS captions are 11px; dashboard shot viewed,
+no misalignment or cut-off text. Item 3 live check in the same
+run: requesting 800x500 clamped to 1027x642 outer size (frame
+included), never below the 1024x640 floor.

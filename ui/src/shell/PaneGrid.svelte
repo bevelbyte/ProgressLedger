@@ -371,7 +371,7 @@
 
   kbd {
     font-family: var(--font-mono);
-    font-size: 0.9em;
+    font-size: 11px;
     padding: 0 3px;
     border: 1px solid var(--atlas-line);
     border-radius: var(--radius-xs);

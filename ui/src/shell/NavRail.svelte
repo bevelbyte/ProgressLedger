@@ -249,7 +249,7 @@
     display: block;
     max-width: 100%;
     font-family: var(--font-mono);
-    font-size: 8.5px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;

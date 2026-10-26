@@ -339,7 +339,7 @@
   }
   .dormant-msg code {
     font-family: var(--font-mono, monospace);
-    font-size: 0.92em;
+    font-size: 1em;
   }
   .exec-table {
     width: 100%;
