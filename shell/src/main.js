@@ -19,6 +19,7 @@ import {
 } from "./workspace.js";
 import { initLogger, installFileLogger, rotateAndPruneLogs } from "./services/logger.js";
 import { installCrashHandlers } from "./services/crash-handler.js";
+import { isRealDataPath } from "./e2e-data-guard.js";
 import { makeIpcContext, registerAllIpc } from "./ipc/index.js";
 import { setupAutoUpdater } from "./ipc/updates.js";
 import {
@@ -76,13 +77,25 @@ const isMigrationTest = process.env.PROGRESSLEDGER_V2_MIGRATION_TEST === "1";
 // for a packaged executable launched through the Electron test harness, so a
 // test-only environment override is applied before app readiness. Production
 // launches have no supported path to this branch.
+// Stage 2.5 guard: in test mode the resolved data path must never be the
+// real data folder (or inside it). Past test runs wrote workspace profiles
+// into real data exactly this way -- a driver that launched the app without
+// PROGRESSLEDGER_V2_E2E_USER_DATA fell through to the real folder below.
+// Refusing here, before any window, database, or log file is created,
+// makes every driver safe regardless of which one forgot the override.
+const realDataDir = join(app.getPath("appData"), "progress-ledger-v2");
+let resolvedUserData = realDataDir;
 if ((isE2E || isMigrationTest) && process.env.PROGRESSLEDGER_V2_E2E_USER_DATA) {
-  app.setPath("userData", process.env.PROGRESSLEDGER_V2_E2E_USER_DATA);
-} else {
-  // v2 identity: this build must never open the original Progress Ledger's
-  // data folder, so its own userData directory carries a -v2 suffix.
-  app.setPath("userData", join(app.getPath("appData"), "progress-ledger-v2"));
+  resolvedUserData = process.env.PROGRESSLEDGER_V2_E2E_USER_DATA;
 }
+if ((isE2E || isMigrationTest) && isRealDataPath(resolvedUserData, realDataDir)) {
+  console.error(
+    "REFUSING TO START: test mode data path is the real Progress Ledger data folder: " +
+      resolvedUserData,
+  );
+  app.exit(1);
+}
+app.setPath("userData", resolvedUserData);
 
 
 // Crash safety (V2-42, item B): installed as early as the userData

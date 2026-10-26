@@ -47,6 +47,35 @@ Warning: this deletes all local Progress Ledger v2 data.
 3. Start the app again. It creates a fresh data folder and
    runs first-run setup.
 
+## Removing a test-created workspace (for example "Proof 1792878075719")
+
+Some workspace profiles in your real data were created by automated test
+runs, not by you — for example "Browser Phase Two" and
+"Proof 1792878075719". Test runs can no longer do this: since this
+change, test mode refuses to start when its data folder is the real
+one (see the guard in shell/src/main.js). Nothing below deletes or
+resets your real data — it removes one workspace only, and only when
+you choose to.
+
+To remove one workspace, in the app:
+
+1. Open the app and go to Profiles (Runs → Profiles).
+2. Find the workspace card (for example "Proof 1792878075719").
+3. Open the card's menu and choose Delete, then confirm the deletion
+   in the dialog. The workspace and its own data are removed; your
+   other workspaces are untouched.
+4. Check the Profiles list: the card is gone, and the status bar shows
+   one of your remaining workspaces.
+
+Do not delete the workspace by hand-editing the database file
+(progress-ledger-v2.db) or by deleting files inside the data folder:
+hand edits can corrupt the database, and deleting the whole folder
+removes everything (see "How to reset it" above). If the in-app
+delete fails, keep the workspace and report the exact error instead
+of deleting files by hand.
+
+The same steps remove "Browser Phase Two" if you want it gone too.
+
 ## If the window does not appear
 
 1. Look in the taskbar first. The app allows only one
