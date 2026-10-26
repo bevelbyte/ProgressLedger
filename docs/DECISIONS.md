@@ -1047,3 +1047,35 @@ by part:
   ui/src). The profile-UI driver screenshots the proxy SETTING in the edit
   dialog and runs the test through the app's own bridge, recording the
   result — it does not invent a button.
+
+## V2-46 — Desktop screenshot attempts 1-3 (what each one taught)
+- Run 1 (driver page-id timeout 30 s): the driver never selected a workspace
+  profile before opening the tab, so the tab opened in the boot context,
+  which creates no browser page at all (empty state, no page-id). Fixed by
+  selecting the profile first (the same __cfSelectProfile step the EF and
+  profile-UI drivers already used).
+- Run 2 (no page-id after 120 s, state and notice both empty): same boot-
+  context cause, confirmed by the empty state. The raised waits alone could
+  not fix a tab that never becomes a page.
+- A live diagnostic screenshot during run 2 showed the real cause of the
+  slowness in another way: the v2 window opens BEHIND the user's already-
+  open maximized browser window. Playwright bringToFront is page-level
+  only and cannot raise the OS window. Fixed with BrowserWindow
+  setAlwaysOnTop(true) + focus() + moveTop() via app.evaluate (driver
+  only, no product change). That diagnostic screenshot contained the
+  user's private desktop and was deleted from both machines immediately
+  after the diagnosis; it is never attached or described.
+- Run 3's job finished (exit 1) with a SUCCEEDING driver (page loaded,
+  window ready) but no png and no PS output in the job log. The flag
+  handshake between the job script and the driver could not be
+  reconstructed from the logs, so it was replaced: the driver now takes
+  the desktop screenshot itself via Node child_process and records the
+  png size or the PS error, and the job script is a plain blocking call.
+  No silent screenshot failures are possible in that shape.
+- Run 4 (job V2Desktop4, 07:08 IST): VERIFIED. The desktop screenshot shows
+  the v2 app window in front, with the real /state page ("isolation state",
+  cookie=/ls=/ss=/idb= lines) rendered inside the layout's pane rectangle,
+  under the browser chrome and above the operator bar. The V2-28
+  NOT VERIFIED verdict is superseded by this shot for the page-on-desktop
+  claim. No check-ui.bat is needed (the fallback only applied if the shot
+  could not show the app). The shot's status bar shows build 37ed06e.
