@@ -21,9 +21,15 @@
     Database,
     RefreshCw,
     GraduationCap,
+    Globe,
     Activity,
     Download,
   } from "lucide-svelte";
+
+  import {
+    SEARCH_ENGINE_STORAGE_KEY,
+    DEFAULT_SEARCH_ENGINE,
+  } from "../features/browser/addressBar.js";
 
   import { BackupVault } from "../features/backup";
   import { CloudSyncPanel } from "../features/cloud-sync";
@@ -62,6 +68,13 @@
       blurb: "The percentage → grade → grade-point bands CGPA is computed with.",
     },
     {
+      id: "browser",
+      label: "Browser",
+      icon: Globe,
+      title: "Browser",
+      blurb: "What the address bar searches with. Full addresses still open directly.",
+    },
+    {
       id: "diagnostics",
       label: "Diagnostics",
       icon: Activity,
@@ -90,6 +103,32 @@
   // Keep the last valid section if a caller deep-links to an unknown id, so a
   // stale command-palette entry can never render an empty pane.
   const active = $derived(SECTIONS.find((s) => s.id === section) ?? SECTIONS[0]);
+
+  // Browser search engine: a plain localStorage preference (the same
+  // mechanism the diagnostics toggles use). Read fresh on mount; the
+  // address bar reads the same key on every submit, so a change here
+  // takes effect without a reload. Unknown or missing values mean the
+  // default, DuckDuckGo.
+  function readStoredSearchEngine() {
+    try {
+      const raw =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem(SEARCH_ENGINE_STORAGE_KEY)
+          : null;
+      if (raw === "duckduckgo" || raw === "bing" || raw === "google") return raw;
+    } catch {
+      // Storage unavailable: the default is the safe answer.
+    }
+    return DEFAULT_SEARCH_ENGINE;
+  }
+  let searchEngine = $state(readStoredSearchEngine());
+  function saveSearchEngine() {
+    try {
+      localStorage.setItem(SEARCH_ENGINE_STORAGE_KEY, searchEngine);
+    } catch {
+      // Storage unavailable: the choice lasts until reload.
+    }
+  }
 </script>
 
 <div class="settings">
@@ -123,6 +162,27 @@
         <SyncAutomationPanel />
       {:else if active.id === "grading"}
         <GradeScaleEditor {activeProfile} />
+      {:else if active.id === "browser"}
+        <div class="browser-setting">
+          <label class="browser-label" for="search-engine-select">
+            Address bar search engine
+          </label>
+          <select
+            id="search-engine-select"
+            aria-label="Address bar search engine"
+            bind:value={searchEngine}
+            onchange={saveSearchEngine}
+          >
+            <option value="duckduckgo">DuckDuckGo</option>
+            <option value="bing">Bing</option>
+            <option value="google">Google</option>
+          </select>
+          <p class="browser-hint">
+            Plain text typed in the browser address bar searches here.
+            Google may show an unusual-traffic check for this browser;
+            DuckDuckGo is the default for that reason.
+          </p>
+        </div>
       {:else if active.id === "diagnostics"}
         <DiagnosticsPanel />
       {:else if active.id === "updates"}
@@ -236,6 +296,35 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+  }
+
+  /* Browser section: one labelled setting, kept deliberately small. */
+  .browser-setting {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 420px;
+  }
+
+  .browser-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--atlas-ink);
+  }
+
+  .browser-setting select {
+    padding: 7px 10px;
+    border: 1px solid var(--atlas-line);
+    border-radius: var(--radius-sm);
+    background: var(--atlas-wash);
+    color: var(--atlas-ink);
+    font: inherit;
+    font-size: var(--text-md);
+  }
+
+  .browser-hint {
+    font-size: var(--text-sm);
+    color: var(--atlas-ink-3);
   }
 
   @media (max-width: 1000px) {

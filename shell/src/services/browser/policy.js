@@ -22,6 +22,16 @@ export const ALLOWED_SCHEMES = Object.freeze(["https:", "http:"]);
 /** Non-http destinations that are still legitimate to show. */
 export const ALLOWED_EXACT = Object.freeze(["about:blank"]);
 
+/**
+ * The app-owned PDF viewer page (see services/browser/pdf-viewer.js).
+ * ONLY main-generated nonce URLs pass: the scheme plus the exact
+ * viewer path plus a UUID nonce. Every other progressledger-v2:// URL
+ * -- including the app UI itself -- stays blocked, so a page can never
+ * load the shell UI into a browser view.
+ */
+export const VIEWER_URL_PATTERN =
+  /^progressledger-v2:\/\/viewer\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 const REASON = Object.freeze({
   EMPTY: "empty-url",
   INVALID: "invalid-url",
@@ -98,6 +108,9 @@ export function normalizeTarget(raw) {
  */
 export function isAllowedUrl(raw) {
   if (typeof raw === "string" && ALLOWED_EXACT.includes(raw.trim())) {
+    return { ok: true, url: raw.trim() };
+  }
+  if (typeof raw === "string" && VIEWER_URL_PATTERN.test(raw.trim())) {
     return { ok: true, url: raw.trim() };
   }
   if (typeof raw !== "string") return { ok: false, reason: REASON.INVALID };

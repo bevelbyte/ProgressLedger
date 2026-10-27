@@ -228,11 +228,17 @@ describe("browser surface", () => {
     });
     await fireEvent.click(screen.getByTestId("browser-go"));
 
-    await waitFor(() => expect(bridge.createPage).toHaveBeenCalledWith({ profileId: 3, url: "example.com" }));
+    // A bare host is inferred as https before it reaches main (the old
+    // test asserted the raw "example.com", which main would have
+    // refused as invalid-url). The URL constructor normalizes the bare
+    // host with a trailing slash.
+    await waitFor(() => expect(bridge.createPage).toHaveBeenCalledWith({ profileId: 3, url: "https://example.com/" }));
     await waitFor(() => expect(onPageChange).toHaveBeenCalledWith("bp-1"));
   });
 
   it("shows a refusal instead of a silent no-op", async () => {
+    // A file: URL is never navigated: it becomes a search query, and
+    // the mock's rejection of that open still surfaces as a notice.
     const bridge = makeBrowserBridge({
       createPage: vi.fn(async () => ({ ok: false, reason: "invalid-url", detail: "blocked-scheme" })),
     });

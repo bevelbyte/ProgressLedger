@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { app, net, safeStorage, session } from "electron";
 import { createBrowserHost } from "../services/browser/host.js";
+import { createPdfViewerStore } from "../services/browser/pdf-viewer.js";
 import { measureDirectory } from "../services/browser/partition-size.js";
 import { REASONS } from "../services/browser/registry.js";
 import {
@@ -33,6 +34,17 @@ import { resolveDownloadsDir } from "../workspace.js";
 
 /** The host is created lazily, once, against the live window accessor. */
 let hostRef = null;
+
+/** PDF viewer nonces (follow-up round): one store for the whole app,
+ * owned here so the host (which mints viewer URLs) and main.js (whose
+ * protocol handler serves them) share exactly one mapping. Kept in
+ * main memory only; nothing about it is persisted or logged. */
+const pdfViewerStore = createPdfViewerStore();
+
+/** Resolve a viewer nonce to its PDF URL (main.js protocol handler). */
+export function resolvePdfViewerNonce(nonce) {
+  return pdfViewerStore.resolve(nonce);
+}
 
 export function getBrowserHost(ctx) {
   if (hostRef) return hostRef;
@@ -66,6 +78,8 @@ export function getBrowserHost(ctx) {
     },
     downloadsExists: (path) => existsSync(path),
     navigationTimeoutMs,
+    registerPdfViewer: (pdfUrl) => pdfViewerStore.register(pdfUrl),
+    resolvePdfViewerNonce: (nonce) => pdfViewerStore.resolve(nonce),
   });
   return hostRef;
 }

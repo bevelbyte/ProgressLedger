@@ -79,6 +79,19 @@ test("isAllowedUrl is the navigation gate and agrees with normalizeTarget on ref
   assert.equal(schemeOf("file:///x"), "file:");
   assert.equal(schemeOf("nonsense"), "");
 });
+test("isAllowedUrl admits only main-generated PDF viewer URLs on the app scheme", () => {
+  const good = "progressledger-v2://viewer/123e4567-e89b-12d3-a456-426614174000";
+  assert.equal(isAllowedUrl(good).ok, true);
+  assert.equal(isAllowedUrl(good).url, good);
+  for (const denied of [
+    "progressledger-v2://viewer/abc",
+    "progressledger-v2://viewer/123e4567-e89b-12d3-a456-426614174000/extra",
+    "progressledger-v2://viewer/",
+    "progressledger-v2://app/index.html",
+  ]) {
+    assert.equal(isAllowedUrl(denied).ok, false, `${denied} must be refused`);
+  }
+});
 
 test("validateProfileId accepts only positive integers", () => {
   for (const good of [1, 7, "12", 2147483647]) assert.equal(validateProfileId(good), true);

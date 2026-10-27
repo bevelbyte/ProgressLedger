@@ -47,6 +47,7 @@ import {
 } from "./navigation.js";
 import { attachPermissionHandlers } from "./permissions.js";
 import { createDownloadManager } from "./downloads.js";
+import { isPdfResponse, viewerHtml } from "./pdf-viewer.js";
 import { EXTRACT_SCRIPT, applyExtractionCaps } from "../../browser-ts/dist/extraction.js";
 
 /** A browser navigation must not remain in a false loading state forever. */
@@ -64,6 +65,13 @@ export const DEFAULT_NAVIGATION_TIMEOUT_MS = 30_000;
 function webPreferencesFor(partition) {
   return {
     partition,
+    // plugins: true enables Electron's BUILT-IN PDF viewer (the only
+    // bundled plugin; NPAPI is long gone). It is required for the
+    // viewer EMBED inside the wrapper page (pdf-viewer.js): a
+    // top-level navigation to a PDF never attaches the viewer even
+    // with plugins:true (proven by the pdf-mechanism probe), while
+    // an explicit <embed type="application/pdf"> does.
+    plugins: true,
     contextIsolation: true,
     nodeIntegration: false,
     nodeIntegrationInWorker: false,
@@ -92,7 +100,15 @@ export function createBrowserHost(deps = {}) {
     ensureDownloadsDir = () => {},
     downloadsExists,
     navigationTimeoutMs = DEFAULT_NAVIGATION_TIMEOUT_MS,
+    // Maps a PDF URL to its viewer URL (ipc/browser.js owns the store).
+    // Null in tests that do not inject it: the watch still runs, but
+    // no wrapper is loaded without a store to mint nonces.
+    registerPdfViewer = null,
+    // Resolves a viewer nonce back to its PDF URL (same store). Needed
+    // for the per-partition protocol handler below.
+    resolvePdfViewerNonce = null,
   } = deps;
+  const pdfProtocolSessions = new Set();
 
   const boundedNavigationTimeoutMs =
     Number.isFinite(navigationTimeoutMs) && navigationTimeoutMs > 0
@@ -298,6 +314,39 @@ export function createBrowserHost(deps = {}) {
     if (downloads.attach(wc.session) === null) {
       push({ kind: "blocked", pageId, at: "downloads-attach" });
     }
+    // PDF viewer wrapper, protocol side (follow-up round): protocol
+    // handlers are PER SESSION, and main.js registers
+    // progressledger-v2 only on the default session (the main
+    // window), so a page in a partition session would fail the
+    // wrapper load without its own handler. Register the viewer
+    // branch on this partition session, once per session. It
+    // answers ONLY /viewer/<uuid> (anything else 404s); partition
+    // pages must never load the app UI through this scheme.
+    // NOTE: the minted URL is progressledger-v2://viewer/<uuid>, so
+    // "viewer" parses as the HOST and the nonce is the whole
+    // pathname -- an old /^\/viewer\/.../ pattern never matched.
+    if (typeof resolvePdfViewerNonce === "function" && !pdfProtocolSessions.has(wc.session)) {
+      pdfProtocolSessions.add(wc.session);
+      try {
+        wc.session.protocol.handle("progressledger-v2", async (request) => {
+          const url = new URL(request.url);
+          const m =
+            url.host === "viewer"
+              ? /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(
+                  url.pathname,
+                )
+              : null;
+          if (!m) return new Response("Not Found", { status: 404 });
+          const resolved = resolvePdfViewerNonce(m[1]);
+          if (!resolved) return new Response("Not Found", { status: 404 });
+          return new Response(viewerHtml(resolved.pdfUrl, resolved.title), {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          });
+        });
+      } catch {
+        push({ kind: "blocked", pageId, at: "pdf-protocol-attach" });
+      }
+    }
 
     // Navigation policy (R2) and popups (R3, approved decision D3-3) share ONE
     // installer, so the per-view gates and the main.js global backstop cannot
@@ -428,8 +477,33 @@ export function createBrowserHost(deps = {}) {
         });
       }
       if (webRequest && typeof webRequest.onHeadersReceived === "function") {
+        // PDF viewer wrapper (follow-up round): this handler is the
+        // session's ONLY onHeadersReceived listener (handlers
+        // replace, never accumulate), so the PDF check lives HERE.
+        // A second listener installed earlier in wirePage was
+        // silently replaced by this one, which is why the first
+        // wrapper attempt never fired. The routing is fire-and-
+        // forget: the headers callback below is never delayed by it.
+        const routePdf = async (details) => {
+          try {
+            if (typeof registerPdfViewer !== "function") return;
+            if (!isPdfResponse(details)) return;
+            const target = [...allRecords()].find(
+              (r) => r.view?.webContents?.id === details.webContentsId,
+            );
+            const viewWc = target?.view?.webContents;
+            if (!viewWc || viewWc.isDestroyed?.() === true) return;
+            const { viewerUrl } = registerPdfViewer(details.url) ?? {};
+            if (typeof viewerUrl !== "string" || !viewerUrl) return;
+            await viewWc.loadURL(viewerUrl);
+          } catch {
+            // A failed wrapper load leaves the original PDF document
+            // in place; it never breaks the navigation itself.
+          }
+        };
         webRequest.onHeadersReceived((details, callback) => {
           try {
+            routePdf(details);
             const profile = fullProfiles.get(pageId);
             const responseHeaders = { ...(details.responseHeaders ?? {}) };
             if (profile?.blockThirdPartyCookies === true) {
@@ -1070,6 +1144,7 @@ export function createBrowserHost(deps = {}) {
         pages: [...allRecords()].map((record) => ({
           id: record.id,
           url: record.url,
+          liveUrl: safeUrl(record.view),
           state: record.state,
           lastError: record.lastError,
           // The creation time is what makes "a move is not a re-open" a testable
@@ -1140,6 +1215,15 @@ export function createBrowserHost(deps = {}) {
       return view?.webContents?.isFocused?.() === true;
     } catch {
       return false;
+    }
+  }
+
+  function safeUrl(view) {
+    try {
+      const u = view?.webContents?.getURL?.();
+      return typeof u === "string" ? u : null;
+    } catch {
+      return null;
     }
   }
 

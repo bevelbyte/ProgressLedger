@@ -582,3 +582,104 @@ No PARKED.md was needed in this session: no problem hit the
 logged-in ChatGPT send in the app view (would need the user's own
 logged-in profile, which was never touched); the exact driver that
 created "Proof 1792878075719" (see item 7).
+
+## Follow-up round (2026-10-27, branch v2-continue)
+
+Worked alone under the user's rules: standard rights only
+(/RL LIMITED /IT, whoami Mandatory line at the top of every job log,
+every log showed "Medium Mandatory Level", no job elevated), nothing
+in front of the user (all jobs minimized, all app runs off-screen,
+no desktop screenshots), no touching the user's running app or Brave
+browser, no push, no merge, no reading or resetting real app data.
+Every scheduler task used here was deleted after use and verified
+gone by Query error (V2Pdf1, V2Pdf3, V2Pdf4, V2Verify1, V2Verify2,
+V2Verify3, V2Verify4, V2Verify5, V2Verify6, V2Verify7, V2Verify8,
+V2Verify9, V2Verify10, V2Verify11, V2Verify12). One stray file of
+mine was found and removed before committing: a bare-probe log that
+Playwright's --remote-debugging-port argument had redirected into
+the repo root under the literal name "--remote-debugging-port=0".
+
+1. Unknown scheduled tasks (docs/UNKNOWN_TASKS.md, read-only; nothing
+   disabled or deleted): RunDonutTest (LOW, a spent one-time Donut
+   Browser launch from 2026-10-25), cua-driver-serve (MEDIUM,
+   elevated + logon + auto-restart, but its exe is missing so it is
+   currently inert), CoolControl (LOW-MEDIUM, the user's own
+   AsusPowerFlow fan utility), V2GFinalGate (NONE, already deleted
+   2026-10-26, verified absent again). Disable and delete commands
+   for each are in the doc.
+2. PDF viewing (fixed, proven): root cause, proven by probes -- in
+   this Electron build a top-level navigation to a PDF never
+   attaches the viewer (navigator.pdfViewerEnabled is true, but no
+   <embed> appears, the tab stays "loading", nothing downloads)
+   even with plugins:true, while an explicit
+   <embed type="application/pdf"> DOES instantiate it. Fix: an
+   app-owned wrapper page (progressledger-v2://viewer/<nonce>, PDF
+   URL baked into the generated HTML, never into the wrapper URL;
+   nonce in main memory only, 10-minute TTL), routed inside the
+   host's own onHeadersReceived handler with the viewer branch
+   registered on each partition session (protocol handlers are
+   per-session; main.js only covers the default session). Two
+   wrapper bugs were found by diagnostic rounds and fixed: (a)
+   webRequest handlers replace, never accumulate, so the first
+   wrapper listener was silently replaced by the host's own
+   third-party-cookie handler; (b) "viewer" parses as the URL
+   host, not a path segment, so the serving pattern never matched
+   (fixed in both handlers); a third failure on the way was the
+   spec itself reading state before the wrapper chain ran (the
+   poll breaks on the record's creation URL), fixed by re-reading
+   after the wait. Final proof (off-screen): tab state ready,
+   title "local.pdf", live URL the viewer URL with a fresh nonce,
+   no spurious download. Capture page still saves nothing for a
+   PDF page (it now refuses the viewer URL as invalid-url; before
+   it errored "no text to capture") -- the capture tool is
+   text-only, not a PDF regression. The user-specified fallback
+   message was not needed. Not verified: the viewer in a visible
+   window (prohibited by the task rules).
+3. Address-bar search: there was no search engine -- plain text was
+   refused as invalid-url. Now DuckDuckGo is the default, with
+   Bing or Google selectable in Settings > Browser (localStorage
+   key progressledger_v2_search_engine, read fresh on every
+   submit; full URLs and bare hosts still open directly, bare
+   hosts inferred as https). Google's /sorry check still applies
+   to the embedded browser; no fingerprint spoofing and no
+   bot-check evasion were added. Two contract bugs were found by
+   the tests and fixed: the resolver returned kind/url without
+   ok:true, which made submit silently do nothing, and a jsdom
+   test asserted the raw bare host that main would have refused.
+   Verified: settings select writes bing/google/duckduckgo, and
+   typing "cats" in the bar navigates a tab to the Bing search
+   URL (search-engine.spec.js green).
+4. Data guard: the guard now funnels every entry point through one
+   resolution in main.js -- test mode (E2E=1 or MIGRATION_TEST=1)
+   refuses to start (exit 1 + REFUSING message) when the data path
+   equals or sits inside the real folder, whether it came from the
+   env var or from --user-data-dir; production ignores both. The
+   app now honours --user-data-dir in test mode (env > flag >
+   refusal), so a test run can never fall back to the real folder.
+   Verified by e2e-data-guard2.spec.js, including the packaged exe
+   (which refuses without touching real data) and a flag-only run
+   that starts and writes into the flag folder.
+5. Release folders (measured 2026-10-27 ~06:30 IST, nothing
+   deleted): release\win-unpacked-95dc1a1 439,047,955 B (RUNNING,
+   keep); release\win-unpacked 439,023,481 B (second newest, keep);
+   release\fix-test\win-unpacked 439,023,604 B (SAFE FOR THE USER
+   TO DELETE); release\pkg-95dc1a1 1,079 B debris (SAFE FOR THE
+   USER TO DELETE).
+6. Final gate: verify4 (build 0, full suite 0, guard2/search/pdf/
+   manager/play/split specs 0), verify9 (build 0, full suite 0,
+   guard2/search 0), verify11 (build 0, full suite 0, pdf 0),
+   verify12 (pdf 0, wrapper proof above). The diagnostic specs
+   (pdf-mechanism, pdf-plugins, pdf-watch-probe) are kept in e2e/
+   as evidence of the investigation; they are not part of the
+   normal suite gate.
+7. Packaging runs from the report commit (this commit): the UI
+   build bakes the commit's short hash into the status-bar build
+   ID, so the packaged build ID equals this commit. Folder,
+   shortcut target, and old-folder size are in the session's final
+   message, not here, because the folder name carries this
+   commit's hash.
+
+No PARKED.md was needed in this session: every problem found a
+root cause inside its investigation, including the PDF wrapper,
+which took four diagnostic rounds (listener replacement, URL
+parsing, stale spec reads) but closed with proof, not a fallback.

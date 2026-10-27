@@ -38,6 +38,10 @@
     setBounds,
     setVisible,
   } from "../../../shared/stores/browser.svelte.js";
+  import {
+    resolveAddressBarInput,
+    readSearchEngineId,
+  } from "../addressBar.js";
 
   // Phase 2 (workspace integration): closing a page tab in ONE pane releases
   // the page in main and destroys the native view, but a SECOND pane can still
@@ -466,11 +470,23 @@
     busy = true;
     notice = null;
     try {
+      // Plain text is a search, not an error: resolve it first (full URL
+      // passes through, bare host infers https, the rest searches with
+      // the engine chosen in Settings, DuckDuckGo by default), then hand
+      // main a URL it can gate exactly as before.
+      const resolved = resolveAddressBarInput(
+        target,
+        readSearchEngineId(typeof localStorage !== "undefined" ? localStorage : undefined),
+      );
+      if (!resolved.ok) {
+        notice = resolved.reason;
+        return;
+      }
       if (pageId) {
-        const res = await navigatePage(pageId, target);
+        const res = await navigatePage(pageId, resolved.url);
         if (!res?.ok) notice = res?.detail ?? res?.reason ?? "navigate-failed";
       } else {
-        const res = await openPage({ profileId, url: target });
+        const res = await openPage({ profileId, url: resolved.url });
         if (res?.ok) {
           reportPage(res.page?.id ?? null, res.browserTabId);
           lastSent = null;

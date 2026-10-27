@@ -19,8 +19,10 @@ import {
 } from "./workspace.js";
 import { initLogger, installFileLogger, rotateAndPruneLogs } from "./services/logger.js";
 import { installCrashHandlers } from "./services/crash-handler.js";
-import { isRealDataPath } from "./e2e-data-guard.js";
+import { resolveTestDataDir } from "./e2e-data-guard.js";
 import { makeIpcContext, registerAllIpc } from "./ipc/index.js";
+import { resolvePdfViewerNonce } from "./ipc/browser.js";
+import { viewerHtml } from "./services/browser/pdf-viewer.js";
 import { setupAutoUpdater } from "./ipc/updates.js";
 import {
   initReservationsStore,
@@ -73,10 +75,12 @@ const isE2E = process.env.PROGRESSLEDGER_V2_E2E === "1";
 const isMigrationTest = process.env.PROGRESSLEDGER_V2_MIGRATION_TEST === "1";
 
 // Packaged E2E runs must be isolated from the user's real Progress Ledger data.
-// Electron's Chromium switch does not reliably change app.getPath("userData")
-// for a packaged executable launched through the Electron test harness, so a
-// test-only environment override is applied before app readiness. Production
-// launches have no supported path to this branch.
+// Chromium's --user-data-dir switch does NOT change app.getPath("userData")
+// on its own, so test mode reads it back explicitly with
+// app.commandLine.getSwitchValue and feeds it to resolveTestDataDir
+// (shell/src/e2e-data-guard.js), together with the test env var.
+// Precedence in test mode: env var, then --user-data-dir, then refusal.
+// Production launches ignore both inputs and always use the real folder.
 // Stage 2.5 guard: in test mode the resolved data path must never be the
 // real data folder (or inside it). Past test runs wrote workspace profiles
 // into real data exactly this way -- a driver that launched the app without
@@ -84,11 +88,13 @@ const isMigrationTest = process.env.PROGRESSLEDGER_V2_MIGRATION_TEST === "1";
 // Refusing here, before any window, database, or log file is created,
 // makes every driver safe regardless of which one forgot the override.
 const realDataDir = join(app.getPath("appData"), "progress-ledger-v2");
-let resolvedUserData = realDataDir;
-if ((isE2E || isMigrationTest) && process.env.PROGRESSLEDGER_V2_E2E_USER_DATA) {
-  resolvedUserData = process.env.PROGRESSLEDGER_V2_E2E_USER_DATA;
-}
-if ((isE2E || isMigrationTest) && isRealDataPath(resolvedUserData, realDataDir)) {
+const { dir: resolvedUserData, refused: refusedRealData } = resolveTestDataDir({
+  isTestMode: isE2E || isMigrationTest,
+  envDir: process.env.PROGRESSLEDGER_V2_E2E_USER_DATA,
+  cliDir: app.commandLine.getSwitchValue("user-data-dir"),
+  realDir: realDataDir,
+});
+if (refusedRealData) {
   console.error(
     "REFUSING TO START: test mode data path is the real Progress Ledger data folder: " +
       resolvedUserData,
@@ -273,6 +279,26 @@ async function cleanupTempDir() {
 app.whenReady().then(async () => {
   protocol.handle("progressledger-v2", async (request) => {
     const url = new URL(request.url);
+    // PDF viewer wrapper (follow-up round): progressledger-v2://viewer/<nonce>
+    // serves the generated wrapper page for that nonce's PDF URL. The
+    // nonce is main-memory only and expires (see pdf-viewer.js); an
+    // unknown or expired nonce gets a 404, never a file.
+    // "viewer" parses as the HOST of progressledger-v2://viewer/<uuid>,
+    // so the nonce is the whole pathname (see host.js -- the old
+    // /^\/viewer\/.../ pattern never matched).
+    const viewerMatch =
+      url.host === "viewer"
+        ? /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(
+            url.pathname,
+          )
+        : null;
+    if (viewerMatch) {
+      const resolved = resolvePdfViewerNonce(viewerMatch[1]);
+      if (!resolved) return new Response("Not Found", { status: 404 });
+      return new Response(viewerHtml(resolved.pdfUrl, resolved.title), {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
     const relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, "");
     const candidate = resolvePath(join(BUILT_UI_ROOT, relativePath || "index.html"));
     if (candidate !== BUILT_UI_ROOT && !candidate.startsWith(`${BUILT_UI_ROOT}${process.platform === "win32" ? "\\" : "/"}`)) {
