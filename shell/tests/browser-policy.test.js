@@ -12,6 +12,8 @@ import assert from "node:assert/strict";
 import {
   ALLOWED_SCHEMES,
   isAllowedUrl,
+  isAllowedFrameUrl,
+  CHROMIUM_PDF_EXTENSION_PATTERN,
   normalizeTarget,
   partitionFor,
   clampRect,
@@ -79,6 +81,29 @@ test("isAllowedUrl is the navigation gate and agrees with normalizeTarget on ref
   assert.equal(schemeOf("file:///x"), "file:");
   assert.equal(schemeOf("nonsense"), "");
 });
+
+test("isAllowedFrameUrl admits Chromium internal PDF viewer extension in subframes only", () => {
+  const pdfExt = "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html";
+  const pdfStream = "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/123e4567-e89b-12d3-a456-426614174000";
+  const otherExt = "chrome-extension://other-extension-id/index.html";
+
+  // Subframe gate admits the built-in PDF viewer extension
+  assert.equal(isAllowedFrameUrl(pdfExt).ok, true);
+  assert.equal(isAllowedFrameUrl(pdfStream).ok, true);
+
+  // Subframe gate refuses foreign extensions
+  assert.equal(isAllowedFrameUrl(otherExt).ok, false);
+
+  // Top-level gate (isAllowedUrl) NEVER admits extension schemes
+  assert.equal(isAllowedUrl(pdfExt).ok, false);
+  assert.equal(isAllowedUrl(pdfStream).ok, false);
+  assert.equal(isAllowedUrl(otherExt).ok, false);
+
+  // Standard allowed URLs continue to pass subframe gate
+  assert.equal(isAllowedFrameUrl("https://example.com").ok, true);
+  assert.equal(isAllowedFrameUrl("about:blank").ok, true);
+});
+
 test("isAllowedUrl admits only main-generated PDF viewer URLs on the app scheme", () => {
   const good = "progressledger-v2://viewer/123e4567-e89b-12d3-a456-426614174000";
   assert.equal(isAllowedUrl(good).ok, true);

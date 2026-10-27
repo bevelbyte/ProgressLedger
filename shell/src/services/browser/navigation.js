@@ -27,7 +27,7 @@
 //   7. the permission handler — `openExternal` and friends denied
 //      (see services/browser/permissions.js).
 
-import { isAllowedUrl, schemeOf } from "./policy.js";
+import { isAllowedFrameUrl, isAllowedUrl, schemeOf } from "./policy.js";
 
 /** Every gate this module installs, in one place so a test can assert the set. */
 export const NAVIGATION_GATES = Object.freeze([
@@ -62,7 +62,7 @@ export function installNavigationGuards(wc, { onBlocked, onWindowOpen } = {}) {
 
   /** Refuse `url` for a cancellable navigation event; report why when refused. */
   const guard = (at) => (event, url) => {
-    const verdict = isAllowedUrl(url);
+    const verdict = at === "will-frame-navigate" ? isAllowedFrameUrl(url) : isAllowedUrl(url);
     if (verdict.ok) return;
     try {
       event?.preventDefault?.();

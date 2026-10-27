@@ -44,6 +44,16 @@ export const LOCAL_URL_PATTERN =
   /^progressledger-v2:\/\/local\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/file)?$/;
 
 /**
+ * Chromium's internal PDF viewer extension. When an <embed type="application/pdf">
+ * or <object type="application/pdf"> renders in Chromium (with plugins:true),
+ * Chromium attaches an internal subframe running this bundled extension.
+ * It is admitted only for subframe navigations (will-frame-navigate), never as
+ * a top-level tab address or address-bar target.
+ */
+export const CHROMIUM_PDF_EXTENSION_PATTERN =
+  /^chrome-extension:\/\/mhjfbmdgcfjbbpaeojofohoefgiehjai(\/.*)?$/i;
+
+/**
  * True for the app's own ephemeral viewer pages (PDF wrapper + local-file
  * viewer, including the local file-bytes URL). These pages carry a
  * main-memory nonce with a 10-minute TTL, so there is nothing meaningful
@@ -155,6 +165,22 @@ export function isAllowedUrl(raw) {
   if (!ALLOWED_SCHEMES.includes(url.protocol)) return { ok: false, reason: REASON.SCHEME };
   if (!url.hostname) return { ok: false, reason: REASON.NO_HOST };
   return { ok: true, url: url.toString() };
+}
+
+/**
+ * The subframe navigation gate: may this URL be loaded into a frame/embed?
+ * Admits everything `isAllowedUrl` admits, plus Chromium's internal PDF viewer
+ * extension (`chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/...`), which
+ * attaches in an internal subframe when rendering an `<embed type="application/pdf">`.
+ *
+ * @param {unknown} raw
+ * @returns {{ok: true, url: string} | {ok: false, reason: string}}
+ */
+export function isAllowedFrameUrl(raw) {
+  if (typeof raw === "string" && CHROMIUM_PDF_EXTENSION_PATTERN.test(raw.trim())) {
+    return { ok: true, url: raw.trim() };
+  }
+  return isAllowedUrl(raw);
 }
 
 /** The scheme of a URL, for an honest refusal message. "" when unparseable. */

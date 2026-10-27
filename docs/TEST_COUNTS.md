@@ -159,3 +159,21 @@ until the dev app is stopped briefly: the package must be built from
 the final commit so the status-bar build ID matches it. Nothing in
 this round changed the native module, so the packaged app's core binary
 is unaffected.
+
+## Bug 1 Fix — PDF Viewer subframe extension allowlist (2026-10-28, branch v2-continue)
+
+Full suite run after resolving Bug 1:
+
+| suite | file(s) | result |
+| --- | --- | --- |
+| build | `npm run build` | exit 0 (browser-ts, core napi, ui all built cleanly) |
+| check-ipc | `scripts/check-ipc.mjs` | 247 channels, all handled |
+| check-napi | `scripts/check-napi.mjs` | 124 core functions, all exported |
+| check-esm | `scripts/check-esm.mjs` | 133 files, all imports resolve |
+| shell | `node --test shell/tests/*.test.js` | 1244 passed, 0 failed (22 skipped) |
+| ui | `npm run test -w @progress-ledger/ui` | 72 files, 896 tests, all passed |
+| core | cargo tests | 124 passed, 0 failed (16 binaries) |
+
+### Differences from previous round
+- shell: 1243 -> 1244 (+1): new test for `isAllowedFrameUrl` subframe extension allowance and foreign extension rejection.
+- build: now exits 0 cleanly across all 3 components (core file lock released).

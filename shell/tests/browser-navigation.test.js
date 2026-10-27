@@ -132,6 +132,24 @@ test("will-frame-navigate gives SUBFRAMES the same allowlist", () => {
   const ok = cancellableEvent();
   wc.fire("will-frame-navigate")(ok, "https://example.com/frame");
   assert.equal(ok.calls.prevented, 0);
+
+  // Chromium's internal PDF viewer extension subframe must be permitted so embedded PDFs can render
+  const pdfFrame = cancellableEvent();
+  wc.fire("will-frame-navigate")(pdfFrame, "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html");
+  assert.equal(pdfFrame.calls.prevented, 0, "PDF viewer extension subframe must load");
+  const pdfStream = cancellableEvent();
+  wc.fire("will-frame-navigate")(pdfStream, "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/123e4567-e89b-12d3-a456-426614174000");
+  assert.equal(pdfStream.calls.prevented, 0, "PDF stream subframe must load");
+
+  // An unknown extension must still be blocked
+  const evilExt = cancellableEvent();
+  wc.fire("will-frame-navigate")(evilExt, "chrome-extension://other-extension-id/script.js");
+  assert.equal(evilExt.calls.prevented, 1, "Non-PDF extension subframe must be cancelled");
+
+  // Main frame will-navigate must NEVER allow extension schemes
+  const mainExt = cancellableEvent();
+  wc.fire("will-navigate")(mainExt, "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/index.html");
+  assert.equal(mainExt.calls.prevented, 1, "Main frame must not navigate to extension scheme");
 });
 
 test("setWindowOpenHandler always denies, for every scheme", () => {
