@@ -1336,3 +1336,91 @@ only, read-only, filename-filtered, other projects skipped. The
 laboratory folder was read, never modified. Coverage limits (partial
 D: coverage, missing old_ideas and versions/v1 paths, clone dates) are
 recorded in docs/FEATURE_GAP.md Part 4, not hidden.
+
+## V2-55 — Local files + error page round (2026-10-27)
+
+Local-file viewer (Task A). Allowlist only: PDF, text, and raster images
+(pdf/txt/png/jpg/jpeg/gif/webp), fixed MIME by extension, never sniffed;
+executables, scripts, and markup are refused by the allowlist, not by a
+blocklist. One `progressledger-v2://local/<uuid>` viewer URL plus a
+`/file` bytes URL per file, minted from a main-memory nonce store with a
+10-minute TTL (same shape as the PDF viewer store). The native dialog is
+the ONLY way a file is chosen in production: the renderer passes no path
+and receives none back, only the viewer URL. The E2E mint is a host seam
+(`openLocalFileForTest` on `globalThis.__cfBrowserE2E`), deliberately NOT
+an IPC channel — a preload entry whose handler exists only in E2E would
+fail check-ipc in a plain run. The bar button and the profile-switcher
+menu item share one `openLocalFile()` function in BrowserSurface; the
+browser pane's only menu is the profile switcher, so the menu item lives
+there. Opening a file writes nothing to the ledger (capture/save stay
+disabled for non-http(s) URLs).
+
+Address-bar refusal. A typed local-file-like input (file: prefix, file/
+prefix, Windows drive path, UNC path) is refused BEFORE the host check,
+with reason `local-file` and a full-sentence message — the old path let
+`file///C:/.../x.pdf` satisfy the host dot rule and become the bogus
+`https://file///...` URL the user saw. The message field exists ONLY on
+the local-file result; existing reasons stay bare codes. A bare dotted
+word like `file.pdf` still infers a host (regression-guarded).
+
+Viewer pages carry no tab row. The tab store accepts absolute http(s)
+URLs only (its own deliberate guard, INVALID_URL otherwise), so creating
+a page at a viewer URL failed closed with tab-state-failed and tore the
+page down. The fix does NOT weaken the store: `isEphemeralViewerUrl`
+(policy.js, matches only the two minted nonce patterns) lets the
+create-page channel skip the row write for viewer URLs, the same shape
+as temporary profiles, which also carry no row. A viewer nonce is gone
+after restart anyway (10-minute main-memory TTL), so a row would only
+restore into a 404. Navigating TO a viewer URL likewise leaves the row
+on the last http(s) URL — the PDF wrapper already behaved this way by
+accident (its row update failed silently); now the skip is deliberate,
+so an http PDF restores to the PDF and re-routes to a fresh viewer.
+
+Error block (Task B Part 1). A failed page shows a block
+(`browser-load-error`) with the Chromium code and description VERBATIM
+as reported — no numeric-to-name map is invented — plus the attempted
+URL from the page record and the page's browser profile displayName.
+The host's did-fail-load capture and the store's failed-event
+preservation already existed; only the surface was missing.
+
+Failed-request instrument (Task B Part 2). Main-frame failures surface
+via did-fail-load, but a page whose frame loads and whose API calls fail
+does not. The host now records, per page, in a host-side Map (never in
+the registry record, never mirrored): webRequest onErrorOccurred
+(network errors) and onCompleted for xhr/fetch with status >= 400 (HTTP
+failures are NOT webRequest errors — without this the instrument would
+miss the most likely ChatGPT case). These two are LISTENERS, not
+replacing handlers, so they sit alongside the existing onHeadersReceived
+routing untouched; each filters to its own page's webContents id (pages
+share a session). URLs are sanitized, only the last 20 per page are
+kept, the entry drops on page close, and the only exposure is
+debugSnapshot's `failedRequests` for E2E diagnosis.
+
+ChatGPT matrix verdict: NO app bug proven. Anonymous chatgpt.com loads
+(state ready, no lastError) in all four test-instance profiles — Default
+(auto-created), new, temporary, and one named "work" — and the same
+three anonymous endpoints return 401 in Default, new, and work-named
+(unauth-mweb conversation/prepare, sentinel chat-requirements/prepare,
+backend-anon beacons/home): endpoints expecting auth, normal for a
+logged-out page, not a page failure. The temporary profile instead
+showed aborted connectivity probes, page still ready; no cause is
+claimed for that difference, it is recorded as an observation. The
+user's logged-in SEND failure was NOT reproduced and cannot be from a
+spec: no login happens in a test, and the native view's DOM is not
+reachable from Playwright, so no spec can type and send. A
+test-instance "work" profile is not the real work profile (different
+userData, cookies, storage); a pass there rules out name-based causes
+only. If only the real work profile fails on send, the cause is most
+likely in that profile's stored state. The real profile was never
+touched. Fix only on proven app cause; none was found.
+
+Harness lessons from this round. (1) Playwright `app.evaluate` calls
+the function as fn(electronModule, arg): a single-parameter function
+receives the module, not the passed value — the spec's mint and
+fetchViaMain must take (electron, value), and the evaluate context has
+no `require` (bytes come back as a plain number array). Proven by a
+probe spec before the fix. (2) Never overwrite a test file from a stale
+local copy: the first Task B upload clobbered the Task A refusal-test
+fix because the local copy predated it (caught by the UI run, 1
+failure, restored immediately). Verify the PC file's current content
+before uploading any file this round did not author.

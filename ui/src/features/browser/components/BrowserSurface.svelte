@@ -20,7 +20,7 @@
    * compact chrome exposes the current page and honest state while the native
    * WebContentsView remains owned and positioned by main.
    */
-  import { Globe, Loader2, RotateCw, AlertTriangle, ShieldOff, Square, Bookmark, BookmarkCheck, Telescope, Plus, Trash2, ChevronLeft, ChevronRight, Camera, Highlighter } from "lucide-svelte";
+  import { Globe, Loader2, RotateCw, AlertTriangle, ShieldOff, Square, Bookmark, BookmarkCheck, Telescope, Plus, Trash2, ChevronLeft, ChevronRight, Camera, Highlighter, FolderOpen } from "lucide-svelte";
   import {
     browser,
     pageFor,
@@ -479,7 +479,7 @@
         readSearchEngineId(typeof localStorage !== "undefined" ? localStorage : undefined),
       );
       if (!resolved.ok) {
-        notice = resolved.reason;
+        notice = resolved.message ?? resolved.reason;
         return;
       }
       if (pageId) {
@@ -496,6 +496,40 @@
       }
     } finally {
       busy = false;
+    }
+  }
+
+  /** Open a local file in this pane, through the native dialog. The
+   * dialog opens only from this click (or the menu item below, which
+   * calls this same function): nothing else in the app invokes it, and
+   * the file is never copied anywhere by opening it. */
+  async function openLocalFile() {
+    notice = null;
+    const api = typeof window !== "undefined" ? window.progressLedger?.browser : null;
+    if (!api?.openLocalFile) {
+      notice = "open-local-file-unavailable";
+      return;
+    }
+    const res = await api.openLocalFile(Number(profileId));
+    if (!res?.ok) {
+      notice = res?.detail ?? res?.reason ?? "open-file-failed";
+      return;
+    }
+    if (pageId) {
+      const nav = await navigatePage(pageId, res.viewerUrl);
+      if (!nav?.ok) notice = nav?.detail ?? nav?.reason ?? "navigate-failed";
+    } else {
+      const opened = await openPage({
+        profileId,
+        url: res.viewerUrl,
+        browserProfileId: current?.localId ?? undefined,
+      });
+      if (opened?.ok) {
+        reportPage(opened.page?.id ?? null, opened.browserTabId);
+        lastSent = null;
+      } else {
+        notice = opened?.detail ?? opened?.reason ?? "open-failed";
+      }
     }
   }
 
@@ -566,6 +600,18 @@
         <RotateCw size={12} aria-hidden="true" />
       {/if}
       <span class="browser-go-label">{pageId ? "Go" : "Open"}</span>
+    </button>
+
+    <button
+      type="button"
+      class="browser-open-file"
+      data-testid="browser-open-file"
+      title="Open file"
+      aria-label="Open file"
+      onclick={openLocalFile}
+    >
+      <FolderOpen size={12} aria-hidden="true" />
+      <span class="browser-open-file-label">Open file</span>
     </button>
 
     {#if pageId}
@@ -688,6 +734,17 @@
             >
               Manage profiles…
             </button>
+            <button
+              type="button"
+              class="profile-menu-action"
+              data-testid="browser-profile-menu-open-file"
+              onclick={() => {
+                profileMenuOpen = false;
+                void openLocalFile();
+              }}
+            >
+              Open file…
+            </button>
             <p class="profile-menu-note">New tabs open in the current profile. Open pages keep their profile.</p>
           </div>
         {/if}
@@ -754,6 +811,27 @@
       <AlertTriangle size={12} aria-hidden="true" />
       <span>Refused: {notice}</span>
     </p>
+  {/if}
+
+  {#if page?.state === "failed"}
+    <!-- Load failure, with the real Chromium error (Task B Part 1). The
+         code and description are shown verbatim as Chromium reported
+         them — no numeric-to-name map is invented here. The address is
+         the attempted URL from the page record, and the profile is the
+         page's own browser profile. -->
+    <div class="browser-load-error" data-testid="browser-load-error" role="alert">
+      <p class="browser-load-error-title">This page could not be loaded.</p>
+      {#if page.lastError?.code !== undefined && page.lastError?.code !== null}
+        <p>Error code: {page.lastError.code}</p>
+      {/if}
+      {#if page.lastError?.description}
+        <p>{page.lastError.description}</p>
+      {/if}
+      <p>Address: {page.url}</p>
+      {#if pageProfile?.displayName}
+        <p>Profile: {pageProfile.displayName}</p>
+      {/if}
+    </div>
   {/if}
 
   <!-- The page itself is NATIVE and lives at this rectangle. -->
@@ -868,7 +946,8 @@
   }
 
   .browser-go,
-  .browser-reload {
+  .browser-reload,
+  .browser-open-file {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -879,7 +958,8 @@
   }
 
   .browser-go:hover,
-  .browser-reload:hover {
+  .browser-reload:hover,
+  .browser-open-file:hover {
     background: var(--atlas-wash);
     color: var(--atlas-ink);
   }
@@ -890,6 +970,11 @@
   }
 
   .browser-go-label {
+    font-size: var(--text-micro);
+    font-family: var(--font-mono);
+  }
+
+  .browser-open-file-label {
     font-size: var(--text-micro);
     font-family: var(--font-mono);
   }
@@ -911,6 +996,25 @@
     color: var(--atlas-bad);
     font-size: var(--text-micro);
     font-family: var(--font-mono);
+  }
+
+  .browser-load-error {
+    margin: 0;
+    padding: 8px 10px;
+    border-top: 1px solid var(--atlas-bad);
+    border-bottom: 1px solid var(--atlas-bad);
+    color: var(--atlas-bad);
+    font-size: var(--text-micro);
+    font-family: var(--font-mono);
+  }
+
+  .browser-load-error p {
+    margin: 0 0 2px;
+    overflow-wrap: anywhere;
+  }
+
+  .browser-load-error-title {
+    font-weight: 600;
   }
 
   .browser-state {
@@ -1045,6 +1149,10 @@
 
   @container pane (max-width: 360px) {
     .browser-go-label {
+      display: none;
+    }
+
+    .browser-open-file-label {
       display: none;
     }
 

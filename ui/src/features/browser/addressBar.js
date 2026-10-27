@@ -12,10 +12,12 @@
 //   - a search URL for the chosen engine (the default is DuckDuckGo).
 //
 // Security shape, kept deliberately narrow:
-//   - Only http(s) URLs are ever produced. A `javascript:`, `data:`,
-//     `file:` or credentialed (`user:pass@host`) input never becomes a
-//     navigation: it falls through to a search query, which is inert
-//     text inside an https search URL.
+//   - Only http(s) URLs are ever produced. A `javascript:` or `data:` or
+//     credentialed (`user:pass@host`) input never becomes a navigation: it
+//     falls through to a search query, which is inert text inside an https
+//     search URL. A local file reference is refused outright with a message
+//     (see isLocalFileInput): it is neither searched nor loaded as file:.
+//     Only the Open file dialog opens local files.
 //   - Input is bounded (4096 chars, the same cap as the navigation
 //     policy) and trimmed. An empty input is refused, never searched.
 //   - No fingerprint spoofing and no evasion of bot checks: choosing a
@@ -33,6 +35,9 @@ export const DEFAULT_SEARCH_ENGINE = "duckduckgo";
 export const ADDRESS_BAR_REASONS = Object.freeze({
   EMPTY: "empty-url",
   INVALID: "invalid-url",
+  // A local file path, not a web address: refused with a message that
+  // points at Open file, never searched and never loaded as file:.
+  LOCAL_FILE: "local-file",
 });
 
 /**
@@ -84,9 +89,23 @@ function looksLikeHost(trimmed) {
 }
 
 /**
+ * Is this a local file reference rather than a web address or a question?
+ * A file: scheme in any form, a file/ prefix, a Windows drive path, or a
+ * UNC path. A bare dotted word ("file.pdf") is NOT one: with no scheme,
+ * drive, or slash it is a host inference like any other, and the bare-host
+ * rule below still owns it.
+ */
+function isLocalFileInput(trimmed) {
+  if (/^file:/i.test(trimmed)) return true;
+  if (/^file\//i.test(trimmed)) return true;
+  if (/^[A-Za-z]:[\\/]/.test(trimmed)) return true;
+  if (trimmed.startsWith("\\\\")) return true;
+  return false;
+}
+/**
  * @param {unknown} raw what the user typed
  * @param {unknown} engineId "duckduckgo" | "bing" | "google" (anything else falls back to the default)
- * @returns {{ok: true, kind: "url", url: string} | {ok: true, kind: "search", url: string, query: string} | {ok: false, reason: string}}
+ * @returns {{ok: true, kind: "url", url: string} | {ok: true, kind: "search", url: string, query: string} | {ok: false, reason: string, message?: string}}
  */
 export function resolveAddressBarInput(raw, engineId = DEFAULT_SEARCH_ENGINE) {
   if (typeof raw !== "string") return { ok: false, reason: ADDRESS_BAR_REASONS.INVALID };
@@ -98,6 +117,20 @@ export function resolveAddressBarInput(raw, engineId = DEFAULT_SEARCH_ENGINE) {
   // A full URL the user typed, exactly as the navigation gate allows it.
   const direct = isDirectUrl(trimmed);
   if (direct) return { ok: true, kind: "url", url: direct };
+
+  // A local file path is NOT a web address, and it must never reach the
+  // host inference below: "file///C:/.../report.pdf" looks like a host
+  // to looksLikeHost (the ".pdf" dot satisfies it) and used to come out
+  // as the bogus https://file///C:/... navigation. Refuse it with a
+  // message that points at Open file. Typed file: addresses stay
+  // refused by the same rule; only the dialog opens local files.
+  if (isLocalFileInput(trimmed)) {
+    return {
+      ok: false,
+      reason: ADDRESS_BAR_REASONS.LOCAL_FILE,
+      message: "Local files cannot be typed here. Use Open file to choose a file from your computer.",
+    };
+  }
 
   // A bare host, inferred as https (never http), with no credentials.
   if (looksLikeHost(trimmed)) {

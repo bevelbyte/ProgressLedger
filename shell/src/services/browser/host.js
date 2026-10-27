@@ -37,9 +37,11 @@ export function isGovernedWebContents(webContents) {
   return governedWebContents.has(webContents);
 }
 
-import { WebContentsView } from "electron";
+import { WebContentsView, net } from "electron";
+import { statSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { createBrowserRegistry, PAGE_STATES, REASONS } from "./registry.js";
-import { clampRect, isAllowedUrl, schemeOf } from "./policy.js";
+import { clampRect, isAllowedUrl, sanitizeDisplayUrl, schemeOf } from "./policy.js";
 import {
   installNavigationGuards,
   decidePopup,
@@ -48,6 +50,7 @@ import {
 import { attachPermissionHandlers } from "./permissions.js";
 import { createDownloadManager } from "./downloads.js";
 import { isPdfResponse, viewerHtml } from "./pdf-viewer.js";
+import { localFileResponse, localViewerHtml, validateLocalFilePath } from "./local-file.js";
 import { EXTRACT_SCRIPT, applyExtractionCaps } from "../../browser-ts/dist/extraction.js";
 
 /** A browser navigation must not remain in a false loading state forever. */
@@ -107,8 +110,15 @@ export function createBrowserHost(deps = {}) {
     // Resolves a viewer nonce back to its PDF URL (same store). Needed
     // for the per-partition protocol handler below.
     resolvePdfViewerNonce = null,
+    // Maps a validated local file to its viewer URL (ipc/browser.js owns
+    // the store). Null in tests that do not inject it: the local branch
+    // below then 404s instead of minting anything.
+    registerLocalFileViewer = null,
+    // Resolves a local-file nonce back to its entry (same store). Needed
+    // for the per-partition protocol handler below.
+    resolveLocalFileNonce = null,
   } = deps;
-  const pdfProtocolSessions = new Set();
+  const appProtocolSessions = new Set();
 
   const boundedNavigationTimeoutMs =
     Number.isFinite(navigationTimeoutMs) && navigationTimeoutMs > 0
@@ -157,6 +167,22 @@ export function createBrowserHost(deps = {}) {
   // Last-known live cap per workspace (for popups, which are created
   // inside the host without an IPC round-trip to Rust).
   const workspaceLiveCaps = new Map();
+
+  // Failed subresource requests per page (Task B Part 2 instrument).
+  // Main-frame failures surface via did-fail-load, but a page whose frame
+  // loads fine and whose API calls fail does not — ChatGPT is exactly
+  // that shape. Host-side ONLY: never in the registry record, never
+  // mirrored to the renderer, exposed only via debugSnapshot for E2E
+  // diagnosis. URLs are sanitized (no credentials, token-ish query
+  // keys, or fragments); only the last 20 per page are kept; the entry
+  // is dropped when the page closes.
+  const failedRequestsByPage = new Map();
+  function recordFailedRequest(pageId, entry) {
+    const list = failedRequestsByPage.get(pageId) ?? [];
+    list.push(entry);
+    while (list.length > 20) list.shift();
+    failedRequestsByPage.set(pageId, list);
+  }
 
   const registry = createBrowserRegistry({
     createView: (spec) => {
@@ -293,6 +319,47 @@ export function createBrowserHost(deps = {}) {
     // backstop knows not to install a second, weaker copy of the policy on it.
     governedWebContents.add(wc);
 
+    // Failed-request instrument (see failedRequestsByPage above). These
+    // two are LISTENERS, not replacing handlers: unlike
+    // onBeforeSendHeaders/onHeadersReceived, onErrorOccurred and
+    // onCompleted take no callback and accumulate, so they sit alongside
+    // the existing routing untouched. Each listener filters to its own
+    // page's webContents id (pages share a session, so a session-wide
+    // listener would misattribute). Network errors (DNS, reset, abort)
+    // arrive via onErrorOccurred; HTTP failures (403/401/500) are NOT
+    // webRequest errors, so onCompleted records xhr/fetch with status
+    // >= 400 — without it the instrument would miss the most likely
+    // ChatGPT case. wirePage runs once per page, so these install once.
+    try {
+      const webRequest = wc.session?.webRequest;
+      if (webRequest && typeof webRequest.onErrorOccurred === "function") {
+        webRequest.onErrorOccurred((details) => {
+          if (details?.webContentsId !== wc.id) return;
+          recordFailedRequest(pageId, {
+            url: sanitizeDisplayUrl(details.url ?? ""),
+            error: details.error ?? "",
+            resourceType: details.resourceType ?? "",
+            at: Date.now(),
+          });
+        });
+      }
+      if (webRequest && typeof webRequest.onCompleted === "function") {
+        webRequest.onCompleted((details) => {
+          if (details?.webContentsId !== wc.id) return;
+          if (details?.resourceType !== "xhr" && details?.resourceType !== "fetch") return;
+          if (typeof details?.statusCode !== "number" || details.statusCode < 400) return;
+          recordFailedRequest(pageId, {
+            url: sanitizeDisplayUrl(details.url ?? ""),
+            status: details.statusCode,
+            resourceType: details.resourceType ?? "",
+            at: Date.now(),
+          });
+        });
+      }
+    } catch {
+      push({ kind: "blocked", pageId, at: "failed-request-instrument" });
+    }
+
     /**
      * Popups this page load has spent (approved decision D3-3). It lives with
      * the page, not with the session: the budget is per page LOAD, so a page
@@ -314,34 +381,60 @@ export function createBrowserHost(deps = {}) {
     if (downloads.attach(wc.session) === null) {
       push({ kind: "blocked", pageId, at: "downloads-attach" });
     }
-    // PDF viewer wrapper, protocol side (follow-up round): protocol
-    // handlers are PER SESSION, and main.js registers
-    // progressledger-v2 only on the default session (the main
-    // window), so a page in a partition session would fail the
-    // wrapper load without its own handler. Register the viewer
-    // branch on this partition session, once per session. It
-    // answers ONLY /viewer/<uuid> (anything else 404s); partition
-    // pages must never load the app UI through this scheme.
-    // NOTE: the minted URL is progressledger-v2://viewer/<uuid>, so
-    // "viewer" parses as the HOST and the nonce is the whole
-    // pathname -- an old /^\/viewer\/.../ pattern never matched.
-    if (typeof resolvePdfViewerNonce === "function" && !pdfProtocolSessions.has(wc.session)) {
-      pdfProtocolSessions.add(wc.session);
+    // PDF viewer wrapper, protocol side (follow-up round), plus the
+    // local-file viewer branch (same shape): protocol handlers are PER
+    // SESSION, and main.js registers progressledger-v2 only on the
+    // default session (the main window), so a page in a partition
+    // session would fail the wrapper load without its own handler.
+    // Register both branches on this partition session, once per
+    // session. Each branch answers ONLY its own host + UUID nonce
+    // (anything else 404s); partition pages must never load the app
+    // UI through this scheme.
+    // NOTE: the minted URLs are progressledger-v2://viewer/<uuid> and
+    // progressledger-v2://local/<uuid>, so the branch name parses as
+    // the HOST and the nonce is the whole pathname -- an old
+    // /^\/viewer\/.../ pattern never matched.
+    if (
+      (typeof resolvePdfViewerNonce === "function" ||
+        typeof resolveLocalFileNonce === "function") &&
+      !appProtocolSessions.has(wc.session)
+    ) {
+      appProtocolSessions.add(wc.session);
       try {
         wc.session.protocol.handle("progressledger-v2", async (request) => {
           const url = new URL(request.url);
-          const m =
-            url.host === "viewer"
-              ? /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(
-                  url.pathname,
-                )
-              : null;
-          if (!m) return new Response("Not Found", { status: 404 });
-          const resolved = resolvePdfViewerNonce(m[1]);
-          if (!resolved) return new Response("Not Found", { status: 404 });
-          return new Response(viewerHtml(resolved.pdfUrl, resolved.title), {
-            headers: { "content-type": "text/html; charset=utf-8" },
-          });
+          if (url.host === "viewer" && typeof resolvePdfViewerNonce === "function") {
+            const m =
+              /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(
+                url.pathname,
+              );
+            if (!m) return new Response("Not Found", { status: 404 });
+            const resolved = resolvePdfViewerNonce(m[1]);
+            if (!resolved) return new Response("Not Found", { status: 404 });
+            return new Response(viewerHtml(resolved.pdfUrl, resolved.title), {
+              headers: { "content-type": "text/html; charset=utf-8" },
+            });
+          }
+          if (url.host === "local" && typeof resolveLocalFileNonce === "function") {
+            const m =
+              /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/file)?$/.exec(
+                url.pathname,
+              );
+            if (!m) return new Response("Not Found", { status: 404 });
+            const resolved = resolveLocalFileNonce(m[1]);
+            if (!resolved) return new Response("Not Found", { status: 404 });
+            if (m[2] === "/file") {
+              return localFileResponse(resolved, {
+                statSync,
+                fetchFile: (p) => net.fetch(pathToFileURL(p).toString()),
+              });
+            }
+            return new Response(
+              localViewerHtml(resolved.kind, resolved.title, `progressledger-v2://local/${m[1]}/file`),
+              { headers: { "content-type": "text/html; charset=utf-8" } },
+            );
+          }
+          return new Response("Not Found", { status: 404 });
         });
       } catch {
         push({ kind: "blocked", pageId, at: "pdf-protocol-attach" });
@@ -998,6 +1091,7 @@ export function createBrowserHost(deps = {}) {
       }
       const destroyed = registry.destroy(pageId);
       fullProfiles.delete(pageId);
+      failedRequestsByPage.delete(pageId);
       return { ok: destroyed, clearPromise };
     },
 
@@ -1147,6 +1241,7 @@ export function createBrowserHost(deps = {}) {
           liveUrl: safeUrl(record.view),
           state: record.state,
           lastError: record.lastError,
+          failedRequests: failedRequestsByPage.get(record.id) ?? [],
           // The creation time is what makes "a move is not a re-open" a testable
           // claim: a re-created page would carry a later stamp (Phase 2).
           createdAt: record.createdAt,
@@ -1184,6 +1279,29 @@ export function createBrowserHost(deps = {}) {
       // took the focus, which a spec cannot demand from an unfocused window.
       reportPageFocus(pageId);
       return { ok: true, nativeFocus };
+    },
+
+    /**
+     * E2E-ONLY seam (never an IPC channel): mint a local-file viewer URL
+     * for a test file path, so the viewer + serving can be proven with a
+     * real file in a hidden window. The path is validated exactly like
+     * the dialog result (stat + allowlist) and the refusal reasons are
+     * the same. Refuses outside test mode, and the seam object itself is
+     * only installed on globalThis when PROGRESSLEDGER_V2_E2E=1
+     * (ipc/browser.js), so production has no path to this method.
+     */
+    openLocalFileForTest(filePath) {
+      if (process.env.PROGRESSLEDGER_V2_E2E !== "1") {
+        return { ok: false, reason: "test-only" };
+      }
+      if (typeof registerLocalFileViewer !== "function") {
+        return { ok: false, reason: "local-file-unavailable" };
+      }
+      const validated = validateLocalFilePath(filePath, statSync);
+      if (!validated.ok) return validated;
+      const minted = registerLocalFileViewer(validated.entry);
+      if (!minted) return { ok: false, reason: "local-file-unavailable" };
+      return { ok: true, ...minted };
     },
 
     /** E2E-only caller: force the embedded page renderer to crash, not the app. */

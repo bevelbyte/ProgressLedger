@@ -2,7 +2,7 @@ import { app, BrowserWindow, Menu, ipcMain, dialog, session, protocol, net } fro
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, realpathSync, statSync } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 
 import {
@@ -22,7 +22,9 @@ import { installCrashHandlers } from "./services/crash-handler.js";
 import { resolveTestDataDir } from "./e2e-data-guard.js";
 import { makeIpcContext, registerAllIpc } from "./ipc/index.js";
 import { resolvePdfViewerNonce } from "./ipc/browser.js";
+import { resolveLocalFileNonce } from "./ipc/browser.js";
 import { viewerHtml } from "./services/browser/pdf-viewer.js";
+import { localFileResponse, localViewerHtml } from "./services/browser/local-file.js";
 import { setupAutoUpdater } from "./ipc/updates.js";
 import {
   initReservationsStore,
@@ -298,6 +300,30 @@ app.whenReady().then(async () => {
       return new Response(viewerHtml(resolved.pdfUrl, resolved.title), {
         headers: { "content-type": "text/html; charset=utf-8" },
       });
+    }
+    // Local-file viewer (Task A): progressledger-v2://local/<nonce>
+    // serves the generated viewer page for that nonce's file, and
+    // .../local/<nonce>/file serves the file bytes with the store
+    // entry's fixed mime. An unknown or expired nonce gets a 404,
+    // never a file; the real path never appears in any URL.
+    if (url.host === "local") {
+      const localMatch =
+        /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/file)?$/.exec(
+          url.pathname,
+        );
+      if (!localMatch) return new Response("Not Found", { status: 404 });
+      const resolved = resolveLocalFileNonce(localMatch[1]);
+      if (!resolved) return new Response("Not Found", { status: 404 });
+      if (localMatch[2] === "/file") {
+        return localFileResponse(resolved, {
+          statSync,
+          fetchFile: (p) => net.fetch(pathToFileURL(p).toString()),
+        });
+      }
+      return new Response(
+        localViewerHtml(resolved.kind, resolved.title, `progressledger-v2://local/${localMatch[1]}/file`),
+        { headers: { "content-type": "text/html; charset=utf-8" } },
+      );
     }
     const relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, "");
     const candidate = resolvePath(join(BUILT_UI_ROOT, relativePath || "index.html"));

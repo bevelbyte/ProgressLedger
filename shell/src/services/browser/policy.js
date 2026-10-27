@@ -32,6 +32,35 @@ export const ALLOWED_EXACT = Object.freeze(["about:blank"]);
 export const VIEWER_URL_PATTERN =
   /^progressledger-v2:\/\/viewer\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/**
+ * The app-owned local-file viewer page (see services/browser/local-file.js).
+ * ONLY main-generated nonce URLs pass: the scheme plus the exact `local`
+ * host plus a UUID nonce, with an optional `/file` suffix for the served
+ * file bytes (the viewer page's embed/img/iframe target). Every other
+ * progressledger-v2://local/... URL stays blocked, so a page can never
+ * mint its own local-file URL or steer the viewer at an arbitrary path.
+ */
+export const LOCAL_URL_PATTERN =
+  /^progressledger-v2:\/\/local\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/file)?$/;
+
+/**
+ * True for the app's own ephemeral viewer pages (PDF wrapper + local-file
+ * viewer, including the local file-bytes URL). These pages carry a
+ * main-memory nonce with a 10-minute TTL, so there is nothing meaningful
+ * to restore after a restart — and the tab store only accepts absolute
+ * http(s) URLs (its own deliberate guard, INVALID_URL otherwise). The
+ * create-page channel therefore skips the tab-row write for viewer URLs
+ * instead of failing the page, the same shape as temporary profiles,
+ * which also carry no row. A viewer URL can never be a restore row, so
+ * a restart can never replay an expired nonce into a 404.
+ */
+export function isEphemeralViewerUrl(url) {
+  return (
+    typeof url === "string" &&
+    (VIEWER_URL_PATTERN.test(url) || LOCAL_URL_PATTERN.test(url))
+  );
+}
+
 const REASON = Object.freeze({
   EMPTY: "empty-url",
   INVALID: "invalid-url",
@@ -111,6 +140,9 @@ export function isAllowedUrl(raw) {
     return { ok: true, url: raw.trim() };
   }
   if (typeof raw === "string" && VIEWER_URL_PATTERN.test(raw.trim())) {
+    return { ok: true, url: raw.trim() };
+  }
+  if (typeof raw === "string" && LOCAL_URL_PATTERN.test(raw.trim())) {
     return { ok: true, url: raw.trim() };
   }
   if (typeof raw !== "string") return { ok: false, reason: REASON.INVALID };

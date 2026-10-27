@@ -107,6 +107,23 @@ describe("browser mirror", () => {
     expect(pageFor("bp-1")).toBe(null);
   });
 
+  it("preserves a load failure's code and description verbatim", () => {
+    applyBrowserEvent({ kind: "created", page: pageFrame() });
+    applyBrowserEvent({
+      kind: "failed",
+      pageId: "bp-1",
+      code: -105,
+      description: "ERR_NAME_NOT_RESOLVED",
+      reason: "load-failed",
+    });
+    const page = pageFor("bp-1");
+    expect(page.state).toBe("failed");
+    expect(page.loading).toBe(false);
+    expect(page.lastError.code).toBe(-105);
+    expect(page.lastError.description).toBe("ERR_NAME_NOT_RESOLVED");
+    expect(page.lastError.reason).toBe("load-failed");
+  });
+
   it("ignores an event for a page it does not know, and an unknown kind", () => {
     applyBrowserEvent({ kind: "title", pageId: "bp-9", title: "ghost" });
     applyBrowserEvent({ kind: "something-new", pageId: "bp-9" });
@@ -237,11 +254,9 @@ describe("browser surface", () => {
   });
 
   it("shows a refusal instead of a silent no-op", async () => {
-    // A file: URL is never navigated: it becomes a search query, and
-    // the mock's rejection of that open still surfaces as a notice.
-    const bridge = makeBrowserBridge({
-      createPage: vi.fn(async () => ({ ok: false, reason: "invalid-url", detail: "blocked-scheme" })),
-    });
+    // A file: URL is never navigated: the bar refuses it with the Open
+    // file message and never calls openPage at all.
+    const bridge = makeBrowserBridge();
     render(BrowserSurface, { props: { pageId: null, profileId: 3 } });
 
     await fireEvent.input(screen.getByTestId("browser-address"), {
@@ -250,7 +265,8 @@ describe("browser surface", () => {
     await fireEvent.click(screen.getByTestId("browser-go"));
 
     await waitFor(() => expect(screen.getByTestId("browser-notice")).toBeTruthy());
-    expect(screen.getByTestId("browser-notice").textContent).toContain("blocked-scheme");
+    expect(screen.getByTestId("browser-notice").textContent).toContain("Use Open file");
+    expect(bridge.createPage).not.toHaveBeenCalled();
     expect(bridge.navigate).not.toHaveBeenCalled();
   });
 
@@ -277,6 +293,26 @@ describe("browser surface", () => {
     render(BrowserSurface, { props: { pageId: "bp-1", profileId: 3 } });
     expect(screen.getByTestId("browser-state").textContent).toContain("could not be loaded");
     expect(screen.getByTestId("browser-state")).toHaveClass("failed");
+  });
+
+  it("shows the real error, address, and profile name on a failed page", async () => {
+    makeBrowserBridge();
+    applyBrowserEvent({
+      kind: "created",
+      page: pageFrame({
+        url: "https://nonexistent.invalid/",
+        state: "failed",
+        loading: false,
+        lastError: { code: -105, description: "ERR_NAME_NOT_RESOLVED", reason: "load-failed" },
+        browserProfile: { localId: "bp-work", displayName: "Work" },
+      }),
+    });
+    render(BrowserSurface, { props: { pageId: "bp-1", profileId: 3 } });
+    const block = screen.getByTestId("browser-load-error");
+    expect(block.textContent).toContain("Error code: -105");
+    expect(block.textContent).toContain("ERR_NAME_NOT_RESOLVED");
+    expect(block.textContent).toContain("https://nonexistent.invalid/");
+    expect(block.textContent).toContain("Profile: Work");
   });
 
   it("announces a live loading state in the page chrome", () => {

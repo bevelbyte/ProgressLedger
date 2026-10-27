@@ -15,17 +15,23 @@ import { safeHandle } from "../security/safe-handle.js";
 // mandatory Donut-independence property for Phase 1, and it is asserted by
 // e2e/browser-page.spec.js.
 
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { app, net, safeStorage, session } from "electron";
+import { app, dialog, net, safeStorage, session } from "electron";
 import { createBrowserHost } from "../services/browser/host.js";
 import { createPdfViewerStore } from "../services/browser/pdf-viewer.js";
+import {
+  LOCAL_FILE_DIALOG_EXTENSIONS,
+  createLocalFileStore,
+  validateLocalFilePath,
+} from "../services/browser/local-file.js";
 import { measureDirectory } from "../services/browser/partition-size.js";
 import { REASONS } from "../services/browser/registry.js";
 import {
   isAllowedUrl,
+  isEphemeralViewerUrl,
   partitionForBrowser,
   validateBrowserProfileId,
   validateTempProfileId,
@@ -44,6 +50,18 @@ const pdfViewerStore = createPdfViewerStore();
 /** Resolve a viewer nonce to its PDF URL (main.js protocol handler). */
 export function resolvePdfViewerNonce(nonce) {
   return pdfViewerStore.resolve(nonce);
+}
+
+/** Local-file viewer nonces: one store for the whole app, owned here so
+ * the host (which serves partition pages + mints test URLs) and main.js
+ * (whose protocol handler serves the default session) share exactly one
+ * mapping. Kept in main memory only; nothing about it is persisted or
+ * logged. */
+const localFileStore = createLocalFileStore();
+
+/** Resolve a local-file nonce to its entry (main.js protocol handler). */
+export function resolveLocalFileNonce(nonce) {
+  return localFileStore.resolve(nonce);
 }
 
 export function getBrowserHost(ctx) {
@@ -80,6 +98,8 @@ export function getBrowserHost(ctx) {
     navigationTimeoutMs,
     registerPdfViewer: (pdfUrl) => pdfViewerStore.register(pdfUrl),
     resolvePdfViewerNonce: (nonce) => pdfViewerStore.resolve(nonce),
+    registerLocalFileViewer: (entry) => localFileStore.register(entry),
+    resolveLocalFileNonce: (nonce) => localFileStore.resolve(nonce),
   });
   return hostRef;
 }
@@ -476,6 +496,13 @@ export function register(ctx) {
     if (!created?.ok || !created.page?.id) return created;
     const pageId = created.page.id;
     if (resolved.temporary) return created;
+    // Viewer pages carry no restore row (see isEphemeralViewerUrl): the
+    // tab store accepts http(s) only, and a viewer nonce is gone after
+    // restart, so writing a row would only fail the page closed — the
+    // exact tab-state-failed/INVALID_URL failure this guards against.
+    // Same shape as the temporary early return above: a row-less page
+    // works normally in-session and simply does not restore.
+    if (isEphemeralViewerUrl(created.page.url ?? url)) return created;
     if (restoreRow) {
       tabRows.set(pageId, { rowId: restoreRow.id, profileId, title: created.page.title ?? restoreRow.title ?? "" });
       try { ctx.core.updateBrowserTab(restoreRow.id, created.page.url ?? url, created.page.title ?? restoreRow.title ?? ""); } catch { /* row keeps its stored values; restore still works */ }
@@ -504,12 +531,49 @@ export function register(ctx) {
     const res = host.navigate(pageId, url);
     if (res?.ok) {
       const row = tabRows.get(pageId);
-      if (row) {
+      // Navigating TO a viewer URL does not move the row: the row keeps
+      // the last http(s) URL, so a restart restores that page (an http
+      // PDF re-routes to a fresh viewer; a local file simply is not
+      // restored) instead of replaying an expired nonce. The PDF wrapper
+      // already behaved this way by accident (its row update failed
+      // silently); now the skip is deliberate.
+      if (row && !isEphemeralViewerUrl(url)) {
         try { ctx.core.updateBrowserTab(row.rowId, url, row.title); }
         catch { console.error("browser tab row update failed for", pageId); }
       }
     }
     return res;
+  });
+
+  // Open a local file in the browser pane. The native dialog is the ONLY
+  // way a file is chosen: the renderer passes no path and receives none
+  // back — only the viewer URL. The dialog opens only because the user
+  // clicked the button or menu item that invoked this channel; nothing
+  // in the app calls it on its own. The chosen file is re-validated
+  // (real file + allowlist) because the dialog's filters are UI hints,
+  // not a security boundary. Opening writes nothing to the ledger.
+  safeHandle("browser:open-local-file", async (_e, payload) => {
+    const profileId = Number(readString(payload, "profileId") ?? NaN);
+    if (!Number.isInteger(profileId) || !profileExists(profileId)) {
+      return { ok: false, reason: "unknown-profile" };
+    }
+    const parent = typeof ctx.win === "function" ? ctx.win() : null;
+    const dialogOptions = {
+      title: "Open file",
+      properties: ["openFile"],
+      filters: [{ name: "Documents and images", extensions: [...LOCAL_FILE_DIALOG_EXTENSIONS] }],
+    };
+    const res = parent
+      ? await dialog.showOpenDialog(parent, dialogOptions)
+      : await dialog.showOpenDialog(dialogOptions);
+    if (res.canceled || !Array.isArray(res.filePaths) || res.filePaths.length === 0) {
+      return { ok: false, reason: "dialog-canceled" };
+    }
+    const validated = validateLocalFilePath(res.filePaths[0], statSync);
+    if (!validated.ok) return validated;
+    const minted = localFileStore.register(validated.entry);
+    if (!minted) return { ok: false, reason: "local-file-unavailable" };
+    return { ok: true, viewerUrl: minted.viewerUrl, title: minted.title, kind: minted.kind };
   });
 
   safeHandle("browser:reload", (_e, payload) => {

@@ -282,6 +282,11 @@ const api = {
       return ipcRenderer.invoke("browser:create-page", payload);
     },
     navigate: (pageId, url) => ipcRenderer.invoke("browser:navigate", { pageId, url }),
+    // Open a local file: the main process shows the native dialog and
+    // returns only the viewer URL (never a path). The dialog opens only
+    // from the user's button/menu click that calls this.
+    openLocalFile: (profileId) =>
+      ipcRenderer.invoke("browser:open-local-file", { profileId }),
     reload: (pageId) => ipcRenderer.invoke("browser:reload", { pageId }),
     goBack: (pageId) => ipcRenderer.invoke("browser:go-back", { pageId }),
     goForward: (pageId) => ipcRenderer.invoke("browser:go-forward", { pageId }),
