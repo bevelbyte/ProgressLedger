@@ -270,6 +270,33 @@ describe("browser surface", () => {
     expect(bridge.navigate).not.toHaveBeenCalled();
   });
 
+  it("shows nothing when the Open file dialog is cancelled (Bug 2)", async () => {
+    // A cancel is not a refusal: main reports dialog-canceled, and the
+    // surface must stay silent instead of printing "Refused:
+    // dialog-canceled".
+    const openLocalFile = vi.fn(async () => ({ ok: false, reason: "dialog-canceled" }));
+    makeBrowserBridge({ openLocalFile });
+    render(BrowserSurface, { props: { pageId: null, profileId: 3 } });
+
+    await fireEvent.click(screen.getByTestId("browser-open-file"));
+
+    await waitFor(() => expect(openLocalFile).toHaveBeenCalledWith(3));
+    expect(screen.queryByTestId("browser-notice")).toBe(null);
+  });
+
+  it("still shows a refusal that is not a cancel", async () => {
+    // The cancel silence must not swallow real refusals: any other
+    // reason still surfaces as a notice.
+    const openLocalFile = vi.fn(async () => ({ ok: false, reason: "not-a-file" }));
+    makeBrowserBridge({ openLocalFile });
+    render(BrowserSurface, { props: { pageId: null, profileId: 3 } });
+
+    await fireEvent.click(screen.getByTestId("browser-open-file"));
+
+    await waitFor(() => expect(screen.getByTestId("browser-notice")).toBeTruthy());
+    expect(screen.getByTestId("browser-notice").textContent).toContain("Refused: not-a-file");
+  });
+
   it("renders the page it was given: title, sanitized url, opaque id, live state", async () => {
     makeBrowserBridge();
     applyBrowserEvent({

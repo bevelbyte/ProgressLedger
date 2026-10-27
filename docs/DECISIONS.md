@@ -1424,3 +1424,28 @@ local copy: the first Task B upload clobbered the Task A refusal-test
 fix because the local copy predated it (caught by the UI run, 1
 failure, restored immediately). Verify the PC file's current content
 before uploading any file this round did not author.
+
+Page network log (Bug 3 diagnostic, 2026-10-27). A user-facing,
+opt-in, memory-only failed-request record for the current browser page,
+read in Settings > Diagnostics. Rules, all enforced in the pure module
+`shell/src/services/browser/page-network-log.js` and unit-tested there:
+each entry is host + path (query and fragment stripped by
+construction), HTTP status OR Chromium error code, and time — and
+nothing else; headers, cookies, and bodies are never captured because
+the module never receives them. Recording is gated on an enabled flag
+in the host (off by default, so nothing exists while off); entries are
+capped at 200 per page (oldest dropped); the log is cleared when the
+page closes and when the user turns it off. "Current page" is the last
+page made visible or focused that still exists, so enable-in-Settings
+→ act-in-browser → read-in-Settings survives view switches. A
+navigation abort (`net::ERR_ABORTED`) is not recorded: the host's own
+did-fail-load already treats it as a supersede, not a failure, and
+recording every abort would fill the log with navigation noise. The
+panel also shows two plain facts verbatim, never changed: the page's
+`navigator.userAgent` (read via executeJavaScript, never written) and
+whether the session user agent contains "Electron". The log is
+deliberately separate from the E2E failed-request instrument (which
+keeps full sanitized URLs and is never exposed to the renderer). No
+cause for the ChatGPT send failure is claimed: the log is the
+instrument the user reads, and the verdict waits on what it shows.
+Exact user steps live in docs/README_RUN.md.

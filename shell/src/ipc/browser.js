@@ -1029,6 +1029,15 @@ export function register(ctx) {
     host.setOccluded(payload?.occluded === true),
   );
 
+  // Page network log (Bug 3 diagnostic, Settings > Diagnostics): the
+  // current page's failed requests, memory only, off until the user
+  // turns it on. The get also returns the UA facts verbatim.
+  safeHandle("browser:page-network-log-get", () => host.getPageNetworkLog());
+
+  safeHandle("browser:page-network-log-set-enabled", (_e, payload) =>
+    host.setPageNetworkLogEnabled(payload?.enabled === true),
+  );
+
   // Windows closing takes every page with it; app quit must not leave a
   // WebContentsView behind holding a process open.
   try {

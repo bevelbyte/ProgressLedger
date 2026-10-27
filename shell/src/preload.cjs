@@ -322,6 +322,12 @@ const api = {
     setVisible: (pageId, visible) =>
       ipcRenderer.invoke("browser:set-visible", { pageId, visible }),
     setOccluded: (occluded) => ipcRenderer.invoke("browser:set-occluded", { occluded }),
+    // Page network log (Bug 3 diagnostic): failed requests for the
+    // current browser page, memory only, off until the user turns it on.
+    // The get returns the entries plus the UA facts verbatim.
+    getPageNetworkLog: () => ipcRenderer.invoke("browser:page-network-log-get"),
+    setPageNetworkLogEnabled: (enabled) =>
+      ipcRenderer.invoke("browser:page-network-log-set-enabled", { enabled }),
     // Managed downloads (approved decision D). Opaque ids and safe base names
     // only: no channel here accepts or returns a filesystem path, and none opens
     // a downloaded file. The destination is decided entirely in the main process.

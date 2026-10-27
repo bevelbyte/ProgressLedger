@@ -99,3 +99,63 @@ difference must be recorded here next to that run, not silently merged.
   baseline (their harness variables are not set by a plain suite run).
   The new chatgpt-cause spec is a different, self-contained matrix and
   does not set those variables.
+
+## After bug fixes (2026-10-27, branch v2-continue, no push)
+
+Full suite (`npm test`) plus the browser-area E2E set. All jobs ran at
+standard rights (/RL LIMITED /IT, Medium Mandatory Level).
+
+| suite | file(s) | result |
+| build | `npm run build` | browser-ts OK; core FAILED (see note); ui not reached |
+| check-ipc | `scripts/check-ipc.mjs` | 247 channels, all handled |
+| check-napi | `scripts/check-napi.mjs` | 124 core functions, all exported |
+| check-esm | `scripts/check-esm.mjs` | 133 files, all imports resolve |
+| shell | `node --test shell/tests/*.test.js` | 1243 passed, 0 failed (22 skipped) |
+| ui | `npm run test -w @progress-ledger/ui` | 72 files, 896 tests, all passed |
+| core | cargo tests | 124 passed, 0 failed (16 binaries) |
+| isolation | `e2e/browser-profile-isolation.spec.js` | 4 passed, 0 failed |
+| guard2 | `e2e/e2e-data-guard2.spec.js` | 4 passed, 0 failed |
+| search | `e2e/search-engine.spec.js` | 2 passed, 0 failed |
+| mgr | `e2e/browser-profile-manager.spec.js` | 1 passed, 0 failed |
+| play | `e2e/browser-profile-play.spec.js` | 2 passed, 0 failed |
+| split | `e2e/profile-card-split-page.spec.js` | 1 passed, 0 failed |
+| local | `e2e/local-file.spec.js` | 3 passed, 0 failed |
+| loaderror | `e2e/browser-load-error.spec.js` | 1 passed, 0 failed |
+| chatgpt | `e2e/chatgpt-cause.spec.js` | 1 passed, 0 failed |
+| pagenetlog | `e2e/page-network-log.spec.js` | 1 passed, 0 failed |
+| pdf | `e2e/pdf-mechanism.spec.js` | 1 skipped, 0 passed, 0 failed |
+| chat | `e2e/chatgpt-connect.spec.js` | 1 skipped, 0 passed, 0 failed |
+
+E2E total for this gate: 20 passed, 2 skipped (the 2 skipped are pdf and
+chat, skipped by design as before).
+
+### Differences from the previous round, and why each is expected
+
+- check-ipc 245 → 247: the two new channels from Bug 3,
+  `browser:page-network-log-get` and
+  `browser:page-network-log-set-enabled` (plus their preload entries).
+  No other channel changed.
+- check-esm 132 → 133 files: the one new shell module from Bug 3,
+  `shell/src/services/browser/page-network-log.js`.
+- shell 1233 → 1243 (+10): the 10 new page-network-log tests. No
+  existing shell test changed outcome.
+- ui 894 → 896 (+2): the 2 new browser-surface tests from Bug 2
+  (cancel shows nothing; a non-cancel refusal still shows). No
+  existing UI test changed outcome.
+- core 124 → 124: unchanged.
+- pdf and chat are still skipped by design, for the same reason as
+  before.
+
+### Build note (not a code failure)
+
+`npm run build` failed at its core step only: napi build could not
+unlink `core\progress_ledger_core.win32-x64-msvc.node` (EPERM). That
+file is held open while the user's dev app (`npm run dev`) is running,
+and Windows cannot unlink an in-use file. browser-ts passed before it;
+the UI had already been built by the Bug 3 gate (build:ui 0) and the
+E2E set above passed against that build. Packaging a new release
+folder and retargeting the Desktop shortcut are therefore pending
+until the dev app is stopped briefly: the package must be built from
+the final commit so the status-bar build ID matches it. Nothing in
+this round changed the native module, so the packaged app's core binary
+is unaffected.

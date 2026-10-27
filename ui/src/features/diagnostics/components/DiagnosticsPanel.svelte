@@ -77,6 +77,54 @@
     toast.info(debugMode ? "Debug Mode enabled. Persistent logging activated." : "Debug Mode disabled.");
   }
 
+  // Page network log (Bug 3 diagnostic): failed requests for the current
+  // browser page, read from main over the browser bridge. The log lives
+  // in main-process memory only, is off until the user turns it on, and
+  // is cleared when the page closes or when the user turns it off. The
+  // panel never writes it anywhere; Refresh just re-reads it.
+  let pageNetworkLog = $state(null);
+  let pageLogLoading = $state(false);
+  let pageLogError = $state(null);
+
+  function pageNetworkBrowser() {
+    return typeof window !== "undefined" ? window.progressLedger?.browser : null;
+  }
+
+  async function refreshPageNetworkLog() {
+    const browser = pageNetworkBrowser();
+    if (!browser?.getPageNetworkLog) return;
+    pageLogLoading = true;
+    try {
+      pageNetworkLog = await browser.getPageNetworkLog();
+      pageLogError = null;
+    } catch (e) {
+      pageLogError = "Could not read the page network log.";
+      reportError(e, "Page network log failed");
+    } finally {
+      pageLogLoading = false;
+    }
+  }
+  refreshPageNetworkLog();
+
+  async function togglePageNetworkLog() {
+    const browser = pageNetworkBrowser();
+    if (!browser?.setPageNetworkLogEnabled) return;
+    const next = !(pageNetworkLog?.enabled === true);
+    try {
+      await browser.setPageNetworkLogEnabled(next);
+      await refreshPageNetworkLog();
+      toast.info(
+        next
+          ? "Page network log on. Failed requests for the current browser page will be recorded."
+          : "Page network log off. The recorded log was cleared.",
+      );
+    } catch (e) {
+      reportError(e, "Page network log failed");
+    }
+  }
+
+  const pageLogEnabled = $derived(pageNetworkLog?.enabled === true);
+
   async function copyDebugLog() {
     try {
       const logs = await diagnosticsService.readLog();
@@ -202,6 +250,75 @@
       </article>
     </div>
   {/if}
+
+  <div class="page-network-log">
+    <span class="atl-label">Page network log</span>
+    <p class="empty">
+      Records only failed requests for the current browser page: host, path, HTTP status or Chromium error
+      code, and time. Memory only — nothing is written to disk or sent anywhere. Off until you turn it on.
+      Cleared when the page closes or when you turn it off.
+    </p>
+    <div class="actions">
+      <button
+        type="button"
+        class="cf-btn sm ghost toggle"
+        class:on={pageLogEnabled}
+        onclick={togglePageNetworkLog}
+        aria-pressed={pageLogEnabled}
+        data-testid="page-network-log-toggle"
+      >
+        Page network log {pageLogEnabled ? "on" : "off"}
+      </button>
+      <button
+        type="button"
+        class="cf-btn sm secondary"
+        onclick={refreshPageNetworkLog}
+        disabled={pageLogLoading}
+        data-testid="page-network-log-refresh"
+      >
+        Refresh
+      </button>
+    </div>
+    {#if pageLogError}
+      <p class="empty">{pageLogError}</p>
+    {:else if pageNetworkLog}
+      <p class="empty" data-testid="page-network-log-status">
+        {#if pageNetworkLog.pageId}
+          Page: {pageNetworkLog.pageTitle ?? pageNetworkLog.pageId} — {pageNetworkLog.entries.length} failed
+          request(s) recorded.
+        {:else}
+          No browser page yet. Open a page in the browser first.
+        {/if}
+      </p>
+      {#if pageNetworkLog.pageId}
+        <p class="empty" data-testid="page-network-log-ua">
+          Page user agent: {pageNetworkLog.pageUserAgent ?? "not reported"}
+        </p>
+        <p class="empty" data-testid="page-network-log-electron">
+          Session user agent contains "Electron": {pageNetworkLog.sessionUserAgentContainsElectron === null
+            ? "not reported"
+            : pageNetworkLog.sessionUserAgentContainsElectron
+              ? "Yes"
+              : "No"}
+        </p>
+      {/if}
+      {#if pageNetworkLog.entries.length > 0}
+        <div class="check-list" data-testid="page-network-log-entries">
+          {#each pageNetworkLog.entries as entry, i (i)}
+            <article class="tile">
+              <span class="atl-label">{formatDate(entry.at)}</span>
+              <strong>{entry.host}{entry.path}</strong>
+              <span class="atl-label">
+                {entry.status !== undefined ? `HTTP ${entry.status}` : (entry.error ?? "failed")}
+              </span>
+            </article>
+          {/each}
+        </div>
+      {:else if pageLogEnabled && pageNetworkLog.pageId}
+        <p class="empty" data-testid="page-network-log-empty">No failed requests recorded yet.</p>
+      {/if}
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -292,6 +409,12 @@
   .empty {
     color: var(--atlas-ink-3);
     font-size: var(--text-md);
+  }
+
+  .page-network-log {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   @media (max-width: 900px) {

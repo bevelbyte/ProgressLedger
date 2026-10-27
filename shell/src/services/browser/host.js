@@ -43,6 +43,12 @@ import { pathToFileURL } from "node:url";
 import { createBrowserRegistry, PAGE_STATES, REASONS } from "./registry.js";
 import { clampRect, isAllowedUrl, sanitizeDisplayUrl, schemeOf } from "./policy.js";
 import {
+  clearPageNetworkLog,
+  createPageNetworkLog,
+  networkLogEntryFor,
+  recordPageNetworkEntry,
+} from "./page-network-log.js";
+import {
   installNavigationGuards,
   decidePopup,
   POPUP_BUDGET_PER_LOAD,
@@ -182,6 +188,35 @@ export function createBrowserHost(deps = {}) {
     list.push(entry);
     while (list.length > 20) list.shift();
     failedRequestsByPage.set(pageId, list);
+  }
+
+  // Page network log (Bug 3 diagnostic): the USER-facing failed-request
+  // record, separate from the E2E instrument above. Same failure sources,
+  // stricter shape: host + path only (no query, no fragment), status or
+  // Chromium error, time — never headers, cookies, or bodies (this code
+  // never receives them). OFF until the user turns it on: while off,
+  // nothing is recorded at all. Memory only, cleared when the page
+  // closes or when the user turns it off. lastActivePageId is the page
+  // the panel reads: the last page made visible or focused that still
+  // exists, so the user's flow (enable in Settings, send in the browser
+  // pane, read back in Settings) keeps working across view switches.
+  const pageNetworkLogsByPage = new Map();
+  let pageNetworkLogEnabled = false;
+  let lastActivePageId = null;
+  function recordPageNetworkFailure(pageId, url, outcome) {
+    if (pageNetworkLogEnabled !== true) return;
+    // A navigation supersede is not a failure: the host's own
+    // did-fail-load already ignores -3, and recording every abort
+    // would fill the user's log with navigation noise.
+    if (outcome?.error === "net::ERR_ABORTED") return;
+    const entry = networkLogEntryFor(url, outcome);
+    if (!entry) return;
+    let log = pageNetworkLogsByPage.get(pageId);
+    if (!log) {
+      log = createPageNetworkLog();
+      pageNetworkLogsByPage.set(pageId, log);
+    }
+    recordPageNetworkEntry(log, entry);
   }
 
   const registry = createBrowserRegistry({
@@ -335,6 +370,7 @@ export function createBrowserHost(deps = {}) {
       if (webRequest && typeof webRequest.onErrorOccurred === "function") {
         webRequest.onErrorOccurred((details) => {
           if (details?.webContentsId !== wc.id) return;
+          recordPageNetworkFailure(pageId, details.url ?? "", { error: details.error ?? "" });
           recordFailedRequest(pageId, {
             url: sanitizeDisplayUrl(details.url ?? ""),
             error: details.error ?? "",
@@ -348,6 +384,7 @@ export function createBrowserHost(deps = {}) {
           if (details?.webContentsId !== wc.id) return;
           if (details?.resourceType !== "xhr" && details?.resourceType !== "fetch") return;
           if (typeof details?.statusCode !== "number" || details.statusCode < 400) return;
+          recordPageNetworkFailure(pageId, details.url ?? "", { status: details.statusCode });
           recordFailedRequest(pageId, {
             url: sanitizeDisplayUrl(details.url ?? ""),
             status: details.statusCode,
@@ -1055,7 +1092,10 @@ export function createBrowserHost(deps = {}) {
         if (!woken.ok) return woken;
       }
       applyVisibility(record);
-      if (visible === true) registry.update(pageId, { lastUsed: Date.now() });
+      if (visible === true) {
+        registry.update(pageId, { lastUsed: Date.now() });
+        lastActivePageId = pageId;
+      }
       return { ok: true, visible: record.visible === true };
     },
 
@@ -1092,6 +1132,8 @@ export function createBrowserHost(deps = {}) {
       const destroyed = registry.destroy(pageId);
       fullProfiles.delete(pageId);
       failedRequestsByPage.delete(pageId);
+      pageNetworkLogsByPage.delete(pageId);
+      if (lastActivePageId === pageId) lastActivePageId = null;
       return { ok: destroyed, clearPromise };
     },
 
@@ -1146,6 +1188,8 @@ export function createBrowserHost(deps = {}) {
     closeAll() {
       registry.destroyAll();
       downloads.dispose();
+      pageNetworkLogsByPage.clear();
+      lastActivePageId = null;
       occluded = false;
       return { ok: true };
     },
@@ -1166,6 +1210,70 @@ export function createBrowserHost(deps = {}) {
     /** Sanitized state for the renderer. */
     state() {
       return { ok: true, pages: registry.list(), occluded };
+    },
+
+    /**
+     * Turn the page network log on or off (Bug 3). Turning it OFF
+     * clears every page's log at once, so a later enable never shows
+     * stale entries from an earlier session.
+     */
+    setPageNetworkLogEnabled(enabled) {
+      pageNetworkLogEnabled = enabled === true;
+      if (pageNetworkLogEnabled !== true) {
+        for (const log of pageNetworkLogsByPage.values()) clearPageNetworkLog(log);
+      }
+      return { ok: true, enabled: pageNetworkLogEnabled };
+    },
+
+    /**
+     * The current page's network log for Settings > Diagnostics (Bug 3).
+     * Entries are a copy: the panel cannot mutate main's log. The UA
+     * facts are recorded verbatim and never changed: navigator.userAgent
+     * as the page sees it (read, never written), and whether the
+     * session user agent contains "Electron". A page that cannot
+     * report its UA yields nulls, never an invented string.
+     */
+    async getPageNetworkLog() {
+      const record = lastActivePageId !== null ? registry.record(lastActivePageId) : null;
+      if (!record) {
+        return {
+          ok: true,
+          enabled: pageNetworkLogEnabled,
+          pageId: null,
+          pageTitle: null,
+          entries: [],
+          pageUserAgent: null,
+          sessionUserAgentContainsElectron: null,
+        };
+      }
+      const wc = record.view?.webContents;
+      let pageUserAgent = null;
+      let sessionUserAgentContainsElectron = null;
+      try {
+        if (wc && wc.isDestroyed?.() !== true) {
+          pageUserAgent = await wc.executeJavaScript("navigator.userAgent");
+        }
+      } catch {
+        pageUserAgent = null;
+      }
+      try {
+        const sessionUa = wc?.session?.getUserAgent?.();
+        if (typeof sessionUa === "string") {
+          sessionUserAgentContainsElectron = sessionUa.includes("Electron");
+        }
+      } catch {
+        sessionUserAgentContainsElectron = null;
+      }
+      const log = pageNetworkLogsByPage.get(record.id);
+      return {
+        ok: true,
+        enabled: pageNetworkLogEnabled,
+        pageId: record.id,
+        pageTitle: record.title || record.url || null,
+        entries: log ? [...log.entries] : [],
+        pageUserAgent: typeof pageUserAgent === "string" ? pageUserAgent : null,
+        sessionUserAgentContainsElectron,
+      };
     },
 
     /** Main-only source of truth for Research writes; never exposed in browser state IPC. */
@@ -1278,6 +1386,7 @@ export function createBrowserHost(deps = {}) {
       // live `focus` listener calls); `nativeFocus` says whether Chromium ALSO
       // took the focus, which a spec cannot demand from an unfocused window.
       reportPageFocus(pageId);
+      lastActivePageId = pageId;
       return { ok: true, nativeFocus };
     },
 

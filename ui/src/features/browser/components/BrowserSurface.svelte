@@ -512,6 +512,10 @@
     }
     const res = await api.openLocalFile(Number(profileId));
     if (!res?.ok) {
+      // A cancelled dialog is not a refusal and not a failure: the user
+      // simply changed their mind. Show nothing (Bug 2). Any other
+      // refusal still surfaces as a notice below.
+      if (res?.reason === "dialog-canceled") return;
       notice = res?.detail ?? res?.reason ?? "open-file-failed";
       return;
     }
